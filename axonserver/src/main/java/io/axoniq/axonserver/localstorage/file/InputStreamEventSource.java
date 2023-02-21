@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -24,16 +24,23 @@ import java.io.IOException;
  * @author Marc Gathier
  */
 public class InputStreamEventSource implements EventSource {
+
     private static final Logger logger = LoggerFactory.getLogger(InputStreamEventSource.class);
     private final PositionKeepingDataInputStream dataInputStream;
     private final EventTransformer eventTransformer;
     private final File dataFile;
+    private final long segment;
+    private final int segmentVersion;
     private volatile boolean closed;
 
 
     public InputStreamEventSource(File dataFile,
+                                  long segment,
+                                  int segmentVersion,
                                   EventTransformerFactory eventTransformerFactory) {
         this.dataFile = dataFile;
+        this.segment = segment;
+        this.segmentVersion = segmentVersion;
         try {
             logger.debug("Open file {}", dataFile);
             dataInputStream = new PositionKeepingDataInputStream(dataFile);
@@ -61,13 +68,18 @@ public class InputStreamEventSource implements EventSource {
     }
 
     @Override
-    public TransactionIterator createTransactionIterator(long segment, long token, boolean validating) {
-        return new InputStreamTransactionIterator(this, segment, token, validating);
+    public TransactionIterator createTransactionIterator(long token, boolean validating) {
+        return new InputStreamTransactionIterator(this, token);
     }
 
     @Override
-    public EventIterator createEventIterator(long segment, long startToken) {
-        return new InputStreamEventIterator(this, segment, startToken);
+    public EventIterator createEventIterator(long startToken) {
+        return new InputStreamEventIterator(this, startToken);
+    }
+
+    @Override
+    public long segment() {
+        return segment;
     }
 
     public PositionKeepingDataInputStream getStream() {
@@ -75,7 +87,7 @@ public class InputStreamEventSource implements EventSource {
     }
 
     @Override
-    public void close()  {
+    public void close() {
         try {
             logger.debug("Close file {} - {}", dataFile, closed);
             if( ! closed) {

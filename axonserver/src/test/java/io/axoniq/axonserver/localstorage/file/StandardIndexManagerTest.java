@@ -1,3 +1,12 @@
+/*
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver.localstorage.file;
 
 import io.axoniq.axonserver.config.SystemInfoProvider;
@@ -8,8 +17,10 @@ import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.test.TestUtils;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.assertj.core.api.Assertions;
-import org.junit.*;
-import org.junit.rules.*;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -23,8 +34,11 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import static org.junit.Assert.*;
-import static org.junit.Assume.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.fail;
+import static org.junit.Assume.assumeTrue;
 
 /**
  * Tests for {@link StandardIndexManager}.
@@ -53,7 +67,13 @@ public class StandardIndexManagerTest {
         storageProperties.setStorage(temporaryFolder.getRoot().getAbsolutePath());
 
         MeterFactory meterFactory = new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector());
-        indexManager = new StandardIndexManager(context, () -> storageProperties, EventType.EVENT, meterFactory);
+
+        indexManager = new StandardIndexManager(context,
+                                                () -> storageProperties,
+                                                storageProperties.getPrimaryStorage(context),
+                                                EventType.EVENT,
+                                                meterFactory,
+                                                () -> null);
     }
 
     @Test
@@ -69,11 +89,11 @@ public class StandardIndexManagerTest {
         Future[] futures = new Future[concurrentRequests];
         for (int i = 0; i < concurrentRequests; i++) {
             Future<?> future = executorService.submit(() -> {
-                SortedMap<Long, IndexEntries> actual = indexManager.lookupAggregate(aggregateId,
+                SortedMap<FileVersion, IndexEntries> actual = indexManager.lookupAggregate(aggregateId,
                                                                                     0,
                                                                                     Long.MAX_VALUE,
                                                                                     Long.MAX_VALUE, 0);
-                assertEquals(positionInfo.getSequenceNumber(), actual.get(0L).firstSequenceNumber());
+                assertEquals(positionInfo.getSequenceNumber(), actual.get(new FileVersion(0L, 0)).firstSequenceNumber());
             });
             futures[i] = future;
         }
@@ -105,9 +125,9 @@ public class StandardIndexManagerTest {
         indexManager.complete(10);
         indexManager.addToActiveSegment(15L, aggregateId, new IndexEntry(7, 0, 0));
 
-        SortedMap<Long, IndexEntries> position = indexManager.lookupAggregate(aggregateId, 0, 5, 100, 0);
+        SortedMap<FileVersion, IndexEntries> position = indexManager.lookupAggregate(aggregateId, 0, 5, 100, 0);
         assertEquals(1, position.size());
-        assertNotNull(position.get(0L));
+        assertNotNull(position.get(new FileVersion(0L, 0)));
     }
 
     @Test
@@ -126,20 +146,20 @@ public class StandardIndexManagerTest {
         indexManager.complete(10);
         indexManager.addToActiveSegment(15L, aggregateId, new IndexEntry(7, 0, 0));
 
-        SortedMap<Long, IndexEntries> position = indexManager.lookupAggregate(aggregateId, 0, Long.MAX_VALUE, 100, 11);
+        SortedMap<FileVersion, IndexEntries> position = indexManager.lookupAggregate(aggregateId, 0, Long.MAX_VALUE, 100, 11);
         assertEquals(2, position.size());
-        assertNotNull(position.get(10L));
-        assertNotNull(position.get(15L));
+        assertNotNull(position.get(new FileVersion(10L, 0)));
+        assertNotNull(position.get(new FileVersion(15, 0)));
         position = indexManager.lookupAggregate(aggregateId, 0, Long.MAX_VALUE, 100, 15);
         assertEquals(2, position.size());
-        assertNotNull(position.get(15L));
+        assertNotNull(position.get(new FileVersion(15L, 0)));
     }
 
     @Test
     public void testTemporaryFileIsDeletedWhenCreatingIndex() throws IOException {
         long segment = 0L;
 
-        File tempFile = storageProperties.indexTemp(context, segment);
+        File tempFile = storageProperties.transformedIndex(storageProperties.getPrimaryStorage(context), segment);
         try (FileOutputStream outputStream = new FileOutputStream(tempFile)) {
             outputStream.write("mockDataToCreateIllegalFile".getBytes(StandardCharsets.UTF_8));
         }
@@ -149,7 +169,7 @@ public class StandardIndexManagerTest {
         indexManager.addToActiveSegment(segment, aggregateId, positionInfo);
         indexManager.complete(segment);
 
-        assertFalse(storageProperties.indexTemp(context, segment).exists());
+        assertFalse(storageProperties.transformedIndex(storageProperties.getPrimaryStorage(context), segment).exists());
     }
 
     @Test(expected = MessagingPlatformException.class)
@@ -157,7 +177,7 @@ public class StandardIndexManagerTest {
         assumeTrue(systemInfoProvider.javaOnWindows());
         long segment = 0L;
 
-        File tempFile = storageProperties.indexTemp(context, segment);
+        File tempFile = storageProperties.transformedIndex(storageProperties.getPrimaryStorage(context), segment);
 
         String aggregateId = "aggregateId";
         IndexEntry positionInfo = new IndexEntry(0, 0, 0);
@@ -172,9 +192,20 @@ public class StandardIndexManagerTest {
     @Test
     public void testLastSequenceNumberWhenNoDomainEventsInActiveIndexes() {
         String eventStore = TestUtils.fixPathOnWindows(StandardIndexManagerTest.class
-                                                          .getResource("/event-store-without-domain-events-in-last-segment")
-                                                          .getFile());
+                                                               .getResource(
+                                                                       "/event-store-without-domain-events-in-last-segment")
+                                                               .getFile());
+        storageProperties = new StorageProperties(systemInfoProvider);
+        storageProperties.setMaxIndexesInMemory(3);
         storageProperties.setStorage(eventStore);
+        MeterFactory meterFactory = new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector());
+
+        indexManager = new StandardIndexManager(context,
+                                                () -> storageProperties,
+                                                storageProperties.getPrimaryStorage(context),
+                                                EventType.EVENT,
+                                                meterFactory,
+                                                () -> null);
         indexManager.init();
 
         Optional<Long> result = indexManager.getLastSequenceNumber("Aggregate-25", Integer.MAX_VALUE, Long.MAX_VALUE);

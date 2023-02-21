@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -11,7 +11,7 @@ package io.axoniq.axonserver.localstorage.file;
 
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.Test;
 import reactor.test.StepVerifier;
 
 import java.util.Optional;
@@ -20,7 +20,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.axoniq.axonserver.test.AssertUtils.assertWithin;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * @author Marc Gathier
@@ -52,13 +52,18 @@ class EventSourceFluxTest {
                     }
 
                     @Override
-                    public TransactionIterator createTransactionIterator(long segment, long token, boolean validating) {
+                    public TransactionIterator createTransactionIterator(long token, boolean validating) {
                         return null;
                     }
 
                     @Override
-                    public EventIterator createEventIterator(long segment, long startToken) {
+                    public EventIterator createEventIterator(long startToken) {
                         return null;
+                    }
+
+                    @Override
+                    public long segment() {
+                        return 0;
                     }
 
                     @Override

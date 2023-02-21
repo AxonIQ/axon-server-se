@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -21,7 +21,12 @@ globals.pageView = new Vue({
                                    contexts: [],
                                    context: null,
                                    webSocketInfo: globals.webSocketInfo,
-                                   subscription: null
+                                   subscription: null,
+                                   initialized: globals.initialized,
+                                   initializeMode: "init",
+                                   initContext: "default",
+                                   joinHost: null,
+                                   joinPort: 8224
                                },
                                mounted() {
 
@@ -35,13 +40,14 @@ globals.pageView = new Vue({
                                        this.nodes = response.data
                                    });
                                    this.timer = setInterval(this.reloadStatus, 5000);
-                                   if (globals.isEnterprise()) {
                                        let me = this;
+                                   if (globals.isEnterprise()) {
                                        me.webSocketInfo.subscribe('/topic/cluster', function () {
                                            me.initOverview();
                                        }, function (sub) {
                                            me.subscription = sub;
                                        });
+                                   }
                                        axios.get("v1/public/visiblecontexts?includeAdmin=false").then(response => {
                                            for (let i = 0; i < response.data.length; i++) {
                                                me.contexts.push(response.data[i]);
@@ -51,10 +57,6 @@ globals.pageView = new Vue({
                                            }
                                            me.reloadStatus()
                                        });
-                                   } else {
-                                       this.context = "default";
-                                       this.reloadStatus();
-                                   }
                                },
                                beforeDestroy() {
                                    clearInterval(this.timer);
@@ -90,6 +92,31 @@ globals.pageView = new Vue({
                                                this.reloadStatus()
                                            });
                                        }
+                                   },
+                                   initCluster() {
+                                       setTimeout(function() { alert("This may take a while, please wait..."); }, 0);
+                                       if (!this.initContext) {
+                                           axios.post("v1/context/init").then(_ => {
+                                               location.reload();
+                                           })
+                                       } else {
+                                           axios.post("v1/context/init?context=" + this.initContext).then(_ => {
+                                               location.reload();
+                                           })
+                                       }
+                                   },
+                                   joinCluster() {
+                                       if (!this.joinHost) {
+                                           alert("Enter the internal hostname of a member of the existing cluster");
+                                           return
+                                       }
+                                       setTimeout(function() { alert("This may take a while, please wait..."); }, 0);
+                                       axios.post("v1/cluster", {
+                                           "internalHostName": this.joinHost,
+                                           "internalGrpcPort": this.joinPort
+                                       }).then(_ => {
+                                           location.reload();
+                                       })
                                    }
                                }
                            });

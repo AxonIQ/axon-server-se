@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.grpc;
 
+import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.QueryInstruction;
@@ -33,8 +34,14 @@ public interface QueryRequestValidator {
         long messageTimeout = message.timeout();
         long remainingTime =  messageTimeout - System.currentTimeMillis();
         if(remainingTime < 0) {
-            logger.debug("Timeout for message: {} - {}ms", request.getMessageIdentifier(), remainingTime);
-            queryDispatcher.removeFromCache(serializedQuery.clientStreamId(), request.getMessageIdentifier());
+            String errorMessage = String.format("Timeout for message: %s - %dms",
+                                                request.getMessageIdentifier(),
+                                                remainingTime);
+            logger.debug(errorMessage);
+            queryDispatcher.completeWithError(request.getMessageIdentifier(),
+                                              serializedQuery.clientStreamId(),
+                                              ErrorCode.QUERY_TIMEOUT,
+                                              errorMessage);
             return null;
         } else {
             logger.debug("Remaining time for message: {} - {}ms", request.getMessageIdentifier(), remainingTime);

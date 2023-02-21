@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -15,16 +15,25 @@ import org.springframework.util.unit.DataSize;
 
 import java.io.File;
 import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * @author Marc Gathier
  */
 public class StorageProperties implements Cloneable {
 
+    public static final String TRANSFORMED_SUFFIX = ".transformed";
     private static final String PATH_FORMAT = "%s/%020d%s";
     private static final String TEMP_PATH_FORMAT = PATH_FORMAT + ".temp";
+    private static final String PATH_WITH_VERSION_FORMAT = "%s/%020d_%05d%s";
+    private static final String FILE_WITH_VERSION_FORMAT = "%020d_%05d%s";
+    private static final String FILE_FORMAT = "%020d%s";
+    private static final String TEMP_PATH_WITH_VERSION_FORMAT = PATH_WITH_VERSION_FORMAT + ".temp";
+    private static final String TRANSFORMED_PATH_WITH_VERSION_FORMAT = PATH_WITH_VERSION_FORMAT + TRANSFORMED_SUFFIX;
     private static final String OLD_PATH_FORMAT = "%s/%014d%s";
     private static final int DEFAULT_READ_BUFFER_SIZE = 1024 * 32;
+    public static final String PRIMARY_STORAGE_KEY = "primary";
     /**
      * File suffix for events files.
      */
@@ -52,11 +61,14 @@ public class StorageProperties implements Cloneable {
     private int segmentSize = 1024 * 1024 * 256;
 
     /**
-     * Location for segment files. Will create subdirectory per context.
+     * Locations for segment files. Will create subdirectory per context.
      */
     private String storage = "./data";
+    /**
+     * Locations for segment files. Will create subdirectory per context.
+     */
+    private Map<String, String> storages = new HashMap<>();
 
-    private String contextStorage;
     /**
      * False-positive percentage allowed for bloom index. Decreasing the value increases the size of the bloom indexes.
      */
@@ -112,6 +124,8 @@ public class StorageProperties implements Cloneable {
      * Size of the buffer when reading from non-memory mapped files. Defaults to 32kiB.
      */
     private int readBufferSize = DEFAULT_READ_BUFFER_SIZE;
+
+    private boolean keepOldVersions = false;
 
     private final SystemInfoProvider systemInfoProvider;
     private int flags;
@@ -184,6 +198,23 @@ public class StorageProperties implements Cloneable {
 
     public void setStorage(String storage) {
         this.storage = storage;
+
+        if (storages != null) {
+            if (!storages.containsKey(PRIMARY_STORAGE_KEY)) {
+                storages.put(PRIMARY_STORAGE_KEY, storage);
+            }
+        } else {
+            this.storages = new HashMap<>();
+            storages.put(PRIMARY_STORAGE_KEY, storage);
+        }
+    }
+
+    public void setStorages(Map<String, String> storages) {
+        if (this.storages != null && this.storages.containsKey(PRIMARY_STORAGE_KEY)) {
+            this.storages.putAll(storages);
+        } else {
+            this.storages = storages;
+        }
     }
 
     public int getEventsPerSegmentPrefetch() {
@@ -203,24 +234,61 @@ public class StorageProperties implements Cloneable {
         this.bloomIndexFpp = bloomIndexFpp;
     }
 
-    public File bloomFilter(String context, long segment) {
-        return new File(String.format(PATH_FORMAT, getStorage(context), segment, bloomIndexSuffix));
+    public File bloomFilter(String customStorage, long segment) {
+        return new File(String.format(PATH_FORMAT, customStorage, segment, bloomIndexSuffix));
+    }
+    public File bloomFilter(String customStorage, FileVersion segment) {
+        if( segment.segmentVersion() == 0) return bloomFilter(customStorage, segment.segment());
+        return new File(String.format(PATH_WITH_VERSION_FORMAT, customStorage, segment.segment(), segment.segmentVersion(), bloomIndexSuffix));
     }
 
-    public File index(String context, long segment) {
-        return new File(String.format(PATH_FORMAT, getStorage(context), segment, indexSuffix));
+    public File index(String customStorage, long segment) {
+        return new File(String.format(PATH_FORMAT, customStorage, segment, indexSuffix));
+    }
+    public File index(String customStorage, FileVersion segment) {
+        if( segment.segmentVersion() == 0) return index(customStorage, segment.segment());
+        return new File(String.format(PATH_WITH_VERSION_FORMAT, customStorage, segment.segment(), segment.segmentVersion(), indexSuffix));
     }
 
-    public File indexTemp(String context, long segment) {
-        return new File(String.format(TEMP_PATH_FORMAT, getStorage(context), segment, indexSuffix));
+    public File indexTemp(String storagePath, long segment) {
+        return new File(String.format(TEMP_PATH_FORMAT, storagePath, segment, indexSuffix));
     }
 
-    public File newIndex(String context, long segment) {
-        return new File(String.format(PATH_FORMAT, getStorage(context), segment, newIndexSuffix));
+    public File indexTemp(String storagePath, FileVersion segment) {
+        return new File(String.format(TEMP_PATH_WITH_VERSION_FORMAT, storagePath, segment.segment(), segment.segmentVersion(), indexSuffix));
     }
 
-    public File newIndexTemp(String context, long segment) {
-        return new File(String.format(TEMP_PATH_FORMAT, getStorage(context), segment, newIndexSuffix));
+    public File transformedIndex(String storagePath, FileVersion segment) {
+        if( segment.segmentVersion() == 0) return transformedIndex(storagePath, segment.segment());
+        return new File(String.format(TRANSFORMED_PATH_WITH_VERSION_FORMAT, storagePath, segment.segment(), segment.segmentVersion(), indexSuffix));
+    }
+
+    public File newTransformedIndex(String storagePath, FileVersion segment) {
+        if( segment.segmentVersion() == 0) return transformedIndex(storagePath, segment.segment());
+        return new File(String.format(TRANSFORMED_PATH_WITH_VERSION_FORMAT, storagePath, segment.segment(), segment.segmentVersion(), newIndexSuffix));
+    }
+
+    public File transformedIndex(String storagePath, long segment) {
+        return new File(String.format(TEMP_PATH_FORMAT, storagePath, segment, indexSuffix));
+    }
+
+    public File newIndex(String storagePath, long segment) {
+        return new File(String.format(PATH_FORMAT, storagePath, segment, newIndexSuffix));
+    }
+    public File newIndex(String storagePath, FileVersion segment) {
+        if( segment.segmentVersion() == 0) return newIndex(storagePath, segment.segment());
+
+        return new File(String.format(PATH_WITH_VERSION_FORMAT, storagePath, segment.segment(), segment.segmentVersion(), newIndexSuffix));
+    }
+
+    public File newIndexTemp(String storagePath, FileVersion segment) {
+        if( segment.segmentVersion() == 0) return newIndexTemp(storagePath, segment.segment());
+
+        return new File(String.format(TRANSFORMED_PATH_WITH_VERSION_FORMAT, storagePath, segment.segment(), segment.segmentVersion(), newIndexSuffix));
+    }
+
+    public File newIndexTemp(String storagePath, long segment) {
+        return new File(String.format(TEMP_PATH_FORMAT, storagePath, segment, newIndexSuffix));
     }
 
     public String getGlobalIndexSuffix() {
@@ -231,8 +299,30 @@ public class StorageProperties implements Cloneable {
         this.globalIndexSuffix = globalIndexSuffix;
     }
 
-    public File dataFile(String context, long segment) {
-        return new File(String.format(PATH_FORMAT, getStorage(context), segment, eventsSuffix));
+    public String dataFile(long segment) {
+        return String.format(FILE_FORMAT, segment, eventsSuffix);
+    }
+
+    public String dataFile(FileVersion segment) {
+        if (segment.segmentVersion() == 0) {
+            return dataFile(segment.segment());
+        }
+        return String.format(FILE_WITH_VERSION_FORMAT, segment.segment(), segment.segmentVersion(), eventsSuffix);
+    }
+
+    public File dataFile(String storagePath, FileVersion fileVersion) {
+        return new File(storagePath + File.separator + dataFile(fileVersion));
+    }
+
+    public File transformedDataFile(String storagePath, FileVersion segment) {
+        if (segment.segmentVersion() == 0) {
+            throw new RuntimeException("cannot transform to version 0");
+        }
+        return new File(String.format(TRANSFORMED_PATH_WITH_VERSION_FORMAT,
+                                      storagePath,
+                                      segment.segment(),
+                                      segment.segmentVersion(),
+                                      eventsSuffix));
     }
 
     public long getForceInterval() {
@@ -247,11 +337,29 @@ public class StorageProperties implements Cloneable {
         return flags;
     }
 
-    public String getStorage(String context) {
-        if (contextStorage != null) {
-            return contextStorage;
+    public String getPrimaryStorage(String context) {
+        return String.format("%s/%s", storages.getOrDefault(PRIMARY_STORAGE_KEY, storage), context);
+    }
+
+    public String getStorage(String storageName) {
+        String storagePath = storages.get(storageName);
+        if (storagePath == null) {
+            if (PRIMARY_STORAGE_KEY.equals(storageName)) {
+                return storage;
+            }
+            throw new IllegalStateException("Storage " + storageName + " not defined on this node." +
+                                                    "To define storage set property: axoniq.axonserver.event.storage."
+                                                    + storageName);
         }
-        return String.format("%s/%s", storage, context);
+        return storagePath;
+    }
+
+    public String getStorage(String storageName, String context) {
+        return String.format("%s/%s", getStorage(storageName), context);
+    }
+
+    public Map<String, String> getAvailableStorages() {
+        return storages;
     }
 
     public int getValidationSegments() {
@@ -318,16 +426,16 @@ public class StorageProperties implements Cloneable {
         this.readBufferSize = readBufferSize;
     }
 
-    public File oldDataFile(String context, long segment) {
-        return new File(String.format(OLD_PATH_FORMAT, getStorage(context), segment, eventsSuffix));
+    public File oldDataFile(String storagePath, long segment) {
+        return new File(String.format(OLD_PATH_FORMAT, storagePath, segment, eventsSuffix));
     }
 
-    public File oldIndex(String context, long segment) {
-        return new File(String.format(OLD_PATH_FORMAT, getStorage(context), segment, indexSuffix));
+    public File oldIndex(String storagePath, long segment) {
+        return new File(String.format(OLD_PATH_FORMAT, storagePath, segment, indexSuffix));
     }
 
-    public File oldBloomFilter(String context, long segment) {
-        return new File(String.format(OLD_PATH_FORMAT, getStorage(context), segment, bloomIndexSuffix));
+    public File oldBloomFilter(String storagePath, long segment) {
+        return new File(String.format(OLD_PATH_FORMAT, storagePath, segment, bloomIndexSuffix));
     }
 
     public void setUseMmapIndex(Boolean useMmapIndex) {
@@ -358,12 +466,6 @@ public class StorageProperties implements Cloneable {
 
     public void setFlags(int flags) {
         this.flags = flags;
-    }
-
-    public StorageProperties withStorage(String storage) {
-        StorageProperties clone = cloneProperties();
-        clone.contextStorage = storage;
-        return clone;
     }
 
     private StorageProperties cloneProperties() {
@@ -420,6 +522,20 @@ public class StorageProperties implements Cloneable {
     public StorageProperties withRetentionTime(Duration[] retentionTime) {
         StorageProperties clone = cloneProperties();
         clone.retentionTime = retentionTime;
+        return clone;
+    }
+
+    public boolean isKeepOldVersions() {
+        return keepOldVersions;
+    }
+
+    public void setKeepOldVersions(boolean keepOldVersions) {
+        this.keepOldVersions = keepOldVersions;
+    }
+
+    public StorageProperties withKeepOldVersions(boolean keepOldVersions) {
+        StorageProperties clone = cloneProperties();
+        clone.keepOldVersions = keepOldVersions;
         return clone;
     }
 

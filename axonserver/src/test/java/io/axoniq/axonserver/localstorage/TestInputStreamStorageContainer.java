@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -15,7 +15,7 @@ import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.file.EmbeddedDBProperties;
-import io.axoniq.axonserver.localstorage.file.SegmentBasedEventStore;
+import io.axoniq.axonserver.localstorage.file.FileEventStorageEngine;
 import io.axoniq.axonserver.localstorage.file.StandardEventStoreFactory;
 import io.axoniq.axonserver.localstorage.transaction.DefaultStorageTransactionManagerFactory;
 import io.axoniq.axonserver.localstorage.transaction.SingleInstanceTransactionManager;
@@ -133,8 +133,8 @@ public class TestInputStreamStorageContainer {
         return new SingleInstanceTransactionManager(datafileManagerChain);
     }
 
-    public SegmentBasedEventStore getPrimary() {
-        return (SegmentBasedEventStore) datafileManagerChain;
+    public FileEventStorageEngine getPrimary() {
+        return (FileEventStorageEngine) datafileManagerChain;
     }
 
     public void close() {

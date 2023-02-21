@@ -27,6 +27,7 @@ public class DefaultEventStoreLocator implements EventStoreLocator {
 
     private final LocalEventStore localEventStore;
 
+
     public DefaultEventStoreLocator(LocalEventStore localEventStore) {
         this.localEventStore = localEventStore;
     }

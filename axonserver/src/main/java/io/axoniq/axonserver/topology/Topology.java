@@ -91,4 +91,8 @@ public interface Topology {
     default boolean validContext(String context) {
         return true;
     }
+
+    default boolean initialized() {
+        return true;
+    }
 }
