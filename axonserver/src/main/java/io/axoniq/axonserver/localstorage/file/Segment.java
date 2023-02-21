@@ -21,10 +21,11 @@ import java.util.stream.Stream;
 
 public interface Segment {
 
-
     Supplier<InputStream> contentProvider();
 
     FileVersion id();
+
+    Supplier<List<File>> previousVersions();
 
     Supplier<List<File>> indexProvider();
 

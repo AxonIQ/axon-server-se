@@ -28,7 +28,7 @@
         <frontend-maven-plugin.nodeVersion>v9.7.1</frontend-maven-plugin.nodeVersion>
         <frontend-maven-plugin.npmVersion>5.6.0</frontend-maven-plugin.npmVersion>
         <dropwizard-metrics.version>4.0.0</dropwizard-metrics.version>
-        <reactor.pool.version>0.1.14.RELEASE</reactor.pool.version>
+        <reactor.pool.version>1.0.0</reactor.pool.version>
 
         <mapdb.version>3.0.8</mapdb.version>
 

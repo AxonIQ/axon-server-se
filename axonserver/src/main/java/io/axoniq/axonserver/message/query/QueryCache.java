@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -21,7 +21,6 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.util.unit.DataSize;
 
-import javax.annotation.Nonnull;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
@@ -101,12 +100,17 @@ public class QueryCache
         map.forEach((key, value) -> completeForApplication(value, queryHandlerDisconnected.getClientStreamId()));
     }
 
-    private void completeForApplication(ActiveQuery entry, String handlerClientStreamId) {
-        if (entry.waitingFor(handlerClientStreamId) &&
-                entry.completeWithError(handlerClientStreamId,
-                                        ErrorCode.CONNECTION_TO_HANDLER_LOST,
-                                        format("Connection to handler %s lost", handlerClientStreamId))) {
-            remove(entry.getKey());
+    private void completeForApplication(ActiveQuery activeQuery, String handlerClientStreamId) {
+        logger.debug("Complete query {} for query handler identified by clientStreamId {}.",
+                     activeQuery.getKey(), handlerClientStreamId);
+        if (activeQuery.waitingFor(handlerClientStreamId)) {
+            boolean noHandlers = activeQuery.completeWithError(handlerClientStreamId,
+                                                               ErrorCode.CONNECTION_TO_HANDLER_LOST,
+                                                               format("Connection to handler %s lost",
+                                                                      handlerClientStreamId));
+            if (noHandlers) {
+                remove(activeQuery.getKey());
+            }
         }
     }
 
@@ -115,7 +119,7 @@ public class QueryCache
      * This operation is performed atomically w.r.t. the insert itself, not the constraints.
      */
     @Override
-    public ActiveQuery putIfAbsent(String key, ActiveQuery value){
+    public ActiveQuery putIfAbsent(String key, ActiveQuery value) {
         checkCapacity();
         return map.putIfAbsent(key, value);
     }

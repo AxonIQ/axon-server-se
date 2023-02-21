@@ -143,6 +143,7 @@ public class ByteBufferEventSource implements EventSource {
     }
 
     public void clean(long delay) {
+        close();
         if (cleanerHack && main) {
             CleanUtils.cleanDirectBuffer(getBuffer(), () -> duplicatesCount.get() == 0, delay, path);
         }

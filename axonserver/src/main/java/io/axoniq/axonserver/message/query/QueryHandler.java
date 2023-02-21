@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -12,9 +12,12 @@ package io.axoniq.axonserver.message.query;
 
 import io.axoniq.axonserver.grpc.SerializedQuery;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest;
+import io.axoniq.axonserver.message.Cancellable;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.grpc.stub.StreamObserver;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
 
@@ -25,6 +28,7 @@ import java.util.Objects;
  */
 public abstract class QueryHandler<T> {
 
+    private final Logger logger = LoggerFactory.getLogger(QueryHandler.class);
     private final ClientStreamIdentification clientStreamIdentification;
     private final String componentName;
     private final String clientId;
@@ -46,14 +50,29 @@ public abstract class QueryHandler<T> {
      */
     public abstract void dispatch(SubscriptionQueryRequest query);
 
+    /**
+     * Returns the identification of the client that subscribed the handler
+     *
+     * @return the identification of the client that subscribed the handler
+     */
     public ClientStreamIdentification getClientStreamIdentification() {
         return clientStreamIdentification;
     }
 
+    /**
+     * Returns the name of the component that subscribed the handler
+     *
+     * @return the name of the component that subscribed the handler
+     */
     public String getComponentName() {
         return componentName;
     }
 
+    /**
+     * Returns the name of the query that this handler can receive
+     *
+     * @return the name of the query that this handler can receive
+     */
     public String queueName() {
         return clientStreamIdentification.toString();
     }
@@ -69,16 +88,36 @@ public abstract class QueryHandler<T> {
      * @param queryQueue the queue used for enqueueing
      * @param timeout    how long we should wait for this query
      * @param streaming  indicates whether this query is streaming results or not
+     * @return the function to cancel the query, removing the request from the queue if still possible or enqueueing a
+     * cancel instruction otherwise
      */
-    public void enqueueQuery(SerializedQuery request, FlowControlQueues<QueryInstruction> queryQueue, long timeout,
-                             boolean streaming) {
+    public Cancellable enqueueQuery(SerializedQuery request, FlowControlQueues<QueryInstruction> queryQueue,
+                                    long timeout,
+                                    boolean streaming) {
+        logger.trace("Enqueueing query request instruction {} for target client {}.",
+                     request.getMessageIdentifier(), clientStreamIdentification);
         QueryInstruction.Query query = new QueryInstruction.Query(getClientStreamIdentification(),
                                                                   getClientId(),
                                                                   request.withClient(getClientStreamId()),
                                                                   timeout,
                                                                   0L,
                                                                   streaming);
-        enqueueInstruction(queryQueue, QueryInstruction.query(query));
+        Cancellable cancellable = enqueueInstruction(queryQueue, QueryInstruction.query(query));
+        return () -> {
+            logger.debug("Cancelling the query request {} for target client {}.",
+                         request.getMessageIdentifier(),
+                         clientStreamIdentification);
+            if (!cancellable.cancel()) {
+                logger.trace("Enqueueing cancel instruction to target client {} for query {}.",
+                             clientStreamIdentification, request.getMessageIdentifier());
+                enqueueCancellation(request.getMessageIdentifier(), request.query().getQuery(), queryQueue);
+            } else {
+                logger.trace("Query request {} removed from sending queue to target client {}.",
+                             request.getMessageIdentifier(),
+                             clientStreamIdentification);
+            }
+            return true;
+        };
     }
 
     /**
@@ -88,8 +127,8 @@ public abstract class QueryHandler<T> {
      * @param queryName  the name of the query
      * @param queryQueue the queue used for enqueueing
      */
-    public void enqueueCancellation(String requestId, String queryName,
-                                    FlowControlQueues<QueryInstruction> queryQueue) {
+    private void enqueueCancellation(String requestId, String queryName,
+                                     FlowControlQueues<QueryInstruction> queryQueue) {
         QueryInstruction.Cancel cancel = new QueryInstruction.Cancel(requestId,
                                                                      queryName,
                                                                      getClientStreamIdentification());
@@ -118,9 +157,12 @@ public abstract class QueryHandler<T> {
      *
      * @param queryQueue  the queue used for enqueueing
      * @param instruction the query instruction
+     *
+     * @return the function to remove the instruction from the queue
      */
-    public void enqueueInstruction(FlowControlQueues<QueryInstruction> queryQueue, QueryInstruction instruction) {
-        queryQueue.put(queueName(), instruction, instruction.priority());
+    public Cancellable enqueueInstruction(FlowControlQueues<QueryInstruction> queryQueue,
+                                          QueryInstruction instruction) {
+        return queryQueue.put(queueName(), instruction, instruction.priority());
     }
 
     @Override
@@ -140,10 +182,20 @@ public abstract class QueryHandler<T> {
         return Objects.hash(clientStreamIdentification);
     }
 
+    /**
+     * Returns the id of the query stream to the client that subscribed the handler
+     *
+     * @return the id of the query stream to the client that subscribed the handler
+     */
     public String getClientStreamId() {
         return clientStreamIdentification.getClientStreamId();
     }
 
+    /**
+     * Returns the unique name of the client the subscribed the handler
+     *
+     * @return the unique name of the client the subscribed the handler
+     */
     public String getClientId() {
         return clientId;
     }

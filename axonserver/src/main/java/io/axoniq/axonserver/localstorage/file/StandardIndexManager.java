@@ -713,14 +713,14 @@ public class StandardIndexManager implements IndexManager {
     }
 
     @Override
-    public Stream<String> getBackupFilenames(long lastSegmentBackedUp, int lastVersionBackedUp) {
+    public Stream<File> getBackupFilenames(long lastSegmentBackedUp, int lastVersionBackedUp) {
         StorageProperties properties = storageProperties.get();
         return indexesDescending.entrySet()
                                 .stream()
                                 .filter(s -> s.getKey() > lastSegmentBackedUp || s.getValue() > lastVersionBackedUp)
                                 .flatMap(s -> Stream.of(
-                                        properties.index(storagePath, s.getKey()).getAbsolutePath(),
-                                        properties.bloomFilter(storagePath, s.getKey()).getAbsolutePath()
+                                        properties.index(storagePath, s.getKey()),
+                                        properties.bloomFilter(storagePath, s.getKey())
                                 ));
     }
 

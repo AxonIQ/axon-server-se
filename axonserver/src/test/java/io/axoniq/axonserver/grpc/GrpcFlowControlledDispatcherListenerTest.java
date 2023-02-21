@@ -17,7 +17,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.*;
 
@@ -33,8 +32,10 @@ public class GrpcFlowControlledDispatcherListenerTest {
     @Before
     public void setUp() throws Exception {
         FlowControlQueues<String> queues = new FlowControlQueues<>();
-        testSubject = new GrpcFlowControlledDispatcherListener<String,String>(queues, "queue1", new FakeStreamObserver<String>(), 1) {
-
+        testSubject = new GrpcFlowControlledDispatcherListener<>(queues,
+                                                                               "queue1",
+                                                                               new FakeStreamObserver<>(),
+                                                                               1) {
             @Override
             protected boolean send(String message) {
                 return false;
@@ -55,7 +56,6 @@ public class GrpcFlowControlledDispatcherListenerTest {
     @Test
     public void testExceptionOccurredSendingNextInstruction() throws InterruptedException {
         FlowControlQueues<String> queues = new FlowControlQueues<>();
-        AtomicInteger sendMessages = new AtomicInteger();
         queues.put("MyQueueName", "One");
         queues.put("MyQueueName", "Two");
         queues.put("MyQueueName", "Three");
@@ -91,4 +91,5 @@ public class GrpcFlowControlledDispatcherListenerTest {
         countDownLatch.await(1, TimeUnit.SECONDS);
         assertEquals(0, countDownLatch.getCount());
     }
+
 }
