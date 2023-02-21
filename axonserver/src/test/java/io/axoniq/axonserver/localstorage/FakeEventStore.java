@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -15,6 +15,7 @@ import org.springframework.data.util.CloseableIterator;
 import reactor.core.publisher.Flux;
 
 import java.util.Optional;
+import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
@@ -103,6 +104,11 @@ public class FakeEventStore implements EventStorageEngine {
     }
 
     @Override
+    public Flux<Long> transformContents(int transformationVersion, Flux<EventWithToken> transformedEvents) {
+        return Flux.empty();
+    }
+
+    @Override
     public long getTokenAt(long instant) {
         return 0;
     }
@@ -128,6 +134,8 @@ public class FakeEventStore implements EventStorageEngine {
                 try {
                     SerializedEventWithToken serializedEventWithToken = new SerializedEventWithToken(sequence,
                                                                                                      Event.newBuilder()
+                                                                                                          .setMessageIdentifier(
+                                                                                                                  UUID.randomUUID().toString())
                                                                                                           .setAggregateIdentifier(
                                                                                                                   "aaaa")
                                                                                                           .build());

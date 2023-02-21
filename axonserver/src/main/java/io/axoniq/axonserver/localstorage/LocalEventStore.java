@@ -1,6 +1,6 @@
 /*
- *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- *  under one or more contributor license agreements.
+ * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -27,6 +27,7 @@ import io.axoniq.axonserver.interceptor.DefaultExecutionContext;
 import io.axoniq.axonserver.interceptor.EventInterceptors;
 import io.axoniq.axonserver.localstorage.query.QueryEventsRequestStreamObserver;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManagerFactory;
+import io.axoniq.axonserver.localstorage.transformation.EventStoreTransformer;
 import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
@@ -51,7 +52,6 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
-import javax.annotation.Nonnull;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -67,6 +67,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 import java.util.stream.Stream;
+import javax.annotation.Nonnull;
 
 /**
  * Component that handles the actual interaction with the event store.
@@ -77,7 +78,9 @@ import java.util.stream.Stream;
  * @since 4.0
  */
 @Component
-public class LocalEventStore implements io.axoniq.axonserver.message.event.EventStore, SmartLifecycle {
+public class LocalEventStore implements io.axoniq.axonserver.message.event.EventStore,
+        EventStoreTransformer,
+        SmartLifecycle {
 
     private static final Confirmation CONFIRMATION = Confirmation.newBuilder().setSuccess(true).build();
     private final Logger logger = LoggerFactory.getLogger(LocalEventStore.class);
@@ -215,6 +218,16 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             throw new MessagingPlatformException(ErrorCode.NO_EVENTSTORE, "Missing worker for context: " + context);
         }
         return workers;
+    }
+
+    @Override
+    public Flux<Long> transformEvents(String context,
+                                      int segmentVersion,
+                                      Flux<EventWithToken> transformedEvents) {
+        return workersMap.get(context)
+                .eventStorageEngine
+                .transformContents(segmentVersion, transformedEvents)
+                .subscribeOn(Schedulers.fromExecutorService(dataFetcher));
     }
 
     /*----------------------HANDLE APPEND SNAPSHOT----------------------*/
@@ -726,7 +739,11 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
      */
     public CloseableIterator<SerializedTransactionWithToken> eventTransactionsIterator(String context, long fromToken,
                                                                                        long toToken) {
-        return workersMap.get(context).eventStorageEngine.transactionIterator(fromToken, toToken);
+        return workers(context).eventStorageEngine.transactionIterator(fromToken, toToken);
+    }
+
+    public CloseableIterator<SerializedEventWithToken> eventIterator(String context, long fromToken) {
+        return workers(context).eventStorageEngine.getGlobalIterator(fromToken);
     }
 
     /**
@@ -744,10 +761,18 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         return workersMap.get(context).snapshotStorageEngine.transactionIterator(fromToken, toToken);
     }
 
-    public long syncEvents(String context, long token, List<Event> events) {
+    /**
+     * todo comment
+     * @param context
+     * @param token
+     * @param segmentVersion the segmentVersion of the segment
+     * @param events
+     * @return
+     */
+    public long syncEvents(String context, long token, int segmentVersion, List<Event> events) {
         try {
             Workers worker = workers(context);
-            worker.eventSyncStorage.sync(token, events);
+            worker.eventSyncStorage.sync(token, segmentVersion, events);
             worker.triggerTrackerEventProcessors();
             return token + events.size();
         } catch (MessagingPlatformException ex) {
@@ -760,10 +785,10 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         }
     }
 
-    public long syncSnapshots(String context, long token, List<Event> snapshots) {
+    public long syncSnapshots(String context, long token, int segmentVersion, List<Event> snapshots) {
         try {
             SyncStorage writeStorage = workers(context).snapshotSyncStorage;
-            writeStorage.sync(token, snapshots);
+            writeStorage.sync(token, segmentVersion, snapshots);
             return token + snapshots.size();
         } catch (MessagingPlatformException ex) {
             if (ErrorCode.NO_EVENTSTORE.equals(ex.getErrorCode())) {
@@ -784,14 +809,18 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     }
 
     public Stream<String> getBackupFilenames(String context, EventType eventType, long lastSegmentBackedUp,
-                                             boolean includeActive) {
+                                             int lastVersionBackedUp, boolean includeActive) {
         try {
             Workers workers = workers(context);
             if (eventType == EventType.SNAPSHOT) {
-                return workers.snapshotStorageEngine.getBackupFilenames(lastSegmentBackedUp, includeActive);
+                return workers.snapshotStorageEngine.getBackupFilenames(lastSegmentBackedUp,
+                                                                        lastVersionBackedUp,
+                                                                        includeActive);
             }
 
-            return workers.eventStorageEngine.getBackupFilenames(lastSegmentBackedUp, includeActive);
+            return workers.eventStorageEngine.getBackupFilenames(lastSegmentBackedUp,
+                                                                 lastVersionBackedUp,
+                                                                 includeActive);
         } catch (Exception ex) {
             logger.warn("Failed to get backup filenames", ex);
         }
@@ -820,6 +849,14 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             return workers(context).eventStorageEngine.getFirstCompletedSegment();
         }
         return workers(context).snapshotStorageEngine.getFirstCompletedSegment();
+    }
+
+    @Override
+    public Mono<Void> compact(String context) {
+        return workers(context).compact();
+    }
+    public EventStorageEngine getSnapshotStorage(String context) {
+        return workers(context).snapshotStorageEngine;
     }
 
     private class Workers {
@@ -884,6 +921,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                     eventStorageEngine.init(validate, defaultFirstEventIndex);
                     snapshotStorageEngine.init(validate, defaultFirstSnapshotIndex);
                     initialized = true;
+
                     if (logger.isInfoEnabled()) {
                         logger.info("Workers[{}] for context {} has been initialized.",
                                     System.identityHashCode(this),
@@ -895,6 +933,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                     }
                     eventStorageEngine.close(false);
                     snapshotStorageEngine.close(false);
+                    initialized = false;
                     throw runtimeException;
                 }
             }
@@ -942,6 +981,10 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         private void validateActiveConnections() {
             long minLastPermits = System.currentTimeMillis() - newPermitsTimeout;
             trackingEventManager.validateActiveConnections(minLastPermits);
+        }
+
+        public Mono<Void> compact() {
+            return eventStorageEngine.deleteOldVersions();
         }
     }
 

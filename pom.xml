@@ -23,12 +23,14 @@
         </license>
     </licenses>
 
-
     <modules>
         <module>axonserver</module>
         <module>axonserver-cli</module>
         <module>axonserver-query-parser</module>
         <module>axonserver-test-utils</module>
+        <module>axonserver-filestore</module>
+        <module>axonserver-eventstore-transformation</module>
+        <module>axonserver-commons</module>
     </modules>
 
     <properties>
@@ -46,10 +48,12 @@
         <h2.version>1.4.197</h2.version>
         <eclipse-collections.version>11.1.0</eclipse-collections.version>
         <gson.version>2.9.0</gson.version>
-        <axonserver-plugin-api.version>4.6.1</axonserver-plugin-api.version>
-        <axonserver.api.version>4.6.1</axonserver.api.version>
+        <axonserver-plugin-api.version>4.7.0-SNAPSHOT</axonserver-plugin-api.version>
+        <axonserver.api.version>2023.0.0-SNAPSHOT</axonserver.api.version>
         <flow.control.version>1.2</flow.control.version>
         <spring-boot.version>2.7.1</spring-boot.version>
+
+        <kotlin.version>1.7.10</kotlin.version>
     </properties>
 
     <dependencyManagement>
@@ -63,6 +67,21 @@
                 <groupId>io.axoniq</groupId>
                 <artifactId>axonserver-plugin-api</artifactId>
                 <version>${axonserver-plugin-api.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.axoniq.axonserver</groupId>
+                <artifactId>axonserver-eventstore-transformation</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.axoniq.axonserver</groupId>
+                <artifactId>axonserver-filestore</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.axoniq.axonserver</groupId>
+                <artifactId>axonserver-commons</artifactId>
+                <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.grpc</groupId>

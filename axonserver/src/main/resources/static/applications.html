@@ -9,14 +9,6 @@
 
 <script src="js/applications.js"></script>
 <span id="application">
-
-    <div v-if="!hasFeature('APP_AUTHENTICATION')" class="msg warning">
-        Application Management is not allowed
-    </div>
-
-
-    <div v-if="hasFeature('APP_AUTHENTICATION')">
-
     <section id="applicationFeedback" class="msg info" v-if="feedback !== ''">{{feedback}}</section>
 
     <section id="applicationsOverview">
@@ -32,18 +24,21 @@
                         <td>
                             <span v-for="role in app.workingRoles">{{ role.context }}:{{ role.role }}<br></span>
                         </td>
-                        <td v-if="admin">
+                        <td v-disable="!admin">
                             <span @click="deleteApp(app)" title="Delete"><i class="far fa-trash-alt"></i></span>
                             <span @click="renewToken(app)" title="Generate New Token"><i
                                     class="fas fa-redo-alt"></i></span>
-                            <span @click="selectApp(app)" title="Edit"><i class="fas fa-pencil-alt"></i></span>
+                            <span v-disable="isDisabled()" @click="selectApp(app)" title="Edit"><i class="fas fa-pencil-alt"></i></span>
                         </td>
             </template>
         </paginated-table>
     </section>
 
-    <section id="applicationDetails" v-if="admin">
-        <div class="column">
+    <section id="applicationDetails">
+        <div v-if="!hasFeature('APP_AUTHENTICATION') && isDisabled()" class="msg white">
+           Creating more than one application binding requires Enterprise Edition. <a href="https://axoniq.io/axonserver" target="_blank" class="info">Learn more or request a trial license.<i class="fas fa-info-circle"></i></a>
+        </div>
+        <div class="column" v-disable="!admin || isDisabled()">
             <form>
                 <ul>
                     <li>
@@ -124,7 +119,7 @@
                     </li>
                     <li>
                         <span class="narrow">&nbsp;</span>
-                        <span><button @click.prevent="saveApp(application)" class="button">Save</button></span>
+                        <span><button v-disable="isDisabled()" @click.prevent="saveApp(application)" class="button">Save</button></span>
                     </li>
                 </ul>
             </form>

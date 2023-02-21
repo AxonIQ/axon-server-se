@@ -1,0 +1,20 @@
+syntax = "proto3";
+package io.axoniq.axonserver.eventstore.transformation;
+import "event.proto";
+option java_multiple_files = true;
+
+message TransformationAction {
+  oneof action {
+    ReplaceEvent replace_event = 1;
+    DeleteEvent delete_event = 2;
+  }
+}
+
+message ReplaceEvent {
+  int64 token = 1;
+  grpc.event.Event event = 2;
+}
+
+message DeleteEvent {
+  int64 token = 1;
+}

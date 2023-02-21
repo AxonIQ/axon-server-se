@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -13,6 +13,7 @@ import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
 import org.springframework.data.util.CloseableIterator;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.util.List;
 import java.util.Optional;
@@ -29,7 +30,6 @@ import java.util.stream.Stream;
  * @since 4.1
  */
 public interface EventStorageEngine {
-
 
     enum SearchHint {
         RECENT_ONLY
@@ -48,16 +48,19 @@ public interface EventStorageEngine {
 
     default long getFirstCompletedSegment() {
         return -1;
-    };
+    }
 
     /**
-     * Stores a number of events.
-     * Completes the returned completable future when the write is confirmed.
+     * Stores a number of events. Completes the returned completable future when the write is confirmed.
      *
      * @param eventList list of events
      * @return completable future containing the token of the first stored event
      */
     default CompletableFuture<Long> store(List<Event> eventList) {
+        return store(eventList, 0);
+    }
+
+    default CompletableFuture<Long> store(List<Event> eventList, int segmentVersion) {
         CompletableFuture<Long> completableFuture = new CompletableFuture<>();
         completableFuture.completeExceptionally(new UnsupportedOperationException("Store operation not supported"));
         return completableFuture;
@@ -65,6 +68,7 @@ public interface EventStorageEngine {
 
     /**
      * Retrieves the last token confirmed in the event store.
+     *
      * @return the last confirmed token
      */
     default long getLastToken() {
@@ -183,11 +187,12 @@ public interface EventStorageEngine {
 
     /**
      * Gets filenames to back up for this storage engine. Only relevant for file based storage.
+     *
      * @param lastSegmentBackedUp last segment backed up before
      * @param includeActive
      * @return stream of filenames
      */
-    default Stream<String> getBackupFilenames(long lastSegmentBackedUp, boolean includeActive) {
+    default Stream<String> getBackupFilenames(long lastSegmentBackedUp, int lastVersionBackedUp, boolean includeActive) {
         throw new UnsupportedOperationException();
     }
 
@@ -238,4 +243,9 @@ public interface EventStorageEngine {
     default void validateTransaction(long token, List<Event> eventList) {
     }
 
+    Flux<Long> transformContents(int transformationVersion, Flux<EventWithToken> transformedEvents);
+
+    default Mono<Void> deleteOldVersions() {
+        return Mono.error(new UnsupportedOperationException("deleteSegments: Operation not supported by this EventStorageEngine"));
+    }
 }

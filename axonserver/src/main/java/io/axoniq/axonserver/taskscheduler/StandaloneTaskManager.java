@@ -30,13 +30,13 @@ import java.util.concurrent.ScheduledExecutorService;
  */
 public class StandaloneTaskManager extends BaseTaskManager {
 
-    private final String context;
+    private final String replicationGroup;
     private final TaskPayloadSerializer taskPayloadSerializer;
 
     /**
      * Instantiates a {@link StandaloneTaskManager}.
      *
-     * @param context                    the context for the tasks to be processed by this task manager.
+     * @param replicationGroup           the replication group for the tasks to be processed by this task manager.
      * @param taskExecutor               component responsible for executing the tasks
      * @param taskRepository             repository of active tasks
      * @param taskPayloadSerializer      serializer to (de-)serialize task contents
@@ -44,17 +44,17 @@ public class StandaloneTaskManager extends BaseTaskManager {
      * @param scheduler                  scheduler to schedule the tasks
      * @param clock                      instance of a clock
      */
-    public StandaloneTaskManager(String context,
+    public StandaloneTaskManager(String replicationGroup,
                                  ScheduledTaskExecutor taskExecutor,
                                  TaskRepository taskRepository,
                                  TaskPayloadSerializer taskPayloadSerializer,
                                  PlatformTransactionManager platformTransactionManager,
                                  @Qualifier("taskScheduler") ScheduledExecutorService scheduler,
                                  Clock clock) {
-        super(taskExecutor, taskRepository, () -> Collections.singleton(context),
-              context::equals,
+        super(taskExecutor, taskRepository, () -> Collections.singleton(replicationGroup),
+              replicationGroup::equals,
               platformTransactionManager, scheduler, clock);
-        this.context = context;
+        this.replicationGroup = replicationGroup;
         this.taskPayloadSerializer = taskPayloadSerializer;
     }
 
@@ -72,7 +72,7 @@ public class StandaloneTaskManager extends BaseTaskManager {
         task.setStatus(TaskStatus.SCHEDULED);
         task.setTimestamp(instant);
         task.setTaskExecutor(taskHandler);
-        task.setContext(context);
+        task.setContext(replicationGroup);
         task.setPayload(payload);
         super.saveAndSchedule(task);
         return task.getTaskId();
@@ -91,7 +91,7 @@ public class StandaloneTaskManager extends BaseTaskManager {
     }
 
     @Override
-    protected CompletableFuture<Void> processResult(String context, String taskId, TaskStatus status, long newSchedule,
+    protected CompletableFuture<Void> processResult(String replicationGroup, String taskId, TaskStatus status, long newSchedule,
                                                     long retry, String message) {
 
         if (TaskStatus.COMPLETED.equals(status) || TaskStatus.CANCELLED.equals(status)) {
@@ -122,7 +122,7 @@ public class StandaloneTaskManager extends BaseTaskManager {
             taskRepository.findById(taskId).ifPresent(taskRepository::delete);
             return null;
         });
-        unschedule(context, taskId);
+        unschedule(replicationGroup, taskId);
     }
 
 

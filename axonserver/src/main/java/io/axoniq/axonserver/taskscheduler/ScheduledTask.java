@@ -27,10 +27,10 @@ public interface ScheduledTask {
      * @param payload the payload for the task
      * @return completable future to notify caller on completed
      */
-    default CompletableFuture<Void> executeAsync(String context, Object payload) {
+    default CompletableFuture<Void> executeAsync(String replicationGroup, Object payload) {
         CompletableFuture<Void> completableFuture = new CompletableFuture<>();
         try {
-            execute(context, payload);
+            execute(replicationGroup, payload);
             completableFuture.complete(null);
         } catch (Exception ex) {
             completableFuture.completeExceptionally(ex);
@@ -43,7 +43,7 @@ public interface ScheduledTask {
      *
      * @param payload the payload for the task
      */
-    default void execute(String context, Object payload) {
+    default void execute(String replicationGroup, Object payload) {
     }
 
     /**

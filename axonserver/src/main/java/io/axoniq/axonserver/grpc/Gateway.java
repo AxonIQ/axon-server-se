@@ -103,7 +103,6 @@ public class Gateway implements SmartLifecycle {
 
         axonServerClientServices.forEach(serverBuilder::addService);
 
-
         // Note that the last interceptor is executed first
         serverBuilder.intercept(new GrpcBufferingInterceptor(routingConfiguration.getGrpcBufferedMessages()));
         if( routingConfiguration.getAccesscontrol().isEnabled()) {

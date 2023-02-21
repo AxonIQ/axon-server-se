@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -18,12 +18,13 @@ import java.util.Comparator;
  */
 public class WritePosition implements Comparable<WritePosition> {
 
-    static final WritePosition INVALID = new WritePosition(Long.MAX_VALUE, Integer.MAX_VALUE, null, null, 0);
+    static final WritePosition INVALID = new WritePosition(Long.MAX_VALUE, Integer.MAX_VALUE, -1, null, null, 0);
     private static final Comparator<WritePosition> writePositionComparator =
             Comparator.comparingLong(WritePosition::getSegment)
                       .thenComparingInt(WritePosition::getPosition);
     final long sequence;
     final int position;
+    final int version;
     final WritableEventSource buffer;
     final Long segment;
     final int prevEntries;
@@ -35,9 +36,10 @@ public class WritePosition implements Comparable<WritePosition> {
      * @param segment the segment number containing the block
      * @param prevEntries the number of events in the previous transaction
      */
-    public WritePosition(long sequence, int position, WritableEventSource buffer, Long segment, int prevEntries) {
+    public WritePosition(long sequence, int position, int version, WritableEventSource buffer, Long segment, int prevEntries) {
         this.sequence = sequence;
         this.position = position;
+        this.version = version;
         this.buffer = buffer;
         this.segment = segment;
         this.prevEntries = prevEntries;
@@ -49,9 +51,10 @@ public class WritePosition implements Comparable<WritePosition> {
      * @param buffer the write buffer for the new segment
      * @return updated write position
      */
-    public WritePosition reset(WritableEventSource buffer) {
+    public WritePosition reset(WritableEventSource buffer, int version) {
         return new WritePosition(sequence,
-                                 SegmentBasedEventStore.VERSION_BYTES + SegmentBasedEventStore.FILE_OPTIONS_BYTES,
+                                 AbstractFileStorageTier.VERSION_BYTES + AbstractFileStorageTier.FILE_OPTIONS_BYTES,
+                                 version,
                                  buffer,
                                  sequence,
                                  prevEntries);
@@ -75,13 +78,14 @@ public class WritePosition implements Comparable<WritePosition> {
         return this != INVALID && buffer != null && position + transactionLength + 4 <= buffer.capacity();
     }
 
-    WritePosition incrementedWith(int entries, int position) {
-        if (this == INVALID || this.position > buffer.capacity()) {
+    WritePosition incrementedWith(int entries, int position, int version) {
+        if (this == INVALID || this.position > buffer.capacity() || this.version == -1) {
             return INVALID;
         }
         return new WritePosition(
                 this.sequence + entries,
                 this.position + position,
+                this.version == version ? version : -1,
                 this.buffer, this.segment, entries);
     }
 
@@ -122,5 +126,9 @@ public class WritePosition implements Comparable<WritePosition> {
 
     public void force() {
         buffer.force();
+    }
+
+    public boolean isVersionUpdate(int version) {
+        return this.version >= 0 && this.version != version;
     }
 }

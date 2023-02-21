@@ -32,11 +32,10 @@ public class GrpcFlowControlledDispatcherListenerTest {
     @Before
     public void setUp() throws Exception {
         FlowControlQueues<String> queues = new FlowControlQueues<>();
-        testSubject = new GrpcFlowControlledDispatcherListener<String, String>(queues,
+        testSubject = new GrpcFlowControlledDispatcherListener<>(queues,
                                                                                "queue1",
                                                                                new FakeStreamObserver<>(),
                                                                                1) {
-
             @Override
             protected boolean send(String message) {
                 return false;
@@ -69,10 +68,7 @@ public class GrpcFlowControlledDispatcherListenerTest {
         queues.put("MyQueueName", "Final");
         CountDownLatch countDownLatch = new CountDownLatch(6);
         GrpcFlowControlledDispatcherListener<String, String> listener =
-                new GrpcFlowControlledDispatcherListener<String, String>(queues,
-                                                                         "MyQueueName",
-                                                                         new FakeStreamObserver<>(),
-                                                                         2) {
+                new GrpcFlowControlledDispatcherListener<>(queues, "MyQueueName", new FakeStreamObserver<>(), 2) {
 
                     @Override
                     protected boolean send(String message) {
@@ -95,4 +91,5 @@ public class GrpcFlowControlledDispatcherListenerTest {
         countDownLatch.await(1, TimeUnit.SECONDS);
         assertEquals(0, countDownLatch.getCount());
     }
+
 }
