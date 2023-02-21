@@ -204,8 +204,7 @@ public abstract class AbstractFileStorageTier implements StorageTier {
                              || currentSegmentVersion(s)
                              > lastVersionBackedUp))
                      .forEach(s -> versions(s, currentSegmentVersion(s))
-                             .stream().filter(version -> version
-                                     > lastVersionBackedUp)
+                             .stream().filter(version -> s > lastSegmentBackedUp || version > lastVersionBackedUp)
                              .forEach(version -> {
                                  FileVersion segment = new FileVersion(s, version);
                                  filenames.add(dataFile(segment));
