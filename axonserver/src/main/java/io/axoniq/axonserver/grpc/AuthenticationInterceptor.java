@@ -93,7 +93,7 @@ public class AuthenticationInterceptor implements ServerInterceptor {
     private Authentication authentication(String token) {
         Authentication authentication;
         try {
-            authentication = axonServerAccessController.authentication(token);
+            authentication = axonServerAccessController.authenticate(token);
         } catch (InvalidTokenException invalidTokenException) {
             authentication = GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL;
         }

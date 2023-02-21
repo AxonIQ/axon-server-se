@@ -66,5 +66,5 @@ public interface AxonServerAccessController {
      * @return authentication information for the application
      * @throws io.axoniq.axonserver.exception.InvalidTokenException when the token is unknown
      */
-    Authentication authentication(String token);
+    Authentication authenticate(String token);
 }

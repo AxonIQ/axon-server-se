@@ -77,7 +77,7 @@ public class AuthenticationGrpcController
     @Override
     public void authenticateToken(Token request, StreamObserver<ApplicationRoles> responseObserver) {
         try {
-            Authentication authentication = accessController.authentication(request.getToken());
+            Authentication authentication = accessController.authenticate(request.getToken());
             ApplicationRoles.Builder builder = ApplicationRoles.newBuilder()
                                                                .setApplicationName(authentication.getName());
             authentication.getAuthorities().forEach(authority -> builder.addApplicationRole(contextRole(authority)));

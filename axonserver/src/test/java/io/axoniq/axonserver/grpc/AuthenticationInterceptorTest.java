@@ -68,7 +68,7 @@ public class AuthenticationInterceptorTest {
         when(accessController.allowed(eq("path1"), any(), eq(validAuthentication))).thenReturn(false);
         when(accessController.allowed(eq("path2"), any(), eq(validAuthentication))).thenReturn(true);
 
-        when(accessController.authentication("1234")).thenReturn(validAuthentication);
+        when(accessController.authenticate("1234")).thenReturn(validAuthentication);
 
         when(call.getAttributes()).thenReturn(Attributes.EMPTY);
         testSubject = new AuthenticationInterceptor(accessController);

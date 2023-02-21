@@ -148,7 +148,7 @@ public class EventProcessorGrpcControllerTest {
             }
 
             @Override
-            public org.springframework.security.core.Authentication authentication(String token) {
+            public org.springframework.security.core.Authentication authenticate(String token) {
                 return null;
             }
         };

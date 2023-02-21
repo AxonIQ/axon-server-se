@@ -137,7 +137,7 @@ public class GatewayTest {
             }
 
             @Override
-            public Authentication authentication(String token) {
+            public Authentication authenticate(String token) {
                 if (token.equals("1234")) {
                     return new TokenAuthentication(true, "User", Collections.emptySet());
                 }

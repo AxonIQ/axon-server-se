@@ -211,7 +211,7 @@ public class WebSecurityConfigurer extends WebSecurityConfigurerAdapter {
                 if (token != null) {
                     try {
                         Authentication authentication = accessController
-                                .authentication(token);
+                                .authenticate(token);
                         auditLog.trace("Access using configured token.");
                         SecurityContextHolder.getContext().setAuthentication(authentication);
                     } catch (InvalidTokenException invalidTokenException) {

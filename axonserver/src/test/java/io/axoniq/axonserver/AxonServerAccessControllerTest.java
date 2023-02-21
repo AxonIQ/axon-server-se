@@ -44,13 +44,13 @@ public class AxonServerAccessControllerTest {
     }
     @Test
     public void allowed() {
-        Authentication authentication = testSubject.authentication("1");
+        Authentication authentication = testSubject.authenticate("1");
         assertTrue(testSubject.allowed("/v1/commands", "default", authentication));
     }
 
     @Test(expected = InvalidTokenException.class)
     public void notAllowed() {
-        testSubject.authentication("2");
+        testSubject.authenticate("2");
     }
 
 }

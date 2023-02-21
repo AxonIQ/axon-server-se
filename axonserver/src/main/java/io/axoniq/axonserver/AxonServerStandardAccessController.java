@@ -76,7 +76,7 @@ public class AxonServerStandardAccessController implements AxonServerAccessContr
     }
 
     @Override
-    public Authentication authentication(String token) {
+    public Authentication authenticate(String token) {
         if (!isTokenFromConfigFile(token)) {
             throw new InvalidTokenException();
         }

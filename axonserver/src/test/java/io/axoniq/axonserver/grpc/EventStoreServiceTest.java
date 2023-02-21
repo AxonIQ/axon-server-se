@@ -71,7 +71,7 @@ public class EventStoreServiceTest {
             }
 
             @Override
-            public Authentication authentication(String token) {
+            public Authentication authenticate(String token) {
                 return null;
             }
         };
