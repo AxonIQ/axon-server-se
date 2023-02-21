@@ -195,7 +195,7 @@
                             this.licenseLoaded = true;
                         }
 
-                        }axios.get("v1/public/me").then(response => {
+                        axios.get("v1/public/me").then(response => {
                             globals.authenticationEnabled = response.data.authentication;
                             globals.adminNode = response.data.adminNode;
                             globals.initialized = response.data.initialized;
