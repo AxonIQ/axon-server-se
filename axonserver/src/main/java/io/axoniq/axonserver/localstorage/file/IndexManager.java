@@ -135,7 +135,7 @@ public interface IndexManager {
      * @param lastVersionBackedUp
      * @return stream of index related files
      */
-    Stream<String> getBackupFilenames(long lastSegmentBackedUp, int lastVersionBackedUp);
+    Stream<File> getBackupFilenames(long lastSegmentBackedUp, int lastVersionBackedUp);
 
 
     /**

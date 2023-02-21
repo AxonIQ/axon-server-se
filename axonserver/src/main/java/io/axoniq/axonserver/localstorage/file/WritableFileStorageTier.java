@@ -395,6 +395,11 @@ public class WritableFileStorageTier extends AbstractFileStorageTier {
                                 }
 
                                 @Override
+                                public Supplier<List<File>> previousVersions() {
+                                    return Collections::emptyList;
+                                }
+
+                                @Override
                                 public Stream<AggregateSequence> latestSequenceNumbers() {
                                     return Stream.empty();
                                 }
@@ -552,7 +557,7 @@ public class WritableFileStorageTier extends AbstractFileStorageTier {
         readBuffers.forEach((s, source) -> {
             source.clean(0);
             if (deleteData) {
-                removeSegment(s);
+                removeSegmentVersions(s);
             }
         });
 
@@ -560,6 +565,9 @@ public class WritableFileStorageTier extends AbstractFileStorageTier {
 
         indexManager.cleanup(deleteData);
         if (deleteData) {
+            // delete transformation directory
+            File transformations = new File(storageDir.getAbsolutePath() + File.separator + "transformation");
+            FileUtils.delete(transformations);
             FileUtils.delete(storageDir);
         }
     }
@@ -587,16 +595,31 @@ public class WritableFileStorageTier extends AbstractFileStorageTier {
 
     @Override
     public boolean removeSegment(long segment, int segmentVersion) {
+        if (readBuffers.containsKey(segment)) {
+            return removeLocalSegment(segment, segmentVersion);
+        }
         return invokeOnNext(n -> n.removeSegment(segment, segmentVersion), true);
     }
 
-    private void removeSegment(long segment) {
-        indexManager.remove(segment);
+    private void removeSegmentVersions(long segment) {
+        ByteBufferEventSource eventSource = readBuffers.remove(segment);
+        int currentVersion = 0;
+        if (eventSource != null) {
+            currentVersion = eventSource.version();
+            eventSource.clean(0);
+        }
+        versions(segment, currentVersion).forEach(v -> removeLocalSegment(segment, v));
+    }
+
+    private boolean removeLocalSegment(long segment, int version) {
         ByteBufferEventSource eventSource = readBuffers.remove(segment);
         if (eventSource != null) {
             eventSource.clean(0);
         }
-        FileUtils.delete(dataFile(new FileVersion(segment, 0)));
+
+        FileVersion fileVersion = new FileVersion(segment, version);
+        return indexManager.remove(fileVersion) &&
+                FileUtils.delete(dataFile(fileVersion));
     }
 
 

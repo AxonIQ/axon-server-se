@@ -24,9 +24,11 @@ import java.io.File;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.NavigableMap;
 import java.util.Optional;
+import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentSkipListMap;
@@ -107,12 +109,10 @@ public abstract class AbstractFileStorageTier implements StorageTier {
                                                          SegmentIndexEntries lastEventPosition) {
         return localEventSource(lastEventPosition.fileVersion())
                 .map(e -> {
-                    try {
+                    try (e) {
                         return e.readLastInRange(minSequenceNumber,
                                                  maxSequenceNumber,
                                                  lastEventPosition.indexEntries().positions());
-                    } finally {
-                        e.close();
                     }
                 });
     }
@@ -135,7 +135,16 @@ public abstract class AbstractFileStorageTier implements StorageTier {
         }
     }
 
-    public abstract boolean removeSegment(long segment, int segmentVersion);
+    protected Set<Integer> versions(long segment, int lastVersion) {
+        Set<Integer> versions = new HashSet<>();
+        for (int i = 0; i <= lastVersion; i++) {
+            if (dataFile(new FileVersion(segment, i)).exists()) {
+                versions.add(i);
+            }
+        }
+        return versions;
+    }
+
 
     public Stream<Long> allSegments() {
         return Stream.concat(getSegments().stream(), invokeOnNext(StorageTier::allSegments, Stream.empty()));
@@ -189,23 +198,28 @@ public abstract class AbstractFileStorageTier implements StorageTier {
 
 
     public Stream<String> getBackupFilenames(long lastSegmentBackedUp, int lastVersionBackedUp) {
-        Stream<String> filenames = Stream.concat(getSegments().stream()
-                                                              .filter(s -> (s > lastSegmentBackedUp
-                                                                      || currentSegmentVersion(s)
-                                                                      > lastVersionBackedUp))
-                                                              .map(s -> dataFile(new FileVersion(s,
-                                                                                                 currentSegmentVersion(
-                                                                                                         s)))
-                                                                      .getAbsolutePath()),
-                                                 indexManager.getBackupFilenames(lastSegmentBackedUp,
-                                                                                 lastVersionBackedUp));
+        Set<File> filenames = new TreeSet<>();
+        getSegments().stream()
+                     .filter(s -> (s > lastSegmentBackedUp
+                             || currentSegmentVersion(s)
+                             > lastVersionBackedUp))
+                     .forEach(s -> versions(s, currentSegmentVersion(s))
+                             .stream().filter(version -> version
+                                     > lastVersionBackedUp)
+                             .forEach(version -> {
+                                 FileVersion segment = new FileVersion(s, version);
+                                 filenames.add(dataFile(segment));
+                                 filenames.addAll(indexManager.indexFiles(segment));
+                             }));
+        filenames.addAll(indexManager.getBackupFilenames(lastSegmentBackedUp, lastVersionBackedUp)
+                                     .collect(Collectors.toSet()));
 
         StorageTier nextStorageTier = nextSegmentsHandler.get();
         if (nextStorageTier == null) {
-            return filenames;
+            return filenames.stream().map(File::getAbsolutePath);
         }
 
-        return Stream.concat(filenames,
+        return Stream.concat(filenames.stream().map(File::getAbsolutePath),
                              nextStorageTier.getBackupFilenames(lastSegmentBackedUp,
                                                                 lastVersionBackedUp));
     }
@@ -309,5 +323,4 @@ public abstract class AbstractFileStorageTier implements StorageTier {
         }
         return defaultValue;
     }
-
 }

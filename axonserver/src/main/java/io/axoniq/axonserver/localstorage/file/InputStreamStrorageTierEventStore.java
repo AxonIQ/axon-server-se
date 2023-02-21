@@ -14,6 +14,7 @@ import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 import io.axoniq.axonserver.metric.MeterFactory;
 
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Supplier;
 
 /**
@@ -58,15 +59,14 @@ public class InputStreamStrorageTierEventStore extends AbstractFileStorageTier {
     @Override
     public void close(boolean deleteData) {
         if (deleteData) {
-            segments.forEach(this::removeAllSegmentVersions);
+            segments.forEach((key, value) -> {
+                Set<Integer> versions = versions(key, value);
+                versions.forEach(v -> removeSegment(key, v));
+            });
+            segments.clear();
         }
     }
 
-    private void removeAllSegmentVersions(Long segment, int currentVersion) {
-        for (int i = 0; i <= currentVersion; i++) {
-            removeSegment(segment, i);
-        }
-    }
 
     @Override
     public boolean removeSegment(long segment, int segmentVersion) {
