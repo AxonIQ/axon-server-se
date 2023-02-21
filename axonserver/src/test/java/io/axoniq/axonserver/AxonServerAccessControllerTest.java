@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -12,14 +12,15 @@ package io.axoniq.axonserver;
 import io.axoniq.axonserver.admin.user.requestprocessor.UserController;
 import io.axoniq.axonserver.config.AccessControlConfiguration;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
+import io.axoniq.axonserver.exception.InvalidTokenException;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.springframework.security.core.Authentication;
 
-import static junit.framework.TestCase.assertTrue;
-import static org.junit.Assert.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -43,12 +44,13 @@ public class AxonServerAccessControllerTest {
     }
     @Test
     public void allowed() {
-        assertTrue(testSubject.allowed("/v1/commands", "default", "1"));
+        Authentication authentication = testSubject.authenticate("1");
+        assertTrue(testSubject.allowed("/v1/commands", "default", authentication));
     }
 
-    @Test
+    @Test(expected = InvalidTokenException.class)
     public void notAllowed() {
-        assertFalse(testSubject.allowed("/v1/commands", "default", "2"));
+        testSubject.authenticate("2");
     }
 
 }

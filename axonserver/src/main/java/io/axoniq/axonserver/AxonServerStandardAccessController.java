@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -9,7 +9,6 @@
 
 package io.axoniq.axonserver;
 
-import io.axoniq.axonserver.access.jpa.User;
 import io.axoniq.axonserver.admin.user.requestprocessor.UserController;
 import io.axoniq.axonserver.config.AccessControlConfiguration;
 import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
@@ -17,7 +16,6 @@ import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.InvalidTokenException;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 
 import java.util.Collections;
@@ -56,22 +54,13 @@ public class AxonServerStandardAccessController implements AxonServerAccessContr
     }
 
     @Override
-    public boolean allowed(String fullMethodName, String context, String token) {
-        return isTokenFromConfigFile(token);
-    }
-
-    @Override
     public boolean allowed(String fullMethodName, String context, Authentication authentication) {
+        if (!authentication.isAuthenticated()) {
+            return false;
+        }
         Set<String> requiredRoles = rolesForOperation(fullMethodName);
         if (requiredRoles.isEmpty()) {
             return true;
-        }
-
-        if (authentication instanceof UsernamePasswordAuthenticationToken) {
-            User user = userController.findUser(authentication.getName());
-            if (user != null) {
-                return user.getRoles().stream().anyMatch(r -> requiredRoles.contains(r.getRole()));
-            }
         }
 
         return authentication.getAuthorities()
@@ -87,7 +76,7 @@ public class AxonServerStandardAccessController implements AxonServerAccessContr
     }
 
     @Override
-    public Authentication authentication(String context, String token) {
+    public Authentication authenticate(String token) {
         if (!isTokenFromConfigFile(token)) {
             throw new InvalidTokenException();
         }

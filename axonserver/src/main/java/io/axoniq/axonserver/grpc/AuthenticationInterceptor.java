@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -41,23 +41,26 @@ public class AuthenticationInterceptor implements ServerInterceptor {
         String token = token(metadata);
         String context = context(metadata);
         StatusRuntimeException sre = null;
-
+        Authentication authentication = null;
         if (token == null) {
             AuditLog.getLogger().warn("{}: Request without token sent from {}",
                                       context,
                                       serverCall.getAttributes().get(Grpc.TRANSPORT_ATTR_REMOTE_ADDR));
             sre = GrpcExceptionBuilder.build(ErrorCode.AUTHENTICATION_TOKEN_MISSING,
                                              "No token for " + serverCall.getMethodDescriptor().getFullMethodName());
-        } else if (!axonServerAccessController.allowed(serverCall.getMethodDescriptor().getFullMethodName(),
-                                                       context,
-                                                       token)) {
-            AuditLog.getLogger().warn("{}: Request with invalid token for {} sent from {}",
-                                      context,
-                                      serverCall.getMethodDescriptor().getFullMethodName(),
-                                      serverCall.getAttributes().get(Grpc.TRANSPORT_ATTR_REMOTE_ADDR));
-            sre = GrpcExceptionBuilder.build(ErrorCode.AUTHENTICATION_INVALID_TOKEN,
-                                             "Invalid token for " + serverCall.getMethodDescriptor()
-                                                                              .getFullMethodName());
+        } else {
+            authentication = authentication(token);
+            if (!axonServerAccessController.allowed(serverCall.getMethodDescriptor().getFullMethodName(),
+                                                    context,
+                                                    authentication)) {
+                AuditLog.getLogger().warn("{}: Request with invalid token for {} sent from {}",
+                                          context,
+                                          serverCall.getMethodDescriptor().getFullMethodName(),
+                                          serverCall.getAttributes().get(Grpc.TRANSPORT_ATTR_REMOTE_ADDR));
+                sre = GrpcExceptionBuilder.build(ErrorCode.AUTHENTICATION_INVALID_TOKEN,
+                                                 "Invalid token for " + serverCall.getMethodDescriptor()
+                                                                                  .getFullMethodName());
+            }
         }
 
         if (sre != null) {
@@ -67,7 +70,7 @@ public class AuthenticationInterceptor implements ServerInterceptor {
         }
         Context updatedGrpcContext = Context.current()
                                             .withValue(GrpcMetadataKeys.PRINCIPAL_CONTEXT_KEY,
-                                                       authentication(context, token));
+                                                       authentication);
         return Contexts.interceptCall(updatedGrpcContext, serverCall, metadata, serverCallHandler);
     }
 
@@ -87,10 +90,10 @@ public class AuthenticationInterceptor implements ServerInterceptor {
         return token;
     }
 
-    private Authentication authentication(String context, String token) {
+    private Authentication authentication(String token) {
         Authentication authentication;
         try {
-            authentication = axonServerAccessController.authentication(context, token);
+            authentication = axonServerAccessController.authenticate(token);
         } catch (InvalidTokenException invalidTokenException) {
             authentication = GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL;
         }

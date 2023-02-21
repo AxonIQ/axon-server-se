@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -24,16 +24,6 @@ public interface AxonServerAccessController {
     String AXONDB_TOKEN_PARAM = "Access-Token";
     String CONTEXT_PARAM = "AxonIQ-Context";
     String PRINCIPAL_PARAM = "AxonIQ-Principal";
-
-    /**
-     * Checks if a specific method is allowed in given {@code context} for application {@code token}.
-     *
-     * @param fullMethodName the method name
-     * @param context        the context
-     * @param token          the app's token
-     * @return true if method is allowed
-     */
-    boolean allowed(String fullMethodName, String context, String token);
 
     /**
      * Checks if a specific method is allowed in given {@code context} for {@code authentication}.
@@ -72,11 +62,9 @@ public interface AxonServerAccessController {
     }
 
     /**
-     * @param context the name of the context
-     * @param token   the token passed with the request
+     * @param token the token passed with the request
      * @return authentication information for the application
-     *
      * @throws io.axoniq.axonserver.exception.InvalidTokenException when the token is unknown
      */
-    Authentication authentication(String context, String token);
+    Authentication authenticate(String token);
 }

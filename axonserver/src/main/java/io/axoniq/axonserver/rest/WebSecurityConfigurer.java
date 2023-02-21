@@ -1,3 +1,12 @@
+/*
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver.rest;
 
 import io.axoniq.axonserver.AxonServerAccessController;
@@ -201,18 +210,8 @@ public class WebSecurityConfigurer extends WebSecurityConfigurerAdapter {
 
                 if (token != null) {
                     try {
-                        String context = request.getHeader(AxonServerAccessController.CONTEXT_PARAM);
-                        if (context == null) {
-                            context = request.getParameter(AxonServerAccessController.CONTEXT_PARAM);
-                        }
-                        if (context == null) {
-                            context = request.getParameter("context");
-                        }
-                        if (context == null) {
-                            context = accessController.defaultContextForRest();
-                        }
                         Authentication authentication = accessController
-                                .authentication(context, token);
+                                .authenticate(token);
                         auditLog.trace("Access using configured token.");
                         SecurityContextHolder.getContext().setAuthentication(authentication);
                     } catch (InvalidTokenException invalidTokenException) {

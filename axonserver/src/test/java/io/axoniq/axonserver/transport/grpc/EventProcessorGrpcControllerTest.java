@@ -1,3 +1,12 @@
+/*
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver.transport.grpc;
 
 import io.axoniq.axonserver.AxonServerAccessController;
@@ -133,18 +142,13 @@ public class EventProcessorGrpcControllerTest {
     private AxonServerAccessController accessController() {
         return new AxonServerAccessController() {
             @Override
-            public boolean allowed(String fullMethodName, String context, String token) {
-                return false;
-            }
-
-            @Override
             public boolean allowed(String fullMethodName, String context,
                                    org.springframework.security.core.Authentication authentication) {
                 return allowedContexts.contains(context);
             }
 
             @Override
-            public org.springframework.security.core.Authentication authentication(String context, String token) {
+            public org.springframework.security.core.Authentication authenticate(String token) {
                 return null;
             }
         };
