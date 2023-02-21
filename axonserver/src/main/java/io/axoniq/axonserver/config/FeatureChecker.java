@@ -53,4 +53,8 @@ public interface FeatureChecker {
     default int getMaxReplicationGroups() {
         return 1;
     }
+
+    default int getMaxApplications() {
+        return 1;
+    }
 }
