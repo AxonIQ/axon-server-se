@@ -1,37 +1,25 @@
 package io.axoniq.axonserver.eventstore.transformation.clean;
 
+import io.axoniq.axonserver.eventstore.transformation.ActionSupplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.publisher.Mono;
 
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+public class TransformationCleanAction implements ActionSupplier {
 
-public class DefaultTransformationCleanTask implements TransformationCleanTask {
-
-    private static final Logger logger = LoggerFactory.getLogger(DefaultTransformationCleanTask.class);
+    private static final Logger logger = LoggerFactory.getLogger(TransformationCleanAction.class);
     private final TransformationCleanExecutor cleanExecutor;
     private final TransformationsToBeCleaned transformationsToBeCleaned;
-    private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
 
-    public DefaultTransformationCleanTask(TransformationCleanExecutor cleanExecutor,
-                                          TransformationsToBeCleaned transformationsToBeCleaned) {
+    public TransformationCleanAction(TransformationCleanExecutor cleanExecutor,
+                                     TransformationsToBeCleaned transformationsToBeCleaned) {
         this.cleanExecutor = cleanExecutor;
         this.transformationsToBeCleaned = transformationsToBeCleaned;
     }
 
     @Override
-    public void start() {
-        scheduledExecutorService.schedule(this::cancel, 10, TimeUnit.SECONDS);
-    }
-
-    @Override
-    public void stop() {
-        scheduledExecutorService.shutdownNow();
-    }
-
-    private void cancel() {
-        transformationsToBeCleaned
+    public Mono<Void> get() {
+        return transformationsToBeCleaned
                 .get()
                 .doOnNext(transformation -> logger.info("Cleaning transformation: {}", transformation.id()))
                 .flatMap(transformation -> cleanExecutor.clean(transformation.context(), transformation.id())
@@ -42,7 +30,6 @@ public class DefaultTransformationCleanTask implements TransformationCleanTask {
                                                         .doOnSuccess(notUsed -> logger.info(
                                                                 "Transformation cleaned: {}",
                                                                 transformation.id())))
-                .doFinally(s -> scheduledExecutorService.schedule(this::cancel, 10, TimeUnit.SECONDS))
-                .subscribe();
+                .then();
     }
 }

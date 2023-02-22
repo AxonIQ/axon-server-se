@@ -9,17 +9,18 @@
 
 package io.axoniq.axonserver.config;
 
+import io.axoniq.axonserver.eventstore.transformation.ActionScheduledTask;
+import io.axoniq.axonserver.eventstore.transformation.MultiScheduledTask;
+import io.axoniq.axonserver.eventstore.transformation.TransformationTask;
 import io.axoniq.axonserver.eventstore.transformation.api.EventStoreTransformationService;
 import io.axoniq.axonserver.eventstore.transformation.apply.DefaultTransformationApplyExecutor;
-import io.axoniq.axonserver.eventstore.transformation.apply.DefaultTransformationApplyTask;
 import io.axoniq.axonserver.eventstore.transformation.apply.LocalMarkTransformationApplied;
 import io.axoniq.axonserver.eventstore.transformation.apply.MarkTransformationApplied;
+import io.axoniq.axonserver.eventstore.transformation.apply.TransformationApplyAction;
 import io.axoniq.axonserver.eventstore.transformation.apply.TransformationApplyExecutor;
-import io.axoniq.axonserver.eventstore.transformation.apply.TransformationApplyTask;
 import io.axoniq.axonserver.eventstore.transformation.apply.TransformationProgressStore;
 import io.axoniq.axonserver.eventstore.transformation.clean.DefaultTransformationCleanExecutor;
-import io.axoniq.axonserver.eventstore.transformation.clean.DefaultTransformationCleanTask;
-import io.axoniq.axonserver.eventstore.transformation.clean.TransformationCleanTask;
+import io.axoniq.axonserver.eventstore.transformation.clean.TransformationCleanAction;
 import io.axoniq.axonserver.eventstore.transformation.clean.TransformationsToBeCleaned;
 import io.axoniq.axonserver.eventstore.transformation.clean.transformations.AppliedTransformations;
 import io.axoniq.axonserver.eventstore.transformation.clean.transformations.CancelledTransformations;
@@ -28,9 +29,8 @@ import io.axoniq.axonserver.eventstore.transformation.clean.transformations.Miss
 import io.axoniq.axonserver.eventstore.transformation.clean.transformations.MultipleTransformations;
 import io.axoniq.axonserver.eventstore.transformation.compact.CompactingContexts;
 import io.axoniq.axonserver.eventstore.transformation.compact.DefaultEventStoreCompactionExecutor;
-import io.axoniq.axonserver.eventstore.transformation.compact.DefaultEventStoreCompactionTask;
+import io.axoniq.axonserver.eventstore.transformation.compact.EventStoreCompactAction;
 import io.axoniq.axonserver.eventstore.transformation.compact.EventStoreCompactionExecutor;
-import io.axoniq.axonserver.eventstore.transformation.compact.EventStoreCompactionTask;
 import io.axoniq.axonserver.eventstore.transformation.compact.LocalMarkEventStoreCompacted;
 import io.axoniq.axonserver.eventstore.transformation.compact.MarkEventStoreCompacted;
 import io.axoniq.axonserver.eventstore.transformation.jpa.EventStoreStateRepository;
@@ -172,10 +172,11 @@ public class TransformationConfiguration {
     }
 
     @Bean
-    public TransformationApplyTask transformationApplyTask(TransformationApplyExecutor applier,
-                                                           MarkTransformationApplied markTransformationApplied,
-                                                           Transformations transformations) {
-        return new DefaultTransformationApplyTask(applier, markTransformationApplied, transformations);
+    public TransformationTask transformationApplyTask(TransformationApplyExecutor applier,
+                                                      MarkTransformationApplied markTransformationApplied,
+                                                      Transformations transformations) {
+        return new ActionScheduledTask(
+                new TransformationApplyAction(applier, markTransformationApplied, transformations));
     }
 
     @Bean
@@ -190,13 +191,14 @@ public class TransformationConfiguration {
     }
 
     @Bean
-    public EventStoreCompactionTask transformationCompactionTask(
+    public TransformationTask transformationCompactionTask(
             EventStoreCompactionExecutor eventStoreCompactionExecutor,
             CompactingContexts compactingContexts,
             MarkEventStoreCompacted markEventStoreCompacted) {
-        return new DefaultEventStoreCompactionTask(Flux.fromIterable(compactingContexts),
-                                                   eventStoreCompactionExecutor,
-                                                   markEventStoreCompacted);
+        return new ActionScheduledTask(
+                new EventStoreCompactAction(Flux.fromIterable(compactingContexts),
+                                            eventStoreCompactionExecutor,
+                                            markEventStoreCompacted));
     }
 
     @Bean
@@ -244,25 +246,27 @@ public class TransformationConfiguration {
     }
 
     @Bean
-    public TransformationCleanTask transformationCleanTask(
+    public TransformationTask transformationCleanTask(
             TransformationsToBeCleaned transformationsToBeCleaned,
             TransformationEntryStoreProvider transformationEntryStoreSupplier) {
-        return new DefaultTransformationCleanTask(new DefaultTransformationCleanExecutor(
-                transformationEntryStoreSupplier), transformationsToBeCleaned);
+        return new ActionScheduledTask(new TransformationCleanAction(new DefaultTransformationCleanExecutor(
+                transformationEntryStoreSupplier), transformationsToBeCleaned));
+    }
+
+    @Primary
+    @Bean
+    public TransformationTask multiScheduledTask(Collection<TransformationTask> scheduledTasks) {
+        return new MultiScheduledTask(scheduledTasks);
     }
 
     @Bean(initMethod = "init", destroyMethod = "destroy")
     public LocalEventStoreTransformationService localEventStoreTransformationService(Transformers transformers,
                                                                                      Transformations transformations,
-                                                                                     EventStoreCompactionTask eventStoreCompactionTask,
-                                                                                     TransformationApplyTask transformationApplyTask,
-                                                                                     TransformationCleanTask transformationCleanTask,
+                                                                                     TransformationTask scheduledTask,
                                                                                      TransformationAllowed transformationAllowed) {
         return new LocalEventStoreTransformationService(transformers,
                                                         transformations,
-                                                        transformationApplyTask,
-                                                        eventStoreCompactionTask,
-                                                        transformationCleanTask,
+                                                        scheduledTask,
                                                         transformationAllowed);
     }
 

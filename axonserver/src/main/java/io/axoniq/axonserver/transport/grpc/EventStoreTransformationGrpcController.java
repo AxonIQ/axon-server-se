@@ -171,6 +171,7 @@ public class EventStoreTransformationGrpcController
             }
 
             private void forwardError(Throwable throwable) {
+                logger.warn("Error forwarded to the client.", throwable);
                 StreamObserverUtils.error(responseObserver, GrpcExceptionBuilder.build(throwable));
             }
 

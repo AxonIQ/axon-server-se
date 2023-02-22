@@ -10,10 +10,8 @@
 package io.axoniq.axonserver.eventstore.transformation.requestprocessor;
 
 import io.axoniq.axonserver.api.Authentication;
+import io.axoniq.axonserver.eventstore.transformation.TransformationTask;
 import io.axoniq.axonserver.eventstore.transformation.api.EventStoreTransformationService;
-import io.axoniq.axonserver.eventstore.transformation.apply.TransformationApplyTask;
-import io.axoniq.axonserver.eventstore.transformation.clean.TransformationCleanTask;
-import io.axoniq.axonserver.eventstore.transformation.compact.EventStoreCompactionTask;
 import io.axoniq.axonserver.eventstore.transformation.spi.TransformationAllowed;
 import io.axoniq.axonserver.grpc.event.Event;
 import org.slf4j.Logger;
@@ -42,36 +40,26 @@ public class LocalEventStoreTransformationService implements EventStoreTransform
     private final Transformations transformations;
     private final Logger auditLog = LoggerFactory.getLogger(
             "AUDIT." + LocalEventStoreTransformationService.class.getName());
-    private final TransformationApplyTask transformationApplyTask;
-    private final EventStoreCompactionTask eventStoreCompactionTask;
-    private final TransformationCleanTask transformationCleanTask;
+    private final TransformationTask scheduledTask;
     private final TransformationAllowed transformationAllowed;
 
     /**
      * Creates an instance with the specified parameters.
      *
-     * @param transformers             provides the {@link ContextTransformer} for the specified context
-     * @param transformations          used to retrieve the event transformations
-     * @param transformationApplyTask  task that periodically checks if there are transformations to apply, and apply
-     *                                 them
-     * @param eventStoreCompactionTask task that periodically checks if a compaction of the event store has been
-     *                                 requested, and compact it
-     * @param transformationCleanTask  task that periodically checks if there are transformations to be cleaned, and
-     *                                 clean them
-     * @param transformationAllowed    used to verify if it is allowed to use the event transofrmation feature on the
-     *                                 context
+     * @param transformers          provides the {@link ContextTransformer} for the specified context
+     * @param transformations       used to retrieve the event transformations
+     * @param scheduledTask         task that periodically checks if there are transformation operation neede to
+     *                              be performed in background
+     * @param transformationAllowed used to verify if it is allowed to use the event transofrmation feature on the
+     *                              context
      */
     public LocalEventStoreTransformationService(Transformers transformers,
                                                 Transformations transformations,
-                                                TransformationApplyTask transformationApplyTask,
-                                                EventStoreCompactionTask eventStoreCompactionTask,
-                                                TransformationCleanTask transformationCleanTask,
+                                                TransformationTask scheduledTask,
                                                 TransformationAllowed transformationAllowed) {
         this.transformers = transformers;
         this.transformations = transformations;
-        this.transformationApplyTask = transformationApplyTask;
-        this.eventStoreCompactionTask = eventStoreCompactionTask;
-        this.transformationCleanTask = transformationCleanTask;
+        this.scheduledTask = scheduledTask;
         this.transformationAllowed = transformationAllowed;
     }
 
@@ -79,18 +67,14 @@ public class LocalEventStoreTransformationService implements EventStoreTransform
      * Initializes the tasks scheduled to apply, clean and compact.
      */
     public void init() {
-        transformationApplyTask.start();
-        eventStoreCompactionTask.start();
-        transformationCleanTask.start();
+        scheduledTask.start();
     }
 
     /**
      * Stops the tasks scheduled to apply, clean and compact.
      */
     public void destroy() {
-        transformationApplyTask.stop();
-        eventStoreCompactionTask.stop();
-        transformationCleanTask.stop();
+        scheduledTask.stop();
     }
 
     @Override
