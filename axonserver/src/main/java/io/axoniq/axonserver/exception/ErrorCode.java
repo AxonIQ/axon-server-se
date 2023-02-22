@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -35,6 +35,7 @@ public enum ErrorCode {
     NO_AXONSERVER_FOR_CONTEXT("AXONIQ-1400", Status.UNAVAILABLE, HttpStatus.SERVICE_UNAVAILABLE, true),
     AXONSERVER_NODE_NOT_CONNECTED("AXONIQ-1500", Status.UNAVAILABLE, HttpStatus.SERVICE_UNAVAILABLE, true),
     TOO_MANY_REQUESTS("AXONIQ-1900", Status.RESOURCE_EXHAUSTED, HttpStatus.TOO_MANY_REQUESTS),
+    LICENSE_ERROR("AXONIQ-1700", Status.PERMISSION_DENIED, HttpStatus.FORBIDDEN),
 
     // Input errors
     INVALID_SEQUENCE("AXONIQ-2000", Status.OUT_OF_RANGE, HttpStatus.CONFLICT, true),
