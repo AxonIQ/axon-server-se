@@ -29,6 +29,9 @@ public interface EventStoreStateStore {
      */
     void save(EventStoreState state);
 
+
+    void clean(String context);
+
     /**
      * The state a specific context could be in regard to event transformation.
      */

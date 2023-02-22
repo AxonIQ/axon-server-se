@@ -41,4 +41,6 @@ public interface ContextTransformationStore {
      * @param transformation the {@link TransformationState} to be saved.
      */
     void save(TransformationState transformation);
+
+    void clean(String context);
 }

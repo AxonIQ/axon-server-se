@@ -32,10 +32,9 @@ public class DefaultTransformationCleanTask implements TransformationCleanTask {
 
     private void cancel() {
         transformationsToBeCleaned
-                .toBeCleaned()
+                .get()
                 .doOnNext(transformation -> logger.info("Cleaning transformation: {}", transformation.id()))
                 .flatMap(transformation -> cleanExecutor.clean(transformation.context(), transformation.id())
-                                                        .then(transformation.markAsCleaned())
                                                         .doOnError(t -> logger.error(
                                                                 "An error happened while cleaning the transformation: {}.",
                                                                 transformation.id(),

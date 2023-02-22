@@ -1,6 +1,6 @@
 /*
- *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- *  under one or more contributor license agreements.
+ * Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -565,9 +565,6 @@ public class WritableFileStorageTier extends AbstractFileStorageTier {
 
         indexManager.cleanup(deleteData);
         if (deleteData) {
-            // delete transformation directory
-            File transformations = new File(storageDir.getAbsolutePath() + File.separator + "transformation");
-            FileUtils.delete(transformations);
             FileUtils.delete(storageDir);
         }
     }

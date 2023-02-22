@@ -87,4 +87,6 @@ public interface ContextTransformer {
      * @return a mono that is completed when the event store state has been marked as "compacted".
      */
     Mono<Void> markCompacted(String compactionId);
+
+    Mono<Void> clean();
 }

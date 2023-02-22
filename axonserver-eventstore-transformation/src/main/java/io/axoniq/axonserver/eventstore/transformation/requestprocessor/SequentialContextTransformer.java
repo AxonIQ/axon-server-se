@@ -41,7 +41,8 @@ public class SequentialContextTransformer implements ContextTransformer {
     private void startListening() {
         taskExecutor.asFlux()
                     .concatMap(Function.identity())
-                    .onErrorContinue((error, o) -> {})
+                    .onErrorContinue((error, o) -> {
+                    })
                     .subscribe();
     }
 
@@ -89,6 +90,12 @@ public class SequentialContextTransformer implements ContextTransformer {
     @Override
     public Mono<Void> markCompacted(String compactionId) {
         return delegate.markCompacted(compactionId)
+                       .as(this::sequential);
+    }
+
+    @Override
+    public Mono<Void> clean() {
+        return delegate.clean()
                        .as(this::sequential);
     }
 
