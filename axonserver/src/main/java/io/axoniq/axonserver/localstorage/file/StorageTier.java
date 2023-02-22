@@ -9,6 +9,8 @@
 
 package io.axoniq.axonserver.localstorage.file;
 
+import org.springframework.boot.convert.ApplicationConversionService;
+
 import java.io.File;
 import java.time.Duration;
 import java.util.Iterator;
@@ -212,7 +214,10 @@ public interface StorageTier {
             if (retentionTimeString == null) {
                 return null;
             }
-            return Duration.parse(retentionTimeString).toMillis();
+            Duration duration = ApplicationConversionService
+                    .getSharedInstance().convert(retentionTimeString, Duration.class);
+
+            return duration == null ? null : duration.toMillis();
         }
     }
 
