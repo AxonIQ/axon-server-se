@@ -64,6 +64,11 @@ public class LocalContextTransformationStore implements ContextTransformationSto
         repository.save(entity(transformation));
     }
 
+    @Override
+    public void clean(String context) {
+        repository.deleteAllByContext(context);
+    }
+
     private void storeStagedActions(TransformationState transformation) {
         transformationEntryStoreSupplier.provide(context, transformation.id())
                                         .flatMapMany(transformationEntryStore -> Flux.fromIterable(transformation.staged())

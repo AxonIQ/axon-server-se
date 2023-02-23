@@ -49,6 +49,12 @@ public class JpaLocalTransformationProgressStore implements TransformationProgre
                                          .then();
     }
 
+    @Override
+    public Mono<Void> clean() {
+        return Mono.<Void>fromRunnable(repository::deleteOrphans)
+                   .subscribeOn(Schedulers.boundedElastic());
+    }
+
     private static class JpaTransformationApplyingState implements TransformationApplyingState {
 
         private final LocalEventStoreTransformationJpa entity;

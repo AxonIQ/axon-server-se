@@ -17,4 +17,6 @@ public interface TransformationProgressStore {
     Mono<Void> incrementLastSequence(String transformationId, long sequenceIncrement);
 
     Mono<Void> markAsApplied(String transformationId);
+
+    Mono<Void> clean();
 }

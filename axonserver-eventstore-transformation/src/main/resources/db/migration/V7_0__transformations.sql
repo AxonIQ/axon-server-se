@@ -27,11 +27,6 @@ create table et_local_event_store_transformation
     applied               bool
 );
 
-create table et_local_cleaned_event_store_transformation
-(
-    transformation_id varchar(255) not null primary key
-);
-
 create table et_event_store_state
 (
     context                  varchar(255) not null primary key,

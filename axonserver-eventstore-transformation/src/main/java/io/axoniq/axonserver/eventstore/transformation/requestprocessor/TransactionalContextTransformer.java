@@ -26,7 +26,7 @@ public class TransactionalContextTransformer implements ContextTransformer {
     private final String context;
     private final ContextTransformationStore transformationStore;
     private final PlatformTransactionManager platformTransactionManager;
-    private final EventStoreStateStore stateStore;
+    private final EventStoreStateStore contextStore;
     private final TransformationStateConverter converter;
 
     /**
@@ -45,7 +45,7 @@ public class TransactionalContextTransformer implements ContextTransformer {
         this.context = context;
         this.transformationStore = store;
         this.platformTransactionManager = platformTransactionManager;
-        this.stateStore = eventStoreStateStore;
+        this.contextStore = eventStoreStateStore;
         this.converter = converter;
     }
 
@@ -67,8 +67,8 @@ public class TransactionalContextTransformer implements ContextTransformer {
     @Override
     public Mono<Void> start(String id, String description) {
         return executeInTransaction(() -> {
-            EventStoreState state = stateStore.state(context);
-            stateStore.save(state.transform(id));
+            EventStoreState state = contextStore.state(context);
+            contextStore.save(state.transform(id));
             transformationStore.create(id, description);
         });
     }
@@ -98,8 +98,8 @@ public class TransactionalContextTransformer implements ContextTransformer {
                                   .flatMap(transformationState -> executeInTransaction(
                                           () -> {
                                               transformationStore.save(transformationState);
-                                              EventStoreState storeState = stateStore.state(context);
-                                              stateStore.save(storeState.cancelled());
+                                              EventStoreState storeState = contextStore.state(context);
+                                              contextStore.save(storeState.cancelled());
                                           }))
                                   .checkpoint("Transformation updated after CANCEL")
                                   .then();
@@ -122,8 +122,8 @@ public class TransactionalContextTransformer implements ContextTransformer {
                                   .flatMap(transformationState -> executeInTransaction(
                                           () -> {
                                               transformationStore.save(transformationState);
-                                              EventStoreState storeState = stateStore.state(context);
-                                              stateStore.save(storeState.transformed());
+                                              EventStoreState storeState = contextStore.state(context);
+                                              contextStore.save(storeState.transformed());
                                           }))
                                   .checkpoint("Transformation updated after MARK_AS_APPLIED")
                                   .then();
@@ -132,16 +132,24 @@ public class TransactionalContextTransformer implements ContextTransformer {
     @Override
     public Mono<Void> startCompacting(String compactionId) {
         return executeInTransaction(() -> {
-            EventStoreState state = stateStore.state(context);
-            stateStore.save(state.compact(compactionId));
+            EventStoreState state = contextStore.state(context);
+            contextStore.save(state.compact(compactionId));
         });
     }
 
     @Override
     public Mono<Void> markCompacted(String compactionId) {
         return executeInTransaction(() -> {
-            EventStoreState state = stateStore.state(context);
-            stateStore.save(state.compacted());
+            EventStoreState state = contextStore.state(context);
+            contextStore.save(state.compacted());
+        });
+    }
+
+    @Override
+    public Mono<Void> clean() {
+        return executeInTransaction(() -> {
+            contextStore.clean(context);
+            transformationStore.clean(context);
         });
     }
 

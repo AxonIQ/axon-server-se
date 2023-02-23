@@ -56,6 +56,13 @@ public class JpaEventStoreStateStore implements EventStoreStateStore {
         repository.save(entityConstructor.entity());
     }
 
+    @Override
+    public void clean(String context) {
+        if (repository.existsById(context)) {
+            repository.deleteById(context);
+        }
+    }
+
     private static class JpaEntityConstructor implements Visitor {
 
         private static final EnumMap<State, EventStoreStateJpa.State> stateMapping = new EnumMap<>(

@@ -30,12 +30,8 @@ public interface EventStoreTransformationRepository extends JpaRepository<EventS
 
     List<EventStoreTransformationJpa> findAllByStatus(EventStoreTransformationJpa.Status status);
 
-    Optional<EventStoreTransformationJpa> findEventStoreTransformationJpaByContextAndStatus(String context,
-                                                                                            EventStoreTransformationJpa.Status status);
+    void deleteAllByContext(String context);
 
-    default Optional<EventStoreTransformationJpa> findActiveByContext(String context) {
-        return findEventStoreTransformationJpaByContextAndStatus(context, EventStoreTransformationJpa.Status.ACTIVE);
-    }
 
     default Optional<Integer> lastVersion(String context) {
         return findByContext(context)
@@ -44,6 +40,4 @@ public interface EventStoreTransformationRepository extends JpaRepository<EventS
                 .max(Integer::compareTo);
     }
 
-    List<EventStoreTransformationJpa> findByContextAndStatus(String context,
-                                                             EventStoreTransformationJpa.Status status);
 }
