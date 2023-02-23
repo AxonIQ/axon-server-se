@@ -97,7 +97,7 @@ public class WebConfiguration implements WebMvcConfigurer {
             MessagingPlatformException eventStoreException = (MessagingPlatformException)ex;
             return ResponseEntity.status(eventStoreException.getErrorCode().getHttpCode())
                     .header("AxonIQ-ErrorCode", eventStoreException.getErrorCode().getCode())
-                    .body(ex.getMessage());
+                    .body(eventStoreException.getErrorPayload());
         }
     }
 

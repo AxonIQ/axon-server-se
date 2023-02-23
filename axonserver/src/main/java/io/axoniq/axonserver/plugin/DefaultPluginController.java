@@ -11,9 +11,11 @@ package io.axoniq.axonserver.plugin;
 
 import io.axoniq.axonserver.rest.PluginPropertyGroup;
 import io.axoniq.axonserver.topology.Topology;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Controller;
 
 import java.io.InputStream;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -71,13 +73,24 @@ public class DefaultPluginController implements PluginController {
 
     @Override
     public void updateConfiguration(PluginKey pluginKey, String context,
-                                    Map<String, Map<String, Object>> properties) {
+                                    Map<String, Map<String, Object>> properties) throws ConfigurationValidationException {
         properties = PluginPropertyUtils.validateProperties(properties,
                                                             listProperties(pluginKey, Topology.DEFAULT_CONTEXT));
-        pluginContextManager.updateConfiguration(Topology.DEFAULT_CONTEXT,
-                                                 pluginKey.getSymbolicName(),
-                                                 pluginKey.getVersion(),
-                                                 properties);
+
+        Map<String, Iterable<ConfigurationError>> errors = configurationManager.errors(
+                pluginKey,
+                Topology.DEFAULT_CONTEXT,
+                properties
+        );
+
+        if (errors.isEmpty()){
+            pluginContextManager.updateConfiguration(Topology.DEFAULT_CONTEXT,
+                    pluginKey.getSymbolicName(),
+                    pluginKey.getVersion(),
+                    properties);
+        } else {
+            throw new ConfigurationValidationException(errors);
+        }
     }
 
     @Override
