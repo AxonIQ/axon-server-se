@@ -524,16 +524,6 @@ public class StandardIndexManager implements IndexManager {
         }
 
         if (!indexesDescending.isEmpty()) {
-            for (Map.Entry<Long, Integer> segment : indexesDescending.entrySet()) {
-                IndexEntries indexEntries = getPositions(new FileVersion(segment.getKey(), segment.getValue()),
-                                                         aggregateId);
-                if (indexEntries != null && indexEntries.firstSequenceNumber() < maxSequenceNumber) {
-                    return new SegmentIndexEntries(new FileVersion(segment.getKey(), segment.getValue()),
-                                                   indexEntries.range(indexEntries.firstSequenceNumber(),
-                                                                      maxSequenceNumber,
-                                                                      EventType.SNAPSHOT.equals(eventType)));
-                }
-            }
             return lastIndexEntriesFromClosedSegments(aggregateId,
                                                       maxSequenceNumber,
                                                       indexesDescending.keySet().first());
