@@ -13,13 +13,17 @@ public class TransformationApplyAction implements ActionSupplier {
 
     private final TransformationApplyExecutor applier;
     private final MarkTransformationApplied markTransformationApplied;
+
+    private final CleanTransformationApplied cleanTransformationApplied;
     private final Transformations transformations;
 
     public TransformationApplyAction(TransformationApplyExecutor applier,
                                      MarkTransformationApplied markTransformationApplied,
+                                     CleanTransformationApplied cleanTransformationApplied,
                                      Transformations transformations) {
         this.applier = applier;
         this.markTransformationApplied = markTransformationApplied;
+        this.cleanTransformationApplied = cleanTransformationApplied;
         this.transformations = transformations;
     }
 
@@ -40,7 +44,7 @@ public class TransformationApplyAction implements ActionSupplier {
                                                                 .then(markTransformationApplied.markApplied(
                                                                         transformation.context(),
                                                                         transformation.id())))
-                              .then();
+                              .then(cleanTransformationApplied.clean());
     }
 
 

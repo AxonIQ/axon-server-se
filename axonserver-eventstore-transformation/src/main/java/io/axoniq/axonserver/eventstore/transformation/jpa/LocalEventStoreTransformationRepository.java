@@ -37,4 +37,11 @@ public interface LocalEventStoreTransformationRepository
     @Query("update LocalEventStoreTransformationJpa d set d.lastSequenceApplied = d.lastSequenceApplied + :#{#increment} where d.transformationId = :#{#transformationId}")
     @Transactional
     void incrementLastSequence(@Param("transformationId") String transformationId, @Param("increment") long increment);
+
+
+    @Modifying
+    @Query("delete LocalEventStoreTransformationJpa d where d.transformationId not in "
+            + "(select t.transformationId from EventStoreTransformationJpa t)")
+    @Transactional
+    void deleteOrphans();
 }

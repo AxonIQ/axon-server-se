@@ -42,7 +42,7 @@ public class EventStoreCompactAction implements ActionSupplier {
 
         private final String context;
 
-        public Compaction(String context) {
+        Compaction(String context) {
             this.context = context;
         }
 

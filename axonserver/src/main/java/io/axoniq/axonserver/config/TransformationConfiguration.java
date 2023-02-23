@@ -13,6 +13,8 @@ import io.axoniq.axonserver.eventstore.transformation.ActionScheduledTask;
 import io.axoniq.axonserver.eventstore.transformation.MultiScheduledTask;
 import io.axoniq.axonserver.eventstore.transformation.TransformationTask;
 import io.axoniq.axonserver.eventstore.transformation.api.EventStoreTransformationService;
+import io.axoniq.axonserver.eventstore.transformation.apply.CleanTransformationApplied;
+import io.axoniq.axonserver.eventstore.transformation.apply.CleanTransformationProgressStore;
 import io.axoniq.axonserver.eventstore.transformation.apply.DefaultTransformationApplyExecutor;
 import io.axoniq.axonserver.eventstore.transformation.apply.LocalMarkTransformationApplied;
 import io.axoniq.axonserver.eventstore.transformation.apply.MarkTransformationApplied;
@@ -172,11 +174,27 @@ public class TransformationConfiguration {
     }
 
     @Bean
+    public CleanTransformationApplied cleanTransformationProgressStore(TransformationProgressStore store) {
+        return new CleanTransformationProgressStore(store);
+    }
+
+    @Bean
+    @Primary
+    public CleanTransformationApplied cleanTransformationApplied(Collection<CleanTransformationApplied> collection) {
+        return () -> Flux.fromIterable(collection)
+                         .flatMap(CleanTransformationApplied::clean)
+                         .then();
+    }
+
+    @Bean
     public TransformationTask transformationApplyTask(TransformationApplyExecutor applier,
                                                       MarkTransformationApplied markTransformationApplied,
+                                                      CleanTransformationApplied cleanTransformationApplied,
                                                       Transformations transformations) {
         return new ActionScheduledTask(
-                new TransformationApplyAction(applier, markTransformationApplied, transformations));
+                new TransformationApplyAction(applier, markTransformationApplied,
+                                              cleanTransformationApplied,
+                                              transformations));
     }
 
     @Bean

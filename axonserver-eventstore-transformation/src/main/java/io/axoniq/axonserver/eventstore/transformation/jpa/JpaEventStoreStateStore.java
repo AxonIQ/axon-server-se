@@ -58,7 +58,9 @@ public class JpaEventStoreStateStore implements EventStoreStateStore {
 
     @Override
     public void clean(String context) {
-        repository.deleteById(context);
+        if (repository.existsById(context)) {
+            repository.deleteById(context);
+        }
     }
 
     private static class JpaEntityConstructor implements Visitor {
