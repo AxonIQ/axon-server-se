@@ -526,9 +526,12 @@ public class StandardIndexManager implements IndexManager {
             }
         }
 
-        return lastIndexEntriesFromClosedSegments(aggregateId,
-                                                  maxSequenceNumber,
-                                                  indexesDescending.keySet().first());
+        if (!indexesDescending.isEmpty()) {
+            return lastIndexEntriesFromClosedSegments(aggregateId,
+                                                      maxSequenceNumber,
+                                                      indexesDescending.keySet().first());
+        }
+        return null;
     }
 
     @Override
