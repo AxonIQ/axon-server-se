@@ -2,6 +2,7 @@ package io.axoniq.axonserver.eventstore.transformation.requestprocessor;
 
 import io.axoniq.axonserver.api.Authentication;
 import io.axoniq.axonserver.eventstore.transformation.api.EventStoreTransformationService;
+import io.axoniq.axonserver.eventstore.transformation.spi.TransformationAllowed;
 import io.axoniq.axonserver.grpc.event.Event;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -23,17 +24,24 @@ public class FastValidationEventStoreTransformationService implements EventStore
     private final EventStoreTransformationService delegate;
     private final ContextEventProviderSupplier contextEventProviderSupplier;
 
+    private final TransformationAllowed transformationAllowed;
+
     /**
      * Creates an instance that delegate to the provided {@link EventStoreTransformationService} after the fast
      * validation operations have been executed.
      *
      * @param delegate                     the {@link EventStoreTransformationService} to delegate to
      * @param contextEventProviderSupplier provides events needed to perform the fast validations
+     * @param transformationAllowed        used to verify if it is allowed to use the event transformation feature on
+     *                                     the
+     *                                     context
      */
     public FastValidationEventStoreTransformationService(EventStoreTransformationService delegate,
-                                                         ContextEventProviderSupplier contextEventProviderSupplier) {
+                                                         ContextEventProviderSupplier contextEventProviderSupplier,
+                                                         TransformationAllowed transformationAllowed) {
         this.delegate = delegate;
         this.contextEventProviderSupplier = contextEventProviderSupplier;
+        this.transformationAllowed = transformationAllowed;
     }
 
     /**
@@ -110,7 +118,8 @@ public class FastValidationEventStoreTransformationService implements EventStore
 
     @Override
     public Mono<Void> start(String id, String context, String description, @NotNull Authentication authentication) {
-        return delegate.start(id, context, description, authentication);
+        return transformationAllowed.validate(context)
+                                    .then(delegate.start(id, context, description, authentication));
     }
 
     @Override
@@ -135,14 +144,16 @@ public class FastValidationEventStoreTransformationService implements EventStore
     @Override
     public Mono<Void> startApplying(String context, String transformationId, long sequence,
                                     @NotNull Authentication authentication) {
-        return delegate.startApplying(context,
-                                      transformationId,
-                                      sequence,
-                                      authentication);
+        return transformationAllowed.validate(context)
+                                    .then(delegate.startApplying(context,
+                                                                 transformationId,
+                                                                 sequence,
+                                                                 authentication));
     }
 
     @Override
     public Mono<Void> startCompacting(String compactionId, String context, @NotNull Authentication authentication) {
-        return delegate.startCompacting(compactionId, context, authentication);
+        return transformationAllowed.validate(context)
+                                    .then(delegate.startCompacting(compactionId, context, authentication));
     }
 }

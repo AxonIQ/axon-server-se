@@ -283,20 +283,20 @@ public class TransformationConfiguration {
     @Bean(initMethod = "init", destroyMethod = "destroy")
     public LocalEventStoreTransformationService localEventStoreTransformationService(Transformers transformers,
                                                                                      Transformations transformations,
-                                                                                     TransformationTask scheduledTask,
-                                                                                     TransformationAllowed transformationAllowed) {
+                                                                                     TransformationTask scheduledTask) {
         return new LocalEventStoreTransformationService(transformers,
                                                         transformations,
-                                                        scheduledTask,
-                                                        transformationAllowed);
+                                                        scheduledTask);
     }
 
     @Bean(destroyMethod = "destroy")
     public FastValidationEventStoreTransformationService fastValidationEventStoreTransformationService(
             @Qualifier("localEventStoreTransformationService") EventStoreTransformationService service,
-            ContextEventProviderSupplier eventIteratorFactory
+            ContextEventProviderSupplier eventIteratorFactory,
+            TransformationAllowed transformationAllowed
     ) {
-        return new FastValidationEventStoreTransformationService(service, eventIteratorFactory::eventProviderFor);
+        return new FastValidationEventStoreTransformationService(service, eventIteratorFactory::eventProviderFor,
+                                                                 transformationAllowed);
     }
 
     @Primary
