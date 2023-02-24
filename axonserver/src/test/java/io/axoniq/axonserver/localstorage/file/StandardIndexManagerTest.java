@@ -65,6 +65,7 @@ public class StandardIndexManagerTest {
         storageProperties = new StorageProperties(systemInfoProvider);
         storageProperties.setMaxIndexesInMemory(3);
         storageProperties.setStorage(temporaryFolder.getRoot().getAbsolutePath());
+        storageProperties.setUseMmapIndex(false);
 
         MeterFactory meterFactory = new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector());
 

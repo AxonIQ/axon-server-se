@@ -26,6 +26,7 @@ import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import org.junit.After;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -37,7 +38,6 @@ import java.io.File;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -69,27 +69,35 @@ public class FileEventStorageEngineTest {
     @ClassRule
     public static TemporaryFolder tempFolder = new TemporaryFolder();
     private final String context = "junit";
-    private final EmbeddedDBProperties embeddedDBProperties;
     private final MeterFactory meterFactory = new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector());
 
-    public FileEventStorageEngineTest() {
-        embeddedDBProperties = new EmbeddedDBProperties(new SystemInfoProvider() {
-        });
-        embeddedDBProperties.getEvent().setStorage(
-                tempFolder.getRoot().getAbsolutePath() + "/" + UUID.randomUUID());
-        embeddedDBProperties.getEvent().setSegmentSize(DataSize.ofKilobytes(512));
-        embeddedDBProperties.getSnapshot().setStorage(tempFolder.getRoot().getAbsolutePath());
-        embeddedDBProperties.getEvent().setPrimaryCleanupDelay(0);
-        embeddedDBProperties.getEvent().setSecondaryCleanupDelay(10);
-    }
+    private EmbeddedDBProperties embeddedDBProperties;
+
+    private FileEventStorageEngine testSubject;
 
     private final FileSystemMonitor fileSystemMonitor = mock(FileSystemMonitor.class);
 
-    private FileEventStorageEngine primaryEventStore() {
-        return primaryEventStore(EventType.EVENT);
+    @After
+    public void cleanup() {
+        if (testSubject != null) {
+            testSubject.close(true);
+        }
     }
 
-    private FileEventStorageEngine primaryEventStore(EventType eventType) {
+    private FileEventStorageEngine primaryEventStore(String name) {
+        return primaryEventStore(EventType.EVENT, name);
+    }
+
+    private FileEventStorageEngine primaryEventStore(EventType eventType, String name) {
+        embeddedDBProperties = new EmbeddedDBProperties(new SystemInfoProvider() {
+        });
+        embeddedDBProperties.getEvent().setStorage(
+                tempFolder.getRoot().getAbsolutePath() + "/" + name);
+        embeddedDBProperties.getEvent().setSegmentSize(DataSize.ofKilobytes(512));
+        embeddedDBProperties.getEvent().setPrimaryCleanupDelay(0);
+        embeddedDBProperties.getEvent().setSecondaryCleanupDelay(10);
+        embeddedDBProperties.getEvent().setUseMmapIndex(false);
+
         return primaryEventStore(new StandardIndexManager(context, embeddedDBProperties::getEvent,
                                                           embeddedDBProperties.getEvent().getPrimaryStorage(context),
                                                           eventType,
@@ -131,7 +139,7 @@ public class FileEventStorageEngineTest {
         Event.Builder builder = Event.newBuilder()
                                      .setAggregateIdentifier(aggregateId)
                                      .setAggregateType("Demo").setPayload(SerializedObject.newBuilder().build());
-        FileEventStorageEngine testSubject = primaryEventStore(EventType.SNAPSHOT);
+        testSubject = primaryEventStore(EventType.SNAPSHOT, "aggregateEvents");
 
         testSubject.store(singletonList(builder.setMessageIdentifier("1").setAggregateSequenceNumber(5).build())).thenAccept(t -> latch
                 .countDown());
@@ -178,7 +186,7 @@ public class FileEventStorageEngineTest {
 
     @Test
     public void testLargeEvent() throws ExecutionException, InterruptedException, TimeoutException {
-        FileEventStorageEngine testSubject = primaryEventStore();
+        testSubject = primaryEventStore("testLargeEvent");
         storeEvent(testSubject, embeddedDBProperties.getEvent().getSegmentSize() + 1);
         storeEvent(testSubject, 10);
         long counter = 0;
@@ -194,7 +202,7 @@ public class FileEventStorageEngineTest {
 
     @Test
     public void queryEvents() throws ExecutionException, InterruptedException {
-        FileEventStorageEngine testSubject = primaryEventStore();
+        testSubject = primaryEventStore("queryEvents");
         for (int i = 0; i < 1000; i++) {
             byte[] buffer = new byte[200];
             Arrays.fill(buffer, (byte) 'x');
@@ -245,7 +253,7 @@ public class FileEventStorageEngineTest {
 
     @Test
     public void testLargeSecondEvent() throws ExecutionException, InterruptedException, TimeoutException {
-        FileEventStorageEngine testSubject = primaryEventStore();
+        testSubject = primaryEventStore("testLargeSecondEvent");
         storeEvent(testSubject, 10);
         storeEvent(testSubject, embeddedDBProperties.getEvent().getSegmentSize() + 1);
         long counter = 0;
@@ -261,7 +269,7 @@ public class FileEventStorageEngineTest {
 
     @Test
     public void testEventVersions() throws ExecutionException, InterruptedException, TimeoutException {
-        FileEventStorageEngine testSubject = primaryEventStore();
+        testSubject = primaryEventStore("testEventVersions");
         storeEvent(testSubject, 10);
         storeEventWithNewVersion(testSubject, 10, 1);
         long counter = 0;
@@ -285,7 +293,7 @@ public class FileEventStorageEngineTest {
 
     @Test
     public void testFirstEventOtherVersion() throws ExecutionException, InterruptedException, TimeoutException {
-        FileEventStorageEngine testSubject = primaryEventStore();
+        testSubject = primaryEventStore("testFirstEventOtherVersion");
         storeEventWithNewVersion(testSubject, 10, 1);
         long counter = 0;
         try (CloseableIterator<SerializedTransactionWithToken> transactionWithTokenIterator = testSubject
@@ -311,7 +319,7 @@ public class FileEventStorageEngineTest {
 
     @Test
     public void aggregateEventsReusedAggregateIdentifier() throws InterruptedException {
-        FileEventStorageEngine testSubject = primaryEventStore();
+        testSubject = primaryEventStore("aggregateEventsReusedAggregateIdentifier");
         setupEvents(testSubject, 10000, 20);
         setupEvents(testSubject, 1, 5);
 
@@ -323,55 +331,58 @@ public class FileEventStorageEngineTest {
 
     @Test
     public void transactionsIterator() throws InterruptedException {
-        FileEventStorageEngine testSubject = primaryEventStore();
+        testSubject = primaryEventStore("transactionsIterator");
         setupEvents(testSubject, 1000, 2);
-        Iterator<SerializedTransactionWithToken> transactionWithTokenIterator = testSubject.transactionIterator(0,
-                                                                                                                Long.MAX_VALUE);
+        try (CloseableIterator<SerializedTransactionWithToken> transactionWithTokenIterator = testSubject.transactionIterator(
+                0,
+                Long.MAX_VALUE)) {
 
-        long counter = 0;
-        while (transactionWithTokenIterator.hasNext()) {
-            counter++;
-            transactionWithTokenIterator.next();
+            long counter = 0;
+            while (transactionWithTokenIterator.hasNext()) {
+                counter++;
+                transactionWithTokenIterator.next();
+            }
+
+            assertEquals(1000, counter);
         }
-
-        assertEquals(1000, counter);
     }
 
     @Test
     public void largeTransactions() throws InterruptedException {
-        FileEventStorageEngine testSubject = primaryEventStore();
+        testSubject = primaryEventStore("largeTransactions");
         setupEvents(testSubject, 10, Short.MAX_VALUE + 5);
-        Iterator<SerializedTransactionWithToken> transactionWithTokenIterator =
-                testSubject.transactionIterator(0, Long.MAX_VALUE);
+        try (CloseableIterator<SerializedTransactionWithToken> transactionWithTokenIterator =
+                     testSubject.transactionIterator(0, Long.MAX_VALUE)) {
 
-        long counter = 0;
-        while (transactionWithTokenIterator.hasNext()) {
-            counter++;
-            transactionWithTokenIterator.next();
-        }
-
-        assertEquals(20, counter);
-        try (CloseableIterator<SerializedEventWithToken> iterator = testSubject.getGlobalIterator(0)) {
-            counter = 0;
-            while (iterator.hasNext()) {
+            long counter = 0;
+            while (transactionWithTokenIterator.hasNext()) {
                 counter++;
-                iterator.next();
+                transactionWithTokenIterator.next();
             }
-            assertEquals(10 * (Short.MAX_VALUE + 5), counter);
-        }
 
-        List<SerializedEvent> events = testSubject.eventsPerAggregate("Aggregate-4",
-                                                                      0,
-                                                                            Long.MAX_VALUE,
-                                                                            0)
-                                                        .collect(Collectors.toList())
-                .block();
-        assertEquals(Short.MAX_VALUE + 5, events.size());
+            assertEquals(20, counter);
+            try (CloseableIterator<SerializedEventWithToken> iterator = testSubject.getGlobalIterator(0)) {
+                counter = 0;
+                while (iterator.hasNext()) {
+                    counter++;
+                    iterator.next();
+                }
+                assertEquals(10 * (Short.MAX_VALUE + 5), counter);
+            }
+
+            List<SerializedEvent> events = testSubject.eventsPerAggregate("Aggregate-4",
+                                                                          0,
+                                                                          Long.MAX_VALUE,
+                                                                          0)
+                                                      .collect(Collectors.toList())
+                                                      .block();
+            assertEquals(Short.MAX_VALUE + 5, events.size());
+        }
     }
 
     @Test
     public void readClosedIterator() throws InterruptedException {
-        FileEventStorageEngine testSubject = primaryEventStore();
+        testSubject = primaryEventStore("readClosedIterator");
         setupEvents(testSubject, 1000, 20);
         assertWithin(5, TimeUnit.SECONDS, () -> assertEquals(1, testSubject.activeSegmentCount()));
         CloseableIterator<SerializedEventWithToken> transactionWithTokenIterator = testSubject.getGlobalIterator(0);
@@ -428,7 +439,7 @@ public class FileEventStorageEngineTest {
 
     @Test
     public void testGlobalIterator() throws InterruptedException {
-        FileEventStorageEngine testSubject = primaryEventStore();
+        testSubject = primaryEventStore("testGlobalIterator");
         CountDownLatch latch = new CountDownLatch(100);
         // setup with 10,000 events
         IntStream.range(0, 100).forEach(j -> {
