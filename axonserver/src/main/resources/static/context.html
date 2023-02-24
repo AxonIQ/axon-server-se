@@ -136,7 +136,15 @@
                     this.contexts = response.data;
                 });
             },
+            checkAndCreateContext(){
+                if(this.isMultiTierConfigured()) {
+                    this.$modal.show('create-mt-context');
+                } else {
+                    this.createContext();
+                }
+            },
             createContext() {
+                this.hideModal('create-mt-context');
                 if (!this.newContext.context) {
                     alert("No Context Name set");
                     return;
@@ -183,6 +191,7 @@
                 });
             },
             doUpdateContext() {
+                this.hideModal('update-mt-context');
                 if (this.currentContext.metaDataLabel && this.currentContext.metaDataValue) {
                     this.addMetaDataToCurrent()
                 }
@@ -256,6 +265,13 @@
             isReadonly(metaDataKey) {
                 let prop = this.contextProperties.find(v => v.key === metaDataKey);
                 return prop ? !prop.updatable : false;
+            },
+            checkAndUpdateContext(){
+                if(this.isMultiTierConfigured()) {
+                    this.$modal.show('update-mt-context');
+                } else {
+                    this.doUpdateContext();
+                }
             },
             updateContext(context) {
                 this.showUpdate = true;
@@ -419,7 +435,6 @@
                             alert("You must define valid storage storage!");
                             throw 'You must define valid storage storage!!';
                         }
-                        console.log("test");
 
                         if (retentionTime !== 0) {
                             metaData[prefix.concat(lRetentionTime.concat(suffixLevel).concat(suffixNodeRole))] = retentionTime;
@@ -433,6 +448,23 @@
             },
             isEphemeral(context) {
                 return Object.values(context.metaData).some(value => value === 'black_hole');
+            },
+            isMultiTierConfigured() {
+                for (let nodeRole of Object.keys(this.chosenEventTiers)) {
+                    let store = this.chosenEventTiers[nodeRole];
+                    if (store.length > 1) {
+                        return true;
+                    }
+                }
+
+                for (let nodeRole of Object.keys(this.chosenSnapshotTiers)) {
+                    let store = this.chosenSnapshotTiers[nodeRole];
+                    if (store.length > 1) {
+                        return true;
+                    }
+                }
+
+                return false;
             },
             isMultiTier(context) {
                 let eventTiers = Object.keys(context.metaData).filter(key => key.startsWith("event.tier")).length;
@@ -825,7 +857,7 @@
                </li>
                <li>
                   <span class="narrow">&nbsp;</span>
-                  <span><button v-disable="isDisabled()" class="button" @click.prevent="createContext()">Save</button></span>
+                  <span><button v-disable="isDisabled()" class="button" @click.prevent="checkAndCreateContext()">Save</button></span>
                </li>
             </ul>
          </form>
@@ -960,7 +992,7 @@
                <li>
                   <span class="narrow">&nbsp;</span>
                   <span>
-                  <button class="button" @click.prevent="doUpdateContext()">Save</button>
+                  <button class="button" @click.prevent="checkAndUpdateContext()">Save</button>
                   <button class="button" @click.prevent="cancelUpdate()">Cancel</button>
                   </span>
                </li>
@@ -1030,4 +1062,46 @@
 
             </div>
     </modal>
+
+     <modal name="create-mt-context" width="600" height="330">
+      <div class="column configuration modal">
+         <h2>Creating multi-tier storage</h2>
+         <p>
+            <b>Please note that once you have added a storage tier, it cannot be removed. </b> Therefore, it is important to carefully consider your storage requirements and configure the tiers appropriately. <b>
+              A misconfigured storage tier can result in performance degradation and decreased efficiency, so be sure to select the appropriate retention strategy for each tier to ensure optimal performance and data accessibility.</b>
+         </p>
+         <form>
+            <ul>
+               <li>
+                  <span>&nbsp;</span>
+                  <span>
+                  <button class="button" @click.prevent="createContext()">Create context</button>
+                  <button class="button" @click.prevent="hideModal('create-mt-context')">Cancel</button>
+                  </span>
+               </li>
+            </ul>
+         </form>
+      </div>
+   </modal>
+
+     <modal name="update-mt-context" width="600" height="330">
+      <div class="column configuration modal">
+         <h2>Multi-tier storage</h2>
+         <p>
+            <b>Please note that once you have added a storage tier, it cannot be removed. </b> Therefore, it is important to carefully consider your storage requirements and configure the tiers appropriately. <b>
+              A misconfigured storage tier can result in performance degradation and decreased efficiency, so be sure to select the appropriate retention strategy for each tier to ensure optimal performance and data accessibility.</b>
+         </p>
+         <form>
+            <ul>
+               <li>
+                  <span>&nbsp;</span>
+                  <span>
+                  <button class="button" @click.prevent="doUpdateContext()">Update context</button>
+                  <button class="button" @click.prevent="hideModal('update-mt-context')">Cancel</button>
+                  </span>
+               </li>
+            </ul>
+         </form>
+      </div>
+   </modal>
 </span>
