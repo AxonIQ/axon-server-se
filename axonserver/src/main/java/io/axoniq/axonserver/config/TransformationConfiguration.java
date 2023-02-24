@@ -49,6 +49,7 @@ import io.axoniq.axonserver.eventstore.transformation.requestprocessor.EventStor
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.FastValidationEventStoreTransformationService;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.LocalEventStoreTransformationService;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.LocalTransformers;
+import io.axoniq.axonserver.eventstore.transformation.requestprocessor.LoggingEventTransformationService;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.TransformationBaseStorageProvider;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.TransformationEntryStoreProvider;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.Transformations;
@@ -63,6 +64,7 @@ import io.axoniq.axonserver.localstorage.transformation.EventStoreTransformer;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -78,6 +80,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Configuration
+@ConditionalOnProperty(value = "axoniq.axonserver.experimental.event-transformation")
 public class TransformationConfiguration {
 
     // TODO: 1/30/23 extract this class
@@ -288,9 +291,6 @@ public class TransformationConfiguration {
                                                         transformationAllowed);
     }
 
-    @ConditionalOnMissingBean(value = EventStoreTransformationService.class,
-            ignored = LocalEventStoreTransformationService.class)
-    @Primary
     @Bean(destroyMethod = "destroy")
     public FastValidationEventStoreTransformationService fastValidationEventStoreTransformationService(
             @Qualifier("localEventStoreTransformationService") EventStoreTransformationService service,
@@ -299,8 +299,22 @@ public class TransformationConfiguration {
         return new FastValidationEventStoreTransformationService(service, eventIteratorFactory::eventProviderFor);
     }
 
+    @Primary
+    @ConditionalOnMissingBean(value = EventStoreTransformationService.class, ignored = {
+            LocalEventStoreTransformationService.class,
+            FastValidationEventStoreTransformationService.class
+    })
     @Bean
-    public TransformationsInProgressForContext transformationsInProgressForContext(EventStoreStateRepository repository) {
+    public EventStoreTransformationService loggingEventStoreTransformationService(
+            @Qualifier("fastValidationEventStoreTransformationService") EventStoreTransformationService service
+    ) {
+        return new LoggingEventTransformationService(service);
+    }
+
+
+    @Bean
+    public TransformationsInProgressForContext transformationsInProgressForContext(
+            EventStoreStateRepository repository) {
         return new JpaTransformationsInProgressForContext(repository);
     }
 

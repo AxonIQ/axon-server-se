@@ -84,7 +84,6 @@ public class EventStoreTransformationGrpcController
                                               context,
                                               request.getDescription(),
                                               new GrpcAuthentication(authenticationProvider))
-                                       .doOnSuccess(v -> logger.info("Transformation Created with id {}", uuid))
                                        .subscribe(v -> {
                                                   },
                                                   throwable -> responseObserver.onError(GrpcExceptionBuilder.build(
@@ -177,8 +176,8 @@ public class EventStoreTransformationGrpcController
 
             @Override
             public void onError(Throwable throwable) {
-                receiverFlux.emitComplete(Sinks.EmitFailureHandler.FAIL_FAST);
                 logger.warn("There was an error on the receiving transformation requests stream.", throwable);
+                receiverFlux.emitComplete(Sinks.EmitFailureHandler.FAIL_FAST);
             }
 
             @Override

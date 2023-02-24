@@ -48,6 +48,14 @@ public class FastValidationEventStoreTransformationService implements EventStore
                                            .event(token)
                                            .switchIfEmpty(Mono.error(new IllegalArgumentException(
                                                    "Trying to delete non existing event " + token)))
+                                           .doFirst(() -> logger.trace(
+                                                   "Validating for deletion the existence event {} in context {}",
+                                                   token,
+                                                   context))
+                                           .doOnSuccess(s -> logger.trace(
+                                                   "Event {} in context {} is valid for deletion.",
+                                                   token,
+                                                   context))
                                            .doOnError(FastValidationException.class::isInstance,
                                                       t -> logger.warn("Invalid token to delete.", t))
                                            .doOnError(t -> !(t instanceof FastValidationException),
@@ -62,6 +70,14 @@ public class FastValidationEventStoreTransformationService implements EventStore
                                            .flatMap(original -> validateAggregateIdentifier(original, replacement))
                                            .switchIfEmpty(Mono.error(new IllegalArgumentException(
                                                    "Event not found: " + token)))
+                                           .doFirst(() -> logger.trace(
+                                                   "Validating for replacement event {} in context {}",
+                                                   token,
+                                                   context))
+                                           .doOnSuccess(s -> logger.trace(
+                                                   "Event {} in context {} is valid for replacement.",
+                                                   token,
+                                                   context))
                                            .doOnError(FastValidationException.class::isInstance,
                                                       t -> logger.warn("Invalid event to replace.", t))
                                            .doOnError(t -> !(t instanceof FastValidationException),

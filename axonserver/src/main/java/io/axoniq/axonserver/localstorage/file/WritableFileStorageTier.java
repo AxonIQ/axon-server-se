@@ -348,7 +348,7 @@ public class WritableFileStorageTier extends AbstractFileStorageTier {
                                       new StorageCallback() {
                                           @Override
                                           public boolean complete(long firstToken) {
-                                              logger.warn("Ready for transformation");
+                                              logger.info("Opening new segment completed.");
                                               return true;
                                           }
 
