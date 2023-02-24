@@ -29,7 +29,6 @@ globals.pageView = new Vue({
                                    joinPort: 8224
                                },
                                mounted() {
-
                                    axios.get("v1/public/license").then(response => {
                                        this.license = response.data
                                    });
@@ -40,7 +39,6 @@ globals.pageView = new Vue({
                                        this.nodes = response.data
                                    });
                                    this.timer = setInterval(this.reloadStatus, 5000);
-                                       let me = this;
                                    if (globals.isEnterprise()) {
                                        me.webSocketInfo.subscribe('/topic/cluster', function () {
                                            me.initOverview();
@@ -48,6 +46,7 @@ globals.pageView = new Vue({
                                            me.subscription = sub;
                                        });
                                    }
+                                   if (globals.features.length > 0) {
                                        axios.get("v1/public/visiblecontexts?includeAdmin=false").then(response => {
                                            for (let i = 0; i < response.data.length; i++) {
                                                me.contexts.push(response.data[i]);
@@ -57,6 +56,11 @@ globals.pageView = new Vue({
                                            }
                                            me.reloadStatus()
                                        });
+                                   } else {
+                                       this.context = "default";
+                                       this.reloadStatus();
+                                   }
+
                                },
                                beforeDestroy() {
                                    clearInterval(this.timer);
