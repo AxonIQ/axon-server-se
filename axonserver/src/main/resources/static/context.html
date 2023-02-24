@@ -1,11 +1,11 @@
 <!--
-   ~  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
-   ~  under one or more contributor license agreements.
-   ~
-   ~  Licensed under the AxonIQ Open Source License Agreement v1.0;
-   ~  you may not use this file except in compliance with the license.
-   ~
-   -->
+  ~  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+  ~  under one or more contributor license agreements.
+  ~
+  ~  Licensed under the AxonIQ Open Source License Agreement v1.0;
+  ~  you may not use this file except in compliance with the license.
+  ~
+  -->
 <script>
     //# sourceURL=context.js
     globals.pageView = new Vue({
@@ -41,11 +41,7 @@
                 metaDataLabel: '',
                 metaDataValue: ''
             },
-            currentContext: {
-                metaData: {},
-                metaDataLabel: '',
-                metaDataValue: ''
-            },
+            currentContext: null,
             admin: globals.admin,
             webSocketInfo: globals.webSocketInfo,
             nodes: [],
@@ -197,6 +193,8 @@
                     this.currentContext.metaData).then(response => {
                     this.showAdd = true;
                     this.showUpdate = false;
+                    this.currentContext = null;
+                    this.selectedTierNodeRole = "primary";
                     this.resetMultiTierConf();
                     this.loadContexts();
                 });
@@ -266,9 +264,11 @@
                     "context": context.context,
                     "metaData": Object.assign({}, context.metaData),
                     "metaDataLabel": '',
+                    "selectedReplicationGroup": context.replicationGroup,
                     "metaDataValue": ''
                 };
-                this.chosenEventTiers[this.selectedTierNodeRole] = this.storages('event',context);
+                this.selectedTierNodeRole = "primary";
+                this.chosenEventTiers[this.selectedTierNodeRole] = this.storages('event', context);
                 this.chosenSnapshotTiers[this.selectedTierNodeRole] = this.storages('snapshot',context);
             },
             cancelUpdate() {
@@ -285,6 +285,8 @@
                 }
                 this.currentContext.metaData[this.currentContext.metaDataLabel] = this.currentContext.metaDataValue;
                 this.currentContext.metaDataValue = '';
+                console.log(JSON.stringify(this.currentContext.metaData))
+
                 // setting the property value for the field with the suggestion box does not work, so set the new
                 // value on the suggestion box object
                 this.$refs.currentContextProperty.setText('');
@@ -454,10 +456,14 @@
                 let lRetentionTime = 'retention-time';
                 let lRetentionSize = 'retention-size';
 
+                if (key === "event.retention-time" || key === "snapshot.retention-time") {
+                    return false;
+                }
+
                 return key.includes(lTier) ||
-                    key.includes(lStorage) ||
-                    key.includes(lRetentionTime) ||
-                    key.includes(lRetentionSize);
+                        key.includes(lStorage) ||
+                        key.includes(lRetentionTime) ||
+                        key.includes(lRetentionSize);
             },
             tabNodeState(nodeRoleName) {
                 if (nodeRoleName === this.selectedTierNodeRole) return 'tier-tab-active';
@@ -470,8 +476,19 @@
                     }
 
                     if (this.replicationGroups) {
-                        let selectedRP = this.replicationGroups.find(rp => rp.name === this.newContext.selectedReplicationGroup);
-                        if (selectedRP) availableNodeRoles2 = selectedRP.roles.map(r=>r.role);
+                        if (this.currentContext) {
+                            let selectedRP = this.replicationGroups.find(rp => rp.name
+                                    === this.currentContext.selectedReplicationGroup);
+                            if (selectedRP) {
+                                availableNodeRoles2 = selectedRP.roles.map(r => r.role);
+                            }
+                        } else {
+                            let selectedRP = this.replicationGroups.find(rp => rp.name
+                                    === this.newContext.selectedReplicationGroup);
+                            if (selectedRP) {
+                                availableNodeRoles2 = selectedRP.roles.map(r => r.role);
+                            }
+                        }
                     }
 
                     let availableNodeRoles = availableNodeRoles1.concat(availableNodeRoles2)
@@ -484,8 +501,9 @@
                 }
             },
             changeSelectedTierNodeRole(nodeRoleName) {
-                if (this.tabNodeState(nodeRoleName) === 'tier-tab-disabled') return;
-                else {
+                if (this.tabNodeState(nodeRoleName) === 'tier-tab-disabled') {
+                    return;
+                } else {
                     this.selectedTierNodeRole = nodeRoleName;
                     this.$forceUpdate();
                 }
@@ -493,8 +511,15 @@
             updateUI() {
                 this.$forceUpdate();
             },
+            replicationGroupUpdated() {
+                this.selectedTierNodeRole = "primary";
+                this.newContext.nodes = [];
+                this.updateUI();
+            },
             storages(storageType, context) {
-                if (context.context === '_admin') return [];
+                if (context.context === '_admin') {
+                    return [];
+                }
 
                 let lTier = storageType.concat('.tier');
                 let lStorage = storageType.concat('.storage');
@@ -649,7 +674,8 @@
                <li>
                   <span class="narrow">Replication Group</span>
                   <span>
-                     <select v-model="newContext.selectedReplicationGroup" class="nodeRoleName" @change="updateUI()">
+                     <select v-model="newContext.selectedReplicationGroup" class="nodeRoleName"
+                             @change="replicationGroupUpdated()">
                         <option value="" v-if="isEnterprise()" v-disable="!isEnterprise()">-- create new --</option>
                         <option v-for="n in replicationGroups" :value="n.name">{{ n.name }}</option>
                      </select>
