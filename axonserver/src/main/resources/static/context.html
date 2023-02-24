@@ -275,7 +275,7 @@
                 this.currentContext = null;
                 this.showUpdate = false;
                 this.showAdd = true;
-
+                this.selectedTierNodeRole = "primary";
                 this.resetMultiTierConf();
             },
             addMetaDataToCurrent() {
@@ -513,6 +513,9 @@
             },
             replicationGroupUpdated() {
                 this.selectedTierNodeRole = "primary";
+                for (let a = 0; a < this.newContext.nodes.length; a++) {
+                    this.newContext.nodes[a].selectedRole = "none"
+                }
                 this.newContext.nodes = [];
                 this.updateUI();
             },
