@@ -28,17 +28,17 @@ public class ActiveTransformation implements Transformation {
     public Mono<TransformationState> deleteEvent(long tokenToDelete, long sequence) {
         DeleteEventAction action = new DeleteEventAction(tokenToDelete);
         return performEventAction(action, sequence, tokenToDelete)
-                .doFirst(() -> logger.info("Storing delete event action with token: {}", tokenToDelete))
-                .doOnSuccess(s -> logger.info("Delete event action with token: {} stored", tokenToDelete))
-                .doOnError(e -> logger.warn("Failure deleting event with token: {}", tokenToDelete, e));
+                .doFirst(() -> logger.trace("Storing delete event action with token: {}", tokenToDelete))
+                .doOnSuccess(s -> logger.trace("Delete event action with token: {} stored", tokenToDelete))
+                .doOnError(e -> logger.warn("Failure storing delete event action with token: {}", tokenToDelete, e));
     }
 
     @Override
     public Mono<TransformationState> replaceEvent(long token, Event event, long sequence) {
         ReplaceEventAction action = new ReplaceEventAction(token, event);
         return performEventAction(action, sequence, token)
-                .doOnSuccess(s -> logger.trace("Replacing event with token: {}", token))
-                .doOnError(e -> logger.warn("Failure replacing event with token: {}", token, e));
+                .doOnSuccess(s -> logger.trace("Replace event action with token: {} stored", token))
+                .doOnError(e -> logger.warn("Failure storing replace event action with token: {}", token, e));
     }
 
     @Override

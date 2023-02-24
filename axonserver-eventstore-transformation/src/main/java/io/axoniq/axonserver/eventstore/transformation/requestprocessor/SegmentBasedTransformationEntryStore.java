@@ -22,9 +22,9 @@ public class SegmentBasedTransformationEntryStore implements TransformationEntry
     public Mono<Long> store(TransformationEntry entry) {
         long sequence = entry.sequence();
         return resetIfNeeded(sequence).then(appendOnlyFileStore.append(toFileStoreEntry(entry))
-                                                               .doFirst(() -> logger.info(
+                                                               .doFirst(() -> logger.trace(
                                                                        "Appending transformation entry."))
-                                                               .doOnSuccess(v -> logger.info(
+                                                               .doOnSuccess(v -> logger.trace(
                                                                        "Successfully appended transformation entry"))
                                                                .doOnError(t -> logger.warn(
                                                                        "There was a problem appending transformation entry.",

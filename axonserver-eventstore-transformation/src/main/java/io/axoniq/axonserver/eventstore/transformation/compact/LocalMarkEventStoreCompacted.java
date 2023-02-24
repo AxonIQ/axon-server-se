@@ -22,8 +22,9 @@ public class LocalMarkEventStoreCompacted implements MarkEventStoreCompacted {
     @Override
     public Mono<Void> markCompacted(String compactionId, String context) {
         return transformers.transformerFor(context)
-                           .doOnNext(unused -> logger.warn("Marking event store context {} compacted.", context))
+                           .doFirst(() -> logger.info("Marking event store context {} compacted.", context))
                            .flatMap(transformer -> transformer.markCompacted(compactionId))
-                           .doOnSuccess(unused -> logger.warn("Event store context {} marked compacted.", context));
+                           .doOnSuccess(unused -> logger.info("Event store context {} marked compacted.", context))
+                           .doOnError(error -> logger.warn("Error marking context {} as compacted.", context, error));
     }
 }

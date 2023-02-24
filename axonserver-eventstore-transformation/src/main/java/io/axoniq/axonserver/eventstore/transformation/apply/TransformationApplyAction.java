@@ -31,14 +31,14 @@ public class TransformationApplyAction implements ActionSupplier {
     @Override
     public Mono<Void> get() {
         return transformations.applyingTransformations()
-                              .doOnNext(transformation -> logger.warn("Applying transformation: {}",
+                              .doOnNext(transformation -> logger.info("Applying transformation: {}",
                                                                       transformation.id()))
                               .flatMap(transformation -> applier.apply(new ApplierTransformation(transformation))
                                                                 .doOnError(t -> logger.error(
                                                                         "An error happened while applying the transformation: {}.",
                                                                         transformation.id(),
                                                                         t))
-                                                                .doOnSuccess(notUsed -> logger.warn(
+                                                                .doOnSuccess(notUsed -> logger.info(
                                                                         "Applied transformation: {}",
                                                                         transformation.id()))
                                                                 .then(markTransformationApplied.markApplied(
