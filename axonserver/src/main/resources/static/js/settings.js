@@ -39,6 +39,7 @@ globals.pageView = new Vue({
                                        this.nodes = response.data
                                    });
                                    this.timer = setInterval(this.reloadStatus, 5000);
+                                   let me = this;
                                    if (globals.isEnterprise()) {
                                        me.webSocketInfo.subscribe('/topic/cluster', function () {
                                            me.initOverview();
