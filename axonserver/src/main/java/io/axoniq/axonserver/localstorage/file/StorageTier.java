@@ -191,14 +191,16 @@ public interface StorageTier {
                 long minTimestamp = System.currentTimeMillis() - retentionTimeInMillis;
                 long candidate = segmentIterator.next();
 
-
                 if (segments.firstKey() == candidate) {
                     return null;
                 }
 
-
-                Map.Entry<Long, Integer> firstEntry = segments.firstEntry();
-                if (dataFileResolver.apply(new FileVersion(firstEntry.getKey(), firstEntry.getValue())).lastModified() < minTimestamp) {
+                Integer candidateVersion = segments.get(candidate);
+                if (candidateVersion == null) {
+                    return null;
+                }
+                File file = dataFileResolver.apply(new FileVersion(candidate, candidateVersion));
+                if (file.lastModified() < minTimestamp) {
                     return candidate;
                 }
             }
