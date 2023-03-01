@@ -1,3 +1,12 @@
+/*
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver.transport.grpc;
 
 import io.axoniq.axonserver.api.Authentication;
@@ -33,12 +42,28 @@ public class GrpcAuthentication implements Authentication {
     public boolean hasRole(@NotNull String role, @NotNull String context) {
         return authentication.getAuthorities()
                              .stream()
-                             .anyMatch(grantedAuthority -> grantedAuthority.getAuthority().equals(format("%s@%s", role, context)));
+                             .anyMatch(grantedAuthority ->
+                                               grantedAuthority.getAuthority().equals(format("%s@%s", role, context)) ||
+                                                       grantedAuthority.getAuthority().equals(format("%s@*", role)));
     }
 
     @Override
     public boolean application() {
         return true;
+    }
+
+    @Override
+    public boolean isLocallyManaged() {
+        return true;
+    }
+
+    @Override
+    public boolean hasAnyRole(@NotNull String context) {
+        return authentication.getAuthorities()
+                             .stream()
+                             .anyMatch(grantedAuthority ->
+                                               grantedAuthority.getAuthority().endsWith(format("@%s", context)) ||
+                                                       grantedAuthority.getAuthority().endsWith("@*"));
     }
 }
 
