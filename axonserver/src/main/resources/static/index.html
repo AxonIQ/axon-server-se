@@ -227,7 +227,7 @@
                         return this.user != null;
                     },
                     showConfiguration: function () {
-                        return this.admin || this.readOnlyAdmin || globals.license === 'Standard Edition';
+                        return this.admin || this.readOnlyAdmin;
                     },
                     setHeight() {
                         if (globals.admin) {
