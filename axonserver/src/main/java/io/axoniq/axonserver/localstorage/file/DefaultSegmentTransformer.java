@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -12,16 +12,19 @@ package io.axoniq.axonserver.localstorage.file;
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
+import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 class DefaultSegmentTransformer implements SegmentTransformer {
 
@@ -126,55 +129,82 @@ class DefaultSegmentTransformer implements SegmentTransformer {
     private Mono<Void> process(Supplier<Optional<EventWithToken>> replacementSupplier) {
         return Mono.<Void>create(sink -> {
             try {
-                //todo to be simplified
-                boolean done = false;
+                Optional<EventWithToken> eventWithToken = replacementSupplier.get();
+                if (eventWithToken.isEmpty()) {
+                    writeRemainingEvents();
+                    sink.success();
+                    return;
+                }
+
+                EventWithToken transformedEvent = eventWithToken.get();
+                boolean found = false;
                 do {
-                    if (originalTransactionRef.get() == null) {
-                        if (!transactionIteratorRef.get().hasNext()) {
-                            sink.success();
-                            return;
-                        }
-                        originalTransactionRef.set(transactionIteratorRef.get().next());
+                    SerializedTransactionWithToken originalTX = originalTransaction();
+                    if (originalTX == null) {
+                        sink.success(); // or error as the segment does not contain the transaction we are looking for
+                        return;
                     }
 
-                    SerializedTransactionWithToken originalTX = originalTransactionRef.get();
-                    Event event = originalTX.getEvents(transformedTransaction.size());
-
-
-                    Optional<EventWithToken> eventWithToken = replacementSupplier.get();
-                    if (eventWithToken.isPresent()) {
-                        long currentToken = originalTX.getToken() + transformedTransaction.size();
-                        EventWithToken transformedEvent = eventWithToken.get();
-                        if (transformedEvent.getToken() == currentToken) {
-                            Event replacement = transformedEvent.getEvent();
-                            if (Event.getDefaultInstance().equals(replacement)) {
-                                event = Event.newBuilder()
-                                             .setTimestamp(event.getTimestamp())
-                                             .setAggregateIdentifier(event.getAggregateIdentifier())
-                                             .setAggregateSequenceNumber(event.getAggregateSequenceNumber())
-                                             .setPayload(EMPTY_PAYLOAD)
-                                             .build();
-                            } else {
-                                event = replacement;
-                            }
-                            done = true;
-                        }
-                    } else if (!transactionIteratorRef.get().hasNext()) {
-                        done = true;
+                    Event event = originalTX.getEvent(transformedTransaction.size());
+                    if (transformedEvent.getToken() == originalTX.getToken() + transformedTransaction.size()) {
+                        event = transform(event, transformedEvent.getEvent());
+                        found = true;
                     }
                     transformedTransaction.add(event);
 
-                    if (originalTX.getEvents().size() == transformedTransaction.size()) {
-                        SegmentWriter segmentWriter = segmentWriterRef.get();
-                        segmentWriter.write(transformedTransaction);
-                        originalTransactionRef.set(null);
+                    if (transformedTransaction.size() == originalTX.getEventsCount()) {
+                        write(transformedTransaction);
                         transformedTransaction.clear();
+                        originalTransactionRef.set(null);
                     }
-                } while (!done);
+                } while (!found);
                 sink.success();
             } catch (Exception e) {
                 sink.error(e);
             }
         }).subscribeOn(Schedulers.boundedElastic());
+    }
+
+    private Event transform(Event originalEvent, Event replacementEvent) {
+        if (Event.getDefaultInstance().equals(replacementEvent)) {
+            return Event.newBuilder()
+                        .setTimestamp(originalEvent.getTimestamp())
+                        .setAggregateIdentifier(originalEvent.getAggregateIdentifier())
+                        .setAggregateSequenceNumber(originalEvent.getAggregateSequenceNumber())
+                        .setAggregateType(originalEvent.getAggregateType().isEmpty() ? "" : "-")
+                        .setPayload(EMPTY_PAYLOAD)
+                        .build();
+        }
+        return replacementEvent;
+    }
+
+    private SerializedTransactionWithToken originalTransaction() {
+        if (originalTransactionRef.get() == null && transactionIteratorRef.get().hasNext()) {
+            originalTransactionRef.set(transactionIteratorRef.get().next());
+        }
+
+        return originalTransactionRef.get();
+    }
+
+    private void write(List<Event> events) throws IOException {
+        SegmentWriter segmentWriter = segmentWriterRef.get();
+        segmentWriter.write(events);
+    }
+
+    private void writeRemainingEvents() throws IOException {
+        // first complete the remaining events in the original transaction
+        SerializedTransactionWithToken originalTX = originalTransactionRef.get();
+        if (originalTX != null) {
+            while (transformedTransaction.size() < originalTX.getEventsCount()) {
+                transformedTransaction.add(originalTX.getEvent(transformedTransaction.size()));
+            }
+            write(transformedTransaction);
+        }
+        // write remaining transactions
+        TransactionIterator transactionIterator = transactionIteratorRef.get();
+        while (transactionIterator.hasNext()) {
+            SerializedTransactionWithToken next = transactionIterator.next();
+            write(next.getEvent().stream().map(SerializedEvent::asEvent).collect(Collectors.toList()));
+        }
     }
 }

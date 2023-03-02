@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -35,7 +35,7 @@ public class SerializedTransactionWithToken {
         return token;
     }
 
-    public List<SerializedEvent> getEvents() {
+    public List<SerializedEvent> getEvent() {
         return events;
     }
 
@@ -65,7 +65,7 @@ public class SerializedTransactionWithToken {
         return events.size();
     }
 
-    public Event getEvents(int i) {
+    public Event getEvent(int i) {
         return events.get(i).asEvent();
     }
 }

@@ -152,7 +152,7 @@ public class FileEventStorageEngine implements EventStorageEngine {
             while (iterator.hasNext()) {
                 last = iterator.next();
             }
-            return new ValidationResult(segment, last == null ? segment : last.getToken() + last.getEvents().size());
+            return new ValidationResult(segment, last == null ? segment : last.getToken() + last.getEvent().size());
         } catch (Exception ex) {
             return new ValidationResult(segment, ex.getMessage());
         }
@@ -446,7 +446,7 @@ public class FileEventStorageEngine implements EventStorageEngine {
                      transactionIterator(token, token + eventList.size())) {
             if (transactionIterator.hasNext()) {
                 SerializedTransactionWithToken transaction = transactionIterator.next();
-                if (!equals(transaction.getEvents(), eventList)) {
+                if (!equals(transaction.getEvent(), eventList)) {
                     throw new EventStoreValidationException(format(
                             "%s: Replicated %s transaction %d does not match stored transaction",
                             context.getContext(),
