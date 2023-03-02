@@ -1,5 +1,5 @@
 <!--
-  ~  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+  ~  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
   ~  under one or more contributor license agreements.
   ~
   ~  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -162,7 +162,7 @@
                         info: null,
                         help: false
                     }, mounted() {
-                if (globals.isEnterprise()) {
+                if (globals.features.length > 0) {
                     axios.get("v1/public/visiblecontexts?includeAdmin=false").then(response => {
                         this.contexts = response.data;
                         this.activeContext = this.contexts.length === 0 ? "" : this.contexts[0];
@@ -172,6 +172,9 @@
                     methods: {
                         toggleHelp() {
                             this.help = !this.help;
+                        },
+                        showContexts() {
+                            return globals.features.length > 0;
                         },
                         select(row) {
                             this.activeRow.style = "";
@@ -317,13 +320,14 @@
 
         <input type="checkbox" v-model="liveUpdates">Live Updates</input>
 
-        <span v-if="isEnterprise()" style="margin-left: 15px;">
+        <span v-if="showContexts()" style="margin-left: 15px;">
 
-
-        <input type="checkbox" v-model="forceReadFromLeader">Read from leader</input>
+        <span v-if="isEnterprise()">
+            <input type="checkbox" v-model="forceReadFromLeader">Read from leader</input>
+        </span>
             Active context:
         <select v-model="activeContext">
-            <option v-for="n in contexts">{{n}}</option>
+            <option v-for="n in contexts">{{ n }}</option>
         </select>
         </span>
     </div>
