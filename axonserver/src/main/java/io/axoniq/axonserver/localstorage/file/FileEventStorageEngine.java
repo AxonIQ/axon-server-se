@@ -152,7 +152,7 @@ public class FileEventStorageEngine implements EventStorageEngine {
             while (iterator.hasNext()) {
                 last = iterator.next();
             }
-            return new ValidationResult(segment, last == null ? segment : last.getToken() + last.getEvents().size());
+            return new ValidationResult(segment, last == null ? segment : last.getToken() + last.getEventsCount());
         } catch (Exception ex) {
             return new ValidationResult(segment, ex.getMessage());
         }
