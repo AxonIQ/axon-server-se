@@ -139,7 +139,7 @@ class DefaultSegmentTransformer implements SegmentTransformer {
                 EventWithToken transformedEvent = eventWithToken.get();
                 boolean found = false;
                 do {
-                    SerializedTransactionWithToken originalTX = originalTransaction();
+                    SerializedTransactionWithToken originalTX = currentOrNextOriginalTransaction();
                     if (originalTX == null) {
                         sink.success(); // or error as the segment does not contain the transaction we are looking for
                         return;
@@ -171,14 +171,14 @@ class DefaultSegmentTransformer implements SegmentTransformer {
                         .setTimestamp(originalEvent.getTimestamp())
                         .setAggregateIdentifier(originalEvent.getAggregateIdentifier())
                         .setAggregateSequenceNumber(originalEvent.getAggregateSequenceNumber())
-                        .setAggregateType(originalEvent.getAggregateType().isEmpty() ? "" : "-")
+                        .setAggregateType(originalEvent.getAggregateType())
                         .setPayload(EMPTY_PAYLOAD)
                         .build();
         }
         return replacementEvent;
     }
 
-    private SerializedTransactionWithToken originalTransaction() {
+    private SerializedTransactionWithToken currentOrNextOriginalTransaction() {
         if (originalTransactionRef.get() == null && transactionIteratorRef.get().hasNext()) {
             originalTransactionRef.set(transactionIteratorRef.get().next());
         }
@@ -195,7 +195,7 @@ class DefaultSegmentTransformer implements SegmentTransformer {
         // first complete the remaining events in the original transaction
         SerializedTransactionWithToken originalTX = originalTransactionRef.get();
         if (originalTX != null) {
-            while (transformedTransaction.size() < originalTX.getEventsCount()) {
+            for (int i = transformedTransaction.size(); i < originalTX.getEventsCount(); i++) {
                 transformedTransaction.add(originalTX.getEvent(transformedTransaction.size()));
             }
             write(transformedTransaction);
