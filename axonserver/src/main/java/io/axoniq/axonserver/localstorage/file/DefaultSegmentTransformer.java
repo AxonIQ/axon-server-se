@@ -204,7 +204,7 @@ class DefaultSegmentTransformer implements SegmentTransformer {
         TransactionIterator transactionIterator = transactionIteratorRef.get();
         while (transactionIterator.hasNext()) {
             SerializedTransactionWithToken next = transactionIterator.next();
-            write(next.getEvent().stream().map(SerializedEvent::asEvent).collect(Collectors.toList()));
+            write(next.getEvents().stream().map(SerializedEvent::asEvent).collect(Collectors.toList()));
         }
     }
 }

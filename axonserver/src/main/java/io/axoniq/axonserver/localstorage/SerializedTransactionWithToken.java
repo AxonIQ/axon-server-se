@@ -35,7 +35,7 @@ public class SerializedTransactionWithToken {
         return token;
     }
 
-    public List<SerializedEvent> getEvent() {
+    public List<SerializedEvent> getEvents() {
         return events;
     }
 
