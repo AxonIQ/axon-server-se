@@ -42,19 +42,14 @@ public class PrincipalAuthentication implements Authentication {
     @Override
     public boolean hasRole(@NotNull String role, @NotNull String context) {
         if (principal instanceof org.springframework.security.core.Authentication) {
-            return ((org.springframework.security.core.Authentication) principal).getAuthorities()
-                                                                                 .stream()
-                                                                                 .anyMatch(grantedAuthority ->
-                                                                                                   grantedAuthority.getAuthority()
-                                                                                                                   .equals(format(
-                                                                                                                           "%s@%s",
-                                                                                                                           role,
-                                                                                                                           context))
-                                                                                                           ||
-                                                                                                           grantedAuthority.getAuthority()
-                                                                                                                           .equals(format(
-                                                                                                                                   "%s@*",
-                                                                                                                                   role)));
+            String roleAtContext = format("%s@%s", role, context);
+            String roleAtAny = format("%s@*", role);
+            return ((org.springframework.security.core.Authentication) principal)
+                    .getAuthorities()
+                    .stream()
+                    .anyMatch(grantedAuthority ->
+                                      grantedAuthority.getAuthority().equals(roleAtContext)
+                                              || grantedAuthority.getAuthority().equals(roleAtAny));
         }
         return false;
     }
@@ -85,17 +80,13 @@ public class PrincipalAuthentication implements Authentication {
     @Override
     public boolean hasAnyRole(@NotNull String context) {
         if (principal instanceof org.springframework.security.core.Authentication) {
-            return ((org.springframework.security.core.Authentication) principal).getAuthorities()
-                                                                                 .stream()
-                                                                                 .anyMatch(grantedAuthority ->
-                                                                                                   grantedAuthority.getAuthority()
-                                                                                                                   .endsWith(
-                                                                                                                           format("@%s",
-                                                                                                                                  context))
-                                                                                                           ||
-                                                                                                           grantedAuthority.getAuthority()
-                                                                                                                           .endsWith(
-                                                                                                                                   "@*"));
+            String atContext = format("@%s", context);
+            return ((org.springframework.security.core.Authentication) principal)
+                    .getAuthorities()
+                    .stream()
+                    .anyMatch(grantedAuthority ->
+                                      grantedAuthority.getAuthority().endsWith(atContext)
+                                              || grantedAuthority.getAuthority().endsWith("@*"));
         }
         return false;
     }

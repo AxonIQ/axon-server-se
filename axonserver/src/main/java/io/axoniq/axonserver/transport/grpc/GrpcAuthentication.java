@@ -40,11 +40,13 @@ public class GrpcAuthentication implements Authentication {
 
     @Override
     public boolean hasRole(@NotNull String role, @NotNull String context) {
+        String roleAtContext = format("%s@%s", role, context);
+        String roleAtAny = format("%s@%s", role, context);
         return authentication.getAuthorities()
                              .stream()
                              .anyMatch(grantedAuthority ->
-                                               grantedAuthority.getAuthority().equals(format("%s@%s", role, context)) ||
-                                                       grantedAuthority.getAuthority().equals(format("%s@*", role)));
+                                               grantedAuthority.getAuthority().equals(roleAtContext) ||
+                                                       grantedAuthority.getAuthority().equals(roleAtAny));
     }
 
     @Override
@@ -59,10 +61,11 @@ public class GrpcAuthentication implements Authentication {
 
     @Override
     public boolean hasAnyRole(@NotNull String context) {
+        String atContext = format("@%s", context);
         return authentication.getAuthorities()
                              .stream()
                              .anyMatch(grantedAuthority ->
-                                               grantedAuthority.getAuthority().endsWith(format("@%s", context)) ||
+                                               grantedAuthority.getAuthority().endsWith(atContext) ||
                                                        grantedAuthority.getAuthority().endsWith("@*"));
     }
 }
