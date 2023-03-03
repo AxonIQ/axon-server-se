@@ -87,10 +87,22 @@ public interface Topology {
         return true;
     }
 
+    /**
+     * Retrieves a {@link Flux} of context names that the requester is allowed to see.
+     * @param includeAdmin include the admin context in the result
+     * @param authentication the authentication of the requester
+     * @return flux of context names
+     */
     default Flux<String> getVisibleContexts(boolean includeAdmin, Authentication authentication) {
         return Flux.just(DEFAULT_CONTEXT);
     }
 
+    /**
+     * Retrieves a {@link Set} of context names that the requester is allowed to see.
+     * @param includeAdmin include the admin context in the result
+     * @param authentication the authentication of the requester
+     * @return set of context names
+     */
     default Set<String> visibleContexts(boolean includeAdmin, Authentication authentication) {
         return getVisibleContexts(includeAdmin, authentication)
                 .collect(Collectors.toSet())
