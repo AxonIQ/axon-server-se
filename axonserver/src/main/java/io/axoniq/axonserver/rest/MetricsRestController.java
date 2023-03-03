@@ -17,6 +17,8 @@ import io.axoniq.axonserver.message.query.QueryDefinition;
 import io.axoniq.axonserver.message.query.QueryHandler;
 import io.axoniq.axonserver.message.query.QueryMetricsRegistry;
 import io.axoniq.axonserver.message.query.QueryRegistrationCache;
+import io.axoniq.axonserver.topology.Topology;
+import io.axoniq.axonserver.transport.rest.PrincipalAuthentication;
 import io.swagger.v3.oas.annotations.Parameter;
 import org.slf4j.Logger;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -47,15 +49,18 @@ public class MetricsRestController {
     private final CommandMetricsRegistry commandMetricsRegistry;
     private final QueryRegistrationCache queryRegistrationCache;
     private final QueryMetricsRegistry queryMetricsRegistry;
+    private final Topology topology;
 
     public MetricsRestController(CommandRegistrationCache commandRegistrationCache,
                                  CommandMetricsRegistry commandMetricsRegistry,
                                  QueryRegistrationCache queryRegistrationCache,
-                                 QueryMetricsRegistry queryMetricsRegistry) {
+                                 QueryMetricsRegistry queryMetricsRegistry,
+                                 Topology topology) {
         this.commandRegistrationCache = commandRegistrationCache;
         this.commandMetricsRegistry = commandMetricsRegistry;
         this.queryRegistrationCache = queryRegistrationCache;
         this.queryMetricsRegistry = queryMetricsRegistry;
+        this.topology = topology;
     }
 
 
@@ -65,14 +70,20 @@ public class MetricsRestController {
         auditLog.debug("[{}] Request to list command metrics.", AuditLog.username(principal));
 
         List<CommandMetricsRegistry.CommandMetric> metrics = new ArrayList<>();
-        commandRegistrationCache.getAll().forEach((commandHander, registrations) -> metrics
-                .addAll(getMetrics(commandHander, registrations)));
+        Set<String> contexts = topology.getVisibleContexts(false, new PrincipalAuthentication(principal))
+                                       .collect(Collectors.toSet())
+                                       .block();
+        commandRegistrationCache.getAll()
+                                .forEach((commandHander, registrations) ->
+                                                 metrics.addAll(getMetrics(commandHander, contexts, registrations)));
         return metrics;
     }
 
     private List<CommandMetricsRegistry.CommandMetric> getMetrics(CommandHandler commandHander,
+                                                                  Set<String> contexts,
                                                                   Set<CommandRegistrationCache.RegistrationEntry> registrations) {
         return registrations.stream()
+                .filter(registration -> contexts.contains(registration.getContext()))
                             .map(registration -> commandMetricsRegistry
                                     .commandMetric(registration.getCommand(),
                                                    commandHander.getClientId(),
@@ -85,20 +96,24 @@ public class MetricsRestController {
     @GetMapping("/query-metrics")
     public List<QueryMetricsRegistry.QueryMetric> getQueryMetrics(@Parameter(hidden = true) final Principal principal) {
         auditLog.debug("[{}] Request to list query metrics.", AuditLog.username(principal));
-
+        Set<String> contexts = topology.getVisibleContexts(false, new PrincipalAuthentication(principal))
+                                       .collect(Collectors.toSet())
+                                       .block();
         List<QueryMetricsRegistry.QueryMetric> metrics = new ArrayList<>();
         queryRegistrationCache.getAll().forEach((queryDefinition, handlersPerComponent) -> metrics
-                .addAll(getQueryMetrics(queryDefinition, handlersPerComponent)));
+                .addAll(getQueryMetrics(queryDefinition, contexts, handlersPerComponent)));
         return metrics;
     }
 
     private List<QueryMetricsRegistry.QueryMetric> getQueryMetrics(QueryDefinition queryDefinition,
+                                                                   Set<String> contexts,
                                                                    Map<String, Set<QueryHandler<?>>> handlersPerComponent) {
         return handlersPerComponent.entrySet()
                                    .stream()
                                    .map(queryHandlers -> queryHandlers
                                            .getValue()
                                            .stream()
+                                           .filter(queryHandler -> contexts.contains(queryHandler.getClientStreamIdentification().getContext()))
                                            .map(queryHandler -> queryMetricsRegistry
                                                    .queryMetric(
                                                            queryDefinition,

@@ -9,7 +9,8 @@
 
 package io.axoniq.axonserver.message.query;
 
-import io.axoniq.axonserver.message.SubscriptionKey;
+import io.axoniq.axonserver.topology.Topology;
+import io.axoniq.axonserver.transport.rest.PrincipalAuthentication;
 import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
@@ -20,7 +21,7 @@ import org.springframework.web.socket.messaging.SessionUnsubscribeEvent;
 
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
 /**
@@ -30,20 +31,23 @@ import java.util.stream.Stream;
 @Component
 public class QueryMetricsWebSocket {
 
-    public static final String DESTINATION = "/topic/queries";
-    private final Set<SubscriptionKey> subscriptions = new CopyOnWriteArraySet<>();
+    public static final String DESTINATION = "/topic/queries/";
+    private final Map<String, Set<String>> subscriptions = new ConcurrentHashMap<>();
 
     private final QueryMetricsRegistry queryMetricsRegistry;
 
     private final QueryRegistrationCache queryRegistrationCache;
 
+    private final Topology topology;
     private final SimpMessagingTemplate webSocket;
 
     public QueryMetricsWebSocket(QueryMetricsRegistry queryMetricsRegistry,
                                  QueryRegistrationCache queryRegistrationCache,
+                                 Topology topology,
                                  SimpMessagingTemplate webSocket) {
         this.queryMetricsRegistry = queryMetricsRegistry;
         this.queryRegistrationCache = queryRegistrationCache;
+        this.topology = topology;
         this.webSocket = webSocket;
     }
 
@@ -55,22 +59,29 @@ public class QueryMetricsWebSocket {
         }
         queryRegistrationCache.getAll().forEach(
                 (queryDefinition, handlersPerComponent) -> getMetrics(queryDefinition, handlersPerComponent).forEach(
-                        commandMetric -> webSocket.convertAndSend(DESTINATION, commandMetric)
+                        queryMetric -> subscriptions.forEach((destinations, contexts) -> {
+                            if (contexts.contains(queryMetric.getContext())) {
+                                webSocket.convertAndSend(destinations, queryMetric);
+                            }
+                        })
                 ));
     }
 
     @EventListener
     public void on(SessionSubscribeEvent event) {
         StompHeaderAccessor sha = StompHeaderAccessor.wrap(event.getMessage());
-        if (DESTINATION.equals(sha.getDestination())) {
-            subscriptions.add(new SubscriptionKey(sha));
+        String destination = sha.getDestination();
+        if (destination != null && destination.startsWith(DESTINATION)) {
+            subscriptions.put(destination, topology.visibleContexts(false, new PrincipalAuthentication(sha.getUser())));
         }
     }
 
     @EventListener
     public void on(SessionUnsubscribeEvent event) {
         StompHeaderAccessor sha = StompHeaderAccessor.wrap(event.getMessage());
-        subscriptions.remove(new SubscriptionKey(sha));
+        if (sha.getDestination() != null) {
+            subscriptions.remove(sha.getDestination());
+        }
     }
 
 

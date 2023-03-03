@@ -124,7 +124,7 @@ public class QueryMetricsRegistry {
      */
     public QueryMetric queryMetric(QueryDefinition query, String targetClientId, String context, String componentName) {
         ClusterMetric clusterMetric = clusterMetric(query, targetClientId, context);
-        return new QueryMetric(query, targetClientId + "." + context, componentName, clusterMetric.count());
+        return new QueryMetric(query, targetClientId, context, componentName, clusterMetric.count());
     }
 
     /**
@@ -188,12 +188,14 @@ public class QueryMetricsRegistry {
 
         private final QueryDefinition queryDefinition;
         private final String clientId;
+        private final String context;
         private final String componentName;
         private final long count;
 
-        QueryMetric(QueryDefinition queryDefinition, String clientId, String componentName, double count) {
+        QueryMetric(QueryDefinition queryDefinition, String clientId, String context, String componentName, double count) {
             this.queryDefinition = queryDefinition;
             this.clientId = clientId;
+            this.context = context;
             this.componentName = componentName;
             this.count = (long) count;
         }
@@ -204,6 +206,10 @@ public class QueryMetricsRegistry {
 
         public String getClientId() {
             return clientId;
+        }
+
+        public String getContext() {
+            return context;
         }
 
         public String getComponentName() {
@@ -220,12 +226,13 @@ public class QueryMetricsRegistry {
             if (o == null || getClass() != o.getClass()) return false;
             QueryMetric that = (QueryMetric) o;
             return Objects.equals(queryDefinition, that.queryDefinition) &&
-                    Objects.equals(clientId, that.clientId);
+                    Objects.equals(clientId, that.clientId) &&
+                    Objects.equals(context, that.context);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(queryDefinition, clientId);
+            return Objects.hash(queryDefinition, clientId, context);
         }
     }
 }

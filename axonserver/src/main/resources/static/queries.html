@@ -7,27 +7,11 @@
   ~
   -->
 
-<script src="js/queries.js" language="JavaScript"></script>
+<script>
+    globals.pageView = new Vue({el: '#query',});
+</script>
 <noscript><h2 style="color: #ff0000">Seems your browser doesn't support Javascript! Websocket relies on Javascript
     being enabled. Please enable Javascript and reload this page!</h2></noscript>
 <span id="query">
-    <div class="content results">
-        <table id="queries" class="table table-striped">
-            <thead>
-            <tr>
-                <th class="queryCol">Queries</th>
-                <th v-for="clientId in clients">
-                    <div>{{componentNames[clientId]}} <br>
-                        <small>{{clientId}}</small>
-                    </div>
-                </th>
-            </tr>
-            </thead>
-            <tbody id="statistics">
-            <tr v-for="queryName in queries">
-                <td><div>{{queryName}}</div></td>
-                <td v-for="clientId in clients">{{metrics[clientId][queryName] || 0}}</td>
-            </tbody>
-        </table>
-    </div>
+    <component-query-metrics></component-query-metrics>
 </span>

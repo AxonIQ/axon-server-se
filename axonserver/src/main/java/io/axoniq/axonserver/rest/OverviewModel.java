@@ -26,6 +26,7 @@ import io.axoniq.axonserver.rest.svg.mapping.AxonServerPopupMapping;
 import io.axoniq.axonserver.serializer.Media;
 import io.axoniq.axonserver.serializer.Printable;
 import io.axoniq.axonserver.topology.Topology;
+import io.axoniq.axonserver.transport.rest.PrincipalAuthentication;
 import io.swagger.v3.oas.annotations.Parameter;
 import org.slf4j.Logger;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -35,8 +36,12 @@ import org.springframework.web.bind.annotation.RestController;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.security.Principal;
+import java.util.Collections;
 import java.util.Iterator;
+import java.util.Set;
 import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -50,13 +55,13 @@ public class OverviewModel {
     private static final Logger auditLog = AuditLog.getLogger();
 
     private final Topology clusterController;
-    private final Function<String, Stream<Application>> applicationProvider;
-    private final Function<String, Stream<AxonServer>> axonServerProvider;
+    private final Function<Predicate<String>, Stream<Application>> applicationProvider;
+    private final Function<Predicate<String>, Stream<AxonServer>> axonServerProvider;
     private final Fonts fonts;
 
     public OverviewModel(Topology clusterController,
-                         Function<String, Stream<Application>> applicationProvider,
-                         Function<String, Stream<AxonServer>> axonServerProvider) {
+                         Function<Predicate<String>, Stream<Application>> applicationProvider,
+                         Function<Predicate<String>, Stream<AxonServer>> axonServerProvider) {
         this.clusterController = clusterController;
         this.applicationProvider = applicationProvider;
         this.axonServerProvider = axonServerProvider;
@@ -68,6 +73,7 @@ public class OverviewModel {
                                 @RequestParam(value = "for-context", required = false) String context) {
         auditLog.debug("[{}] Request to render an SVG cluster overview.", AuditLog.username(principal));
 
+        Set<String> contexts = context == null ? validContexts(principal) : Collections.singleton(context);
         boolean multiContext = clusterController.isMultiContext();
         AxonServerBoxMapping serverRegistry = new AxonServerBoxMapping(multiContext,
                                                                        clusterController.getName(),
@@ -75,13 +81,14 @@ public class OverviewModel {
 
         Element hubNodes = new Grouped(new Elements(10,
                                                     200,
-                                                    () -> axonServerProvider.apply(context).iterator(),
+                                                    () -> axonServerProvider.apply(contexts::contains)
+                                                                            .iterator(),
                                                     serverRegistry), "axonserverNodes");
         Element clients = new Elements(10,
                                        10,
-                                       () -> applicationProvider.apply(context).iterator(),
+                                       () -> applicationProvider.apply(contexts::contains).iterator(),
                                        new ApplicationBoxMapping(serverRegistry, fonts));
-        Element popups = new Elements(() -> axonServerProvider.apply(context).iterator(),
+        Element popups = new Elements(() -> axonServerProvider.apply(contexts::contains).iterator(),
                                       new AxonServerPopupMapping(serverRegistry, fonts));
 
         Elements components = new Elements(hubNodes, clients, popups);
@@ -96,8 +103,17 @@ public class OverviewModel {
     public Iterator<ApplicationJsonInfo> overviewList(@Parameter(hidden = true) final Principal principal,
                                                       @RequestParam(value = "for-context", required = false) String context) {
         auditLog.debug("[{}] Request to render an SVG cluster overview.", AuditLog.username(principal));
+        Set<String> contexts = context == null ? validContexts(principal) : Collections.singleton(context);
 
-        return applicationProvider.apply(context).map(a -> new ApplicationJsonInfo(a)).iterator();
+        return applicationProvider.apply(contexts::contains)
+                                  .map(ApplicationJsonInfo::new)
+                                  .iterator();
+    }
+
+    private Set<String> validContexts(Principal principal) {
+        return clusterController.getVisibleContexts(true, new PrincipalAuthentication(principal))
+                                .collect(Collectors.toSet())
+                                .block();
     }
 
     public static class SvgOverview {

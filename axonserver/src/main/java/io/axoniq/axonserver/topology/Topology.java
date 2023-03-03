@@ -9,7 +9,12 @@
 
 package io.axoniq.axonserver.topology;
 
+import io.axoniq.axonserver.api.Authentication;
+import reactor.core.publisher.Flux;
+
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -80,5 +85,15 @@ public interface Topology {
 
     default boolean validContext(String context) {
         return true;
+    }
+
+    default Flux<String> getVisibleContexts(boolean includeAdmin, Authentication authentication) {
+        return Flux.just(DEFAULT_CONTEXT);
+    }
+
+    default Set<String> visibleContexts(boolean includeAdmin, Authentication authentication) {
+        return getVisibleContexts(includeAdmin, authentication)
+                .collect(Collectors.toSet())
+                .block();
     }
 }
