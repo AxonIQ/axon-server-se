@@ -419,6 +419,10 @@
                                 retentionSize = tier.retentionAmount * 1073741824;
                                 break;
                             default:
+                                if (index > 0) {
+                                    alert("You must define valid retention time or size for " + storageType + " tier at level " + index + "!");
+                                    throw "You must define valid retention time or size for" + storageType + " tier at level " + index + "!";
+                                }
                         }
 
                         metaData[prefix.concat(lTier.concat(suffixLevel).concat(suffixNodeRole))] = tier.id;
@@ -427,13 +431,23 @@
                             metaData[prefix.concat(lStorage.concat(suffixLevel).concat(suffixNodeRole))] = 'primary';
                         }
 
+                        if (tier.id === "custom_storage" && tier.storage === undefined) {
+                            alert("You must define valid storage storage for " + storageType + " tier at level " + index + "!");
+                            throw 'You must define valid storage storage for ' + storageType + ' tier at level ' + index + '!';
+                        }
+
                         if (tier.id === "custom_storage" && tier.storage.length >= 1) {
                             metaData[prefix.concat(lStorage.concat(suffixLevel).concat(suffixNodeRole))] = tier.storage;
                         }
 
-                        if (tier.id === "custom_storage" && tier.storage.length < 1) {
-                            alert("You must define valid storage storage!");
-                            throw 'You must define valid storage storage!!';
+                        if (retentionTime < 0 ) {
+                            alert("You must define valid retention time for " + storageType + " tier at level " + index + "!");
+                            throw "You must define valid retention time for " + storageType + " tier at level " + index + "!";
+                        }
+
+                        if (retentionSize < 0 ) {
+                            alert("You must define valid retention size for " + storageType + " tier at level " + index + "!");
+                            throw "You must define valid retention size for " + storageType + " tier at level " + index + "!";
                         }
 
                         if (retentionTime !== 0) {
@@ -759,7 +773,7 @@
                   <span>
                      <table class="nestedTable">
                         <tbody>
-                           <tr v-for="key in Object.keys(newContext.metaData)">
+                           <tr v-for="key in Object.keys(newContext.metaData)" v-if="!isTierMetaData(key)">
                               <td style="width: 60%">{{ key }}</td>
                               <td><input v-model="newContext.metaData[key]" class="propertyValue"
                                          data-lpignore="true"></td>
@@ -822,9 +836,9 @@
                                   <option v-for="[storage, path] in showAvailableStorages(index,'event')"
                                           :value="storage">{{ storage }}</option>
                               </select>
-                              <em @click="$modal.show('multitier-add-storage')"><i class="fas fa-info-circle"
-                                                                                   style="margin-left: 5px; margin-top: 6px"
-                                                                                   v-if="showTierStorage(index,'event')"></i></em>
+                              <em v-if="showTierStorage(index,'event')"
+                                  @click="$modal.show('multitier-add-storage')"><i class="fas fa-info-circle"
+                                                                                   style="margin-left: 5px; margin-top: 6px"></i></em>
                            </td>
                            <td>
                               <input v-model="chosenEventTiers[selectedTierNodeRole][index].retentionAmount"
@@ -872,9 +886,9 @@
                                   <option v-for="[storage, path] in showAvailableStorages(index,'snapshot')"
                                           :value="storage">{{ storage }}</option>
                               </select>
-                              <em @click="$modal.show('multitier-add-storage')"><i class="fas fa-info-circle"
-                                                                                   style="margin-left: 5px; margin-top: 6px"
-                                                                                   v-if="showTierStorage(index,'snapshot')"></i></em>
+                              <em  v-if="showTierStorage(index,'snapshot')"
+                                   @click="$modal.show('multitier-add-storage')"><i class="fas fa-info-circle"
+                                                                                   style="margin-left: 5px; margin-top: 6px"></i></em>
                            </td>
                            <td>
                               <input v-model="chosenSnapshotTiers[selectedTierNodeRole][index].retentionAmount"
