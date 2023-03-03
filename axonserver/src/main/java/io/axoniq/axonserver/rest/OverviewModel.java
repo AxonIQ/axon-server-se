@@ -41,7 +41,6 @@ import java.util.Iterator;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -111,9 +110,7 @@ public class OverviewModel {
     }
 
     private Set<String> validContexts(Principal principal) {
-        return clusterController.getVisibleContexts(true, new PrincipalAuthentication(principal))
-                                .collect(Collectors.toSet())
-                                .block();
+        return clusterController.visibleContexts(true, new PrincipalAuthentication(principal));
     }
 
     public static class SvgOverview {

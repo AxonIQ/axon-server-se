@@ -70,9 +70,7 @@ public class MetricsRestController {
         auditLog.debug("[{}] Request to list command metrics.", AuditLog.username(principal));
 
         List<CommandMetricsRegistry.CommandMetric> metrics = new ArrayList<>();
-        Set<String> contexts = topology.getVisibleContexts(false, new PrincipalAuthentication(principal))
-                                       .collect(Collectors.toSet())
-                                       .block();
+        Set<String> contexts = topology.visibleContexts(false, new PrincipalAuthentication(principal));
         commandRegistrationCache.getAll()
                                 .forEach((commandHander, registrations) ->
                                                  metrics.addAll(getMetrics(commandHander, contexts, registrations)));
@@ -96,9 +94,7 @@ public class MetricsRestController {
     @GetMapping("/query-metrics")
     public List<QueryMetricsRegistry.QueryMetric> getQueryMetrics(@Parameter(hidden = true) final Principal principal) {
         auditLog.debug("[{}] Request to list query metrics.", AuditLog.username(principal));
-        Set<String> contexts = topology.getVisibleContexts(false, new PrincipalAuthentication(principal))
-                                       .collect(Collectors.toSet())
-                                       .block();
+        Set<String> contexts = topology.visibleContexts(false, new PrincipalAuthentication(principal));
         List<QueryMetricsRegistry.QueryMetric> metrics = new ArrayList<>();
         queryRegistrationCache.getAll().forEach((queryDefinition, handlersPerComponent) -> metrics
                 .addAll(getQueryMetrics(queryDefinition, contexts, handlersPerComponent)));

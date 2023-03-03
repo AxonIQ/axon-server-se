@@ -10,11 +10,10 @@
 package io.axoniq.axonserver.topology;
 
 import io.axoniq.axonserver.api.Authentication;
-import reactor.core.publisher.Flux;
 
+import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -88,24 +87,12 @@ public interface Topology {
     }
 
     /**
-     * Retrieves a {@link Flux} of context names that the requester is allowed to see.
-     * @param includeAdmin include the admin context in the result
-     * @param authentication the authentication of the requester
-     * @return flux of context names
-     */
-    default Flux<String> getVisibleContexts(boolean includeAdmin, Authentication authentication) {
-        return Flux.just(DEFAULT_CONTEXT);
-    }
-
-    /**
      * Retrieves a {@link Set} of context names that the requester is allowed to see.
      * @param includeAdmin include the admin context in the result
      * @param authentication the authentication of the requester
      * @return set of context names
      */
     default Set<String> visibleContexts(boolean includeAdmin, Authentication authentication) {
-        return getVisibleContexts(includeAdmin, authentication)
-                .collect(Collectors.toSet())
-                .block();
+        return Collections.singleton(DEFAULT_CONTEXT);
     }
 }
