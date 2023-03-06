@@ -3,6 +3,10 @@ This is the Axon Server Standard Edition, version 4.6
 For information about the Axon Framework and Axon Server,
 visit https://docs.axoniq.io.
 
+Release Notes for version 4.6.11
+-------------------------------
+* Filter overview page and metrics per context.
+
 Release Notes for version 4.6.10
 -------------------------------
 * Fix regression on query handling: on query handler disconnected, all registered handler for that stream must be removed.
