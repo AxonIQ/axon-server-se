@@ -10,6 +10,7 @@
 package io.axoniq.axonserver.message.query;
 
 import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
+import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.grpc.MetaDataValue;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
 import io.axoniq.axonserver.grpc.query.QuerySubscription;
@@ -98,6 +99,11 @@ public class QueryRegistrationCache {
         QuerySubscription subscription = event.getSubscription();
         QueryDefinition queryDefinition = new QueryDefinition(event.getContext(), subscription.getQuery());
         add(queryDefinition, subscription.getResultName(), event.getQueryHandler());
+    }
+
+    @EventListener
+    public void on(TopologyEvents.QueryHandlerDisconnected queryHandlerDisconnected) {
+        remove(queryHandlerDisconnected.clientIdentification());
     }
 
     /**

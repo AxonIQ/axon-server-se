@@ -22,6 +22,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.annotation.Nonnull;
@@ -33,7 +34,7 @@ import static java.util.stream.Collectors.toSet;
  * Created by Sara Pellegrini on 01/05/2018. sara.pellegrini@gmail.com
  */
 @Component
-public class Applications implements Function<String, Stream<Application>> {
+public class Applications implements Function<Predicate<String>, Stream<Application>> {
 
     private final Topology clusterController;
 
@@ -74,11 +75,11 @@ public class Applications implements Function<String, Stream<Application>> {
 
     @Override
     @Nonnull
-    public Stream<Application> apply(String context) {
+    public Stream<Application> apply(Predicate<String> contextFilter) {
         Stream<Map.Entry<ComponentContext, Set<ConnectedClient>>> sortedComponents =
                 clientsPerComponent.entrySet()
                                    .stream()
-                                   .filter(c -> context == null || c.getKey().context.equals(context))
+                                   .filter(c -> contextFilter.test(c.getKey().context))
                                    .filter(c -> clusterController.validContext(c.getKey().context));
 
         return sortedComponents.collect(groupingBy(it -> it.getKey().component))
