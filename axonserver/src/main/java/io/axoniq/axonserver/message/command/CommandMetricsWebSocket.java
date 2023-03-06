@@ -9,7 +9,8 @@
 
 package io.axoniq.axonserver.message.command;
 
-import io.axoniq.axonserver.message.SubscriptionKey;
+import io.axoniq.axonserver.topology.Topology;
+import io.axoniq.axonserver.transport.rest.PrincipalAuthentication;
 import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
@@ -18,30 +19,33 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.socket.messaging.SessionSubscribeEvent;
 import org.springframework.web.socket.messaging.SessionUnsubscribeEvent;
 
+import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
 /**
- * Created by Sara Pellegrini on 18/04/2018.
- * sara.pellegrini@gmail.com
+ * Created by Sara Pellegrini on 18/04/2018. sara.pellegrini@gmail.com
  */
 @Component
 public class CommandMetricsWebSocket {
 
-    public static final String DESTINATION = "/topic/commands";
-    private final Set<SubscriptionKey> subscriptions = new CopyOnWriteArraySet<>();
+    public static final String DESTINATION = "/topic/commands/";
+    private final Map<String, Set<String>> subscriptions = new ConcurrentHashMap<>();
     private final CommandMetricsRegistry commandMetricsRegistry;
 
     private final CommandRegistrationCache commandRegistrationCache;
 
+    private final Topology topology;
     private final SimpMessagingTemplate webSocket;
 
     public CommandMetricsWebSocket(CommandMetricsRegistry commandMetricsRegistry,
                                    CommandRegistrationCache commandRegistrationCache,
+                                   Topology topology,
                                    SimpMessagingTemplate webSocket) {
         this.commandMetricsRegistry = commandMetricsRegistry;
         this.commandRegistrationCache = commandRegistrationCache;
+        this.topology = topology;
         this.webSocket = webSocket;
     }
 
@@ -52,32 +56,42 @@ public class CommandMetricsWebSocket {
             return;
         }
         commandRegistrationCache.getAll().forEach(
-                (commandHandler, registrations) -> getMetrics(commandHandler, registrations).forEach(
-                        commandMetric -> webSocket.convertAndSend(DESTINATION, commandMetric)
-                ));
+                (commandHandler, registrations) -> getMetrics(commandHandler, registrations)
+                        .forEach(
+                                commandMetric -> {
+                                    subscriptions.forEach((destinations, contexts) -> {
+                                        if (contexts.contains(commandMetric.getContext())) {
+                                            webSocket.convertAndSend(destinations, commandMetric);
+                                        }
+                                    });
+                                }
+                        ));
     }
 
     @EventListener
     public void on(SessionSubscribeEvent event) {
         StompHeaderAccessor sha = StompHeaderAccessor.wrap(event.getMessage());
-        if (DESTINATION.equals(sha.getDestination())) {
-            subscriptions.add(new SubscriptionKey(sha));
+        if (sha.getDestination() != null && sha.getDestination().startsWith(DESTINATION)) {
+            subscriptions.put(sha.getDestination(),
+                              topology.visibleContexts(false, new PrincipalAuthentication(event.getUser())));
         }
     }
 
     @EventListener
     public void on(SessionUnsubscribeEvent event) {
         StompHeaderAccessor sha = StompHeaderAccessor.wrap(event.getMessage());
-        subscriptions.remove(new SubscriptionKey(sha));
+        if (sha.getDestination() != null) {
+            subscriptions.remove(sha.getDestination());
+        }
     }
 
-    private Stream<CommandMetricsRegistry.CommandMetric> getMetrics(CommandHandler commandHander,
+    private Stream<CommandMetricsRegistry.CommandMetric> getMetrics(CommandHandler commandHandler,
                                                                     Set<CommandRegistrationCache.RegistrationEntry> registrations) {
         return registrations.stream()
                             .map(registration -> commandMetricsRegistry
                                     .commandMetric(registration.getCommand(),
-                                                   commandHander.getClientId(),
-                                                   commandHander.getClientStreamIdentification().getContext(),
-                                                   commandHander.getComponentName()));
+                                                   commandHandler.getClientId(),
+                                                   commandHandler.getClientStreamIdentification().getContext(),
+                                                   commandHandler.getComponentName()));
     }
 }

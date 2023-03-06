@@ -17,6 +17,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.annotation.Nonnull;
@@ -26,7 +27,7 @@ import javax.annotation.Nonnull;
  * @since 4.0
  */
 @Component
-public class AxonServers implements Function<String, Stream<AxonServer>> {
+public class AxonServers implements Function<Predicate<String>, Stream<AxonServer>> {
 
     private static final String ADMIN = "_admin";
 
@@ -38,9 +39,9 @@ public class AxonServers implements Function<String, Stream<AxonServer>> {
 
     @Override
     @Nonnull
-    public Stream<AxonServer> apply(String context) {
+    public Stream<AxonServer> apply(Predicate<String> contextFilter) {
         return topology.nodes()
-                       .filter(n -> context == null || n.getContextNames().contains(context))
+                       .filter(n -> n.getContextNames().stream().anyMatch(contextFilter::test))
                        .sorted(Comparator.comparing(AxonServerNode::getName))
                        .map(node -> (AxonServer) new AxonServer() {
 
@@ -57,7 +58,7 @@ public class AxonServers implements Function<String, Stream<AxonServer>> {
                                      @Override
                                      public List<String> contexts() {
                                          return node.getContextNames().stream()
-                                                    .filter(n -> context == null || n.equals(context))
+                                                    .filter(contextFilter::test)
                                                     .sorted().collect(
                                                          Collectors.toList());
                                      }
@@ -66,7 +67,7 @@ public class AxonServers implements Function<String, Stream<AxonServer>> {
                                      public List<Storage> storage() {
                                          return node.getStorageContextNames()
                                                     .stream()
-                                                    .filter(n -> context == null || n.equals(context))
+                                                    .filter(contextFilter::test)
                                                     .map(contextName -> new Storage() {
                                                         @Override
                                                         public String context() {

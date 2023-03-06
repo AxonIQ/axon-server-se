@@ -135,7 +135,8 @@ public class CommandMetricsRegistry {
                                        String context,
                                        String componentName) {
         return new CommandMetric(command,
-                                 targetClientId + "." + context,
+                                 targetClientId,
+                                 context,
                                  componentName,
                                  clusterMetric(command, targetClientId, context).count());
     }
@@ -170,12 +171,15 @@ public class CommandMetricsRegistry {
 
         private final String command;
         private final String clientId;
+
+        private final String context;
         private final String componentName;
         private final long count;
 
-        CommandMetric(String command, String clientId, String componentName, long count) {
+        CommandMetric(String command, String clientId, String context, String componentName, long count) {
             this.command = command;
             this.clientId = clientId;
+            this.context = context;
             this.componentName = componentName;
             this.count = count;
         }
@@ -186,6 +190,10 @@ public class CommandMetricsRegistry {
 
         public String getClientId() {
             return clientId;
+        }
+
+        public String getContext() {
+            return context;
         }
 
         public String getComponentName() {
@@ -206,12 +214,13 @@ public class CommandMetricsRegistry {
             }
             CommandMetric that = (CommandMetric) o;
             return Objects.equals(command, that.command) &&
-                    Objects.equals(clientId, that.clientId);
+                    Objects.equals(clientId, that.clientId)&&
+                    Objects.equals(context, that.context);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(command, clientId);
+            return Objects.hash(command, clientId, context);
         }
     }
 }
