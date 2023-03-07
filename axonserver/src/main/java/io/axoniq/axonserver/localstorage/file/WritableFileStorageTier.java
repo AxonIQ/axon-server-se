@@ -280,8 +280,8 @@ public class WritableFileStorageTier extends AbstractFileStorageTier {
             }
         }
 
-        try (RandomAccessFile raf = new RandomAccessFile(file, "rw")) {
-            FileChannel fileChannel = raf.getChannel();
+        try (RandomAccessFile raf = new RandomAccessFile(file, "rw");
+             FileChannel fileChannel = raf.getChannel()) {
             logger.info("Opening file {}", file);
             MappedByteBuffer buffer = fileChannel.map(FileChannel.MapMode.READ_WRITE, 0, size);
             buffer.put(EVENT_FORMAT_VERSION);
