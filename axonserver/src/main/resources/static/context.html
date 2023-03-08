@@ -695,7 +695,7 @@
                </div>
             </td>
              <td>
-                 <template v-for="storage in storages('event',context, selectedTierNodeRole)">
+                 <template v-for="storage in storages('event',context, 'primary')">
                     <div v-if="storage.retentionFormatted" class="retentionBox">&#9716; {{
                             storage.retentionFormatted
                         }}</div>
@@ -706,7 +706,7 @@
                  </template>
              </td>
              <td>
-                 <template v-for="storage in storages('snapshot',context, selectedTierNodeRole)">
+                 <template v-for="storage in storages('snapshot',context, 'primary')">
                     <div v-if="storage.retentionFormatted" class="retentionBox">&#9716; {{
                             storage.retentionFormatted
                         }}</div>
