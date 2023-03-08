@@ -604,9 +604,9 @@
                         retentionFormatted = retentionTime
                             .replace('P', '')
                             .replace('T', '')
-                            .replace('H', ' hour')
+                            .replace('H', ' hr')
                             .replace('M', ' min')
-                            .replace('D', ' day');
+                            .replace('D', ' d');
                     }
 
                     if (tier || storage || retentionTime || retentionSize) {
@@ -1047,8 +1047,8 @@
                                 <select class="tierName"
                                         :content="chosenSnapshotTiers[selectedTierNodeRole][index].name"
                                         :disabled="chosenSnapshotTiers[selectedTierNodeRole][index].readOnly"
-                                        @change="onTierSelect($event,tier,index,'event')">
-                                 <option v-for="n in showAvailableTiers(index,'event')" :value="n"
+                                        @change="onTierSelect($event,tier,index,'snapshot')">
+                                 <option v-for="n in showAvailableTiers(index,'snapshot')" :value="n"
                                          :selected="n.id === chosenSnapshotTiers[selectedTierNodeRole][index].id">{{
                                          n.name
                                      }}</option>
