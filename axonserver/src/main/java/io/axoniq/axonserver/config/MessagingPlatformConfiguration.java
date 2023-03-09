@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -115,12 +115,12 @@ public class MessagingPlatformConfiguration {
     private int metricsSynchronizationRate;
 
     /**
-     * Whether to force applications to connect to Primary nodes or Messaging Only nodes.
-     * When false, all nodes for a context are eligible to accept client connections.
+     * Whether to force applications to connect to Primary nodes or Messaging Only nodes. When false, all nodes for a
+     * context are eligible to accept client connections.
      * <p>
      * Defaults to false.
      */
-    private boolean forceConnectionToPrimaryOrMessagingNode = false;
+    private boolean forceConnectionToPrimaryOrMessagingNode = true;
     /**
      * Expiry interval (minutes) of metrics
      */
