@@ -34,6 +34,7 @@ import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 
+import java.time.Instant;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Objects;
@@ -249,14 +250,21 @@ public class EventStoreTransformationGrpcController
                                        .map(transformation -> {
                                            String description = Objects.toString(transformation.description(), "");
                                            String context = Objects.toString(transformation.context());
+                                           String applyRequester = transformation.applyRequester().orElse("");
+                                           Long appliedAt = transformation.appliedAt().map(Instant::toEpochMilli)
+                                                                          .orElse(-1L);
+                                           Long sequence = transformation.lastSequence().orElse(-1L);
+                                           int version = transformation.version();
                                            return Transformation.newBuilder()
                                                                 .setTransformationId(TransformationId.newBuilder()
                                                                                                      .setId(transformation.id()))
                                                                 .setDescription(description)
                                                                 .setContext(context)
+                                                                .setAppliedAt(appliedAt)
+                                                                .setApplyRequester(applyRequester)
                                                                 .setState(statusMapping.get(transformation.status()))
-                                                                .setSequence(transformation.lastSequence()
-                                                                                           .orElse(-1L))
+                                                                .setSequence(sequence)
+                                                                .setVersion(version)
                                                                 .build();
                                        })
                                        .subscribe(responseObserver::onNext,

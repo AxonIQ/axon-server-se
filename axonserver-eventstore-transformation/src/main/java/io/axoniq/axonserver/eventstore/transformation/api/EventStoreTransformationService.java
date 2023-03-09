@@ -14,6 +14,7 @@ import io.axoniq.axonserver.grpc.event.Event;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.time.Instant;
 import java.util.Optional;
 import javax.annotation.Nonnull;
 
@@ -127,7 +128,10 @@ public interface EventStoreTransformationService {
     Mono<Void> startApplying(String context, String transformationId, long sequence,
                              @Nonnull Authentication authentication);
 
-    interface Transformation { // TODO: 1/27/23 add missing fields, check proto file
+    /**
+     * The transformation data.
+     */
+    interface Transformation {
 
         /**
          * Returns the identifier of the event transformation.
@@ -177,6 +181,22 @@ public interface EventStoreTransformationService {
 
 
         /**
+         * Returns the {@link Optional} requester username. The optional is empty if no apply request has been received.
+         *
+         * @return the {@link Optional} requester username.
+         */
+        Optional<String> applyRequester();
+
+        /**
+         * Returns the {@link Optional} {@link Instant} when the transformation has been applied.
+         * The optional is empty if the transformation is not applied yet.
+         *
+         * @return the {@link Optional} {@link Instant} when the transformation has been applied.
+         */
+        Optional<Instant> appliedAt();
+
+
+        /**
          * The status of the event transformation.
          */
         enum Status {
@@ -199,12 +219,7 @@ public interface EventStoreTransformationService {
             /**
              * When the event transformation has been fully applied. It is a final state.
              */
-            APPLIED,
-
-            /**
-             * When something went wrong.
-             */
-            FAILED
+            APPLIED
         }
     }
 }
