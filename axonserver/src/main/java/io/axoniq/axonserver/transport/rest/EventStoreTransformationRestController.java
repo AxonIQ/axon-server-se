@@ -41,7 +41,7 @@ import static io.axoniq.axonserver.topology.Topology.DEFAULT_CONTEXT;
  * @since 4.6.0
  */
 @RestController
-@ConditionalOnProperty(value = "axoniq.axonserver.experimental.event-transformation")
+@ConditionalOnProperty(value = "axoniq.axonserver.preview.event-transformation")
 public class EventStoreTransformationRestController {
 
     private final EventStoreTransformationService eventStoreTransformationService;
