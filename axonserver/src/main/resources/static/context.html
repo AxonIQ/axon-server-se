@@ -284,8 +284,15 @@
                     "metaDataValue": ''
                 };
                 this.selectedTierNodeRole = "primary";
-                this.chosenEventTiers[this.selectedTierNodeRole] = this.storages('event', context);
-                this.chosenSnapshotTiers[this.selectedTierNodeRole] = this.storages('snapshot', context);
+
+                Object.keys(this.chosenEventTiers).forEach(nodeRole => {
+                    this.chosenEventTiers[nodeRole] = this.storages('event', this.currentContext, nodeRole);
+                })
+
+                Object.keys(this.chosenSnapshotTiers).forEach(nodeRole => {
+                    this.chosenSnapshotTiers[nodeRole] = this.storages('snapshot', this.currentContext, nodeRole);
+                })
+
             },
             cancelUpdate() {
                 this.currentContext = null;
@@ -363,13 +370,10 @@
                 }
             },
             collectTierInfo(context) {
-
                 let metaData = context.metaData;
-
                 Object.keys(this.chosenEventTiers).forEach(nodeRole => {
                     let store = this.chosenEventTiers[nodeRole];
                     let storageType = 'event';
-
                     if (this.tabNodeState(nodeRole) !== 'tier-tab-disabled') {
                         this.collectTierInfoToMetaData(store, storageType, nodeRole, metaData);
                     }
@@ -565,7 +569,7 @@
                 this.newContext.nodes = [];
                 this.updateUI();
             },
-            storages(storageType, context) {
+            storages(storageType, context, selectedTierNodeRole) {
                 if (context.context === '_admin') {
                     return [];
                 }
@@ -580,7 +584,7 @@
                 let storageArray = [];
                 let i = 0;
                 do {
-                    let suffix = (i === 0) ? '.primary' : '.' + i + '.primary';
+                    let suffix = (i === 0) ? '.'.concat(selectedTierNodeRole) : '.' + i + '.'.concat(selectedTierNodeRole);
 
                     let tier = contextMeta[lTier.concat(suffix)];
                     let storage = contextMeta[lStorage.concat(suffix)];
@@ -600,9 +604,9 @@
                         retentionFormatted = retentionTime
                             .replace('P', '')
                             .replace('T', '')
-                            .replace('H', ' hour')
+                            .replace('H', ' hr')
                             .replace('M', ' min')
-                            .replace('D', ' day');
+                            .replace('D', ' d');
                     }
 
                     if (tier || storage || retentionTime || retentionSize) {
@@ -691,7 +695,7 @@
                </div>
             </td>
              <td>
-                 <template v-for="storage in storages('event',context)">
+                 <template v-for="storage in storages('event',context, 'primary')">
                     <div v-if="storage.retentionFormatted" class="retentionBox">&#9716; {{
                             storage.retentionFormatted
                         }}</div>
@@ -702,7 +706,7 @@
                  </template>
              </td>
              <td>
-                 <template v-for="storage in storages('snapshot',context)">
+                 <template v-for="storage in storages('snapshot',context, 'primary')">
                     <div v-if="storage.retentionFormatted" class="retentionBox">&#9716; {{
                             storage.retentionFormatted
                         }}</div>
@@ -1043,8 +1047,8 @@
                                 <select class="tierName"
                                         :content="chosenSnapshotTiers[selectedTierNodeRole][index].name"
                                         :disabled="chosenSnapshotTiers[selectedTierNodeRole][index].readOnly"
-                                        @change="onTierSelect($event,tier,index,'event')">
-                                 <option v-for="n in showAvailableTiers(index,'event')" :value="n"
+                                        @change="onTierSelect($event,tier,index,'snapshot')">
+                                 <option v-for="n in showAvailableTiers(index,'snapshot')" :value="n"
                                          :selected="n.id === chosenSnapshotTiers[selectedTierNodeRole][index].id">{{
                                          n.name
                                      }}</option>
