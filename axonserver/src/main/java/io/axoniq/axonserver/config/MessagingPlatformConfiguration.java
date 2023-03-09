@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -44,8 +44,6 @@ public class MessagingPlatformConfiguration {
     private static final int RESERVED = 10000;
     private static final int DEFAULT_MAX_TRANSACTION_SIZE = GrpcUtil.DEFAULT_MAX_MESSAGE_SIZE - RESERVED;
     public static final int DEFAULT_INTERNAL_GRPC_PORT = 8224;
-
-    public static final String ALLOW_EMPTY_DOMAIN = "allow-empty-domain";
 
     /**
      * gRPC port for axonserver platform
@@ -334,7 +332,7 @@ public class MessagingPlatformConfiguration {
     }
 
     public String getInternalDomain() {
-        if ((internalDomain == null) || (StringUtils.isEmpty(internalDomain) && !isExperimentalFeatureEnabled(ALLOW_EMPTY_DOMAIN))) {
+        if (internalDomain == null) {
             internalDomain = getDomain();
         }
         return internalDomain;
