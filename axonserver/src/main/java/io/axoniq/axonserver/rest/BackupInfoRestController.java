@@ -18,6 +18,7 @@ import io.axoniq.axonserver.logging.AuditLog;
 import io.axoniq.axonserver.topology.Topology;
 import io.swagger.v3.oas.annotations.Parameter;
 import org.slf4j.Logger;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -60,7 +61,7 @@ public class BackupInfoRestController {
 
     @GetMapping("/filenames")
     @Deprecated
-    public List<String> getFilenames(
+    public ResponseEntity<List<String>> getFilenames(
             @RequestParam(value = "context", defaultValue = Topology.DEFAULT_CONTEXT) String context,
             @RequestParam(value = "type") String type,
             @RequestParam(value = "lastSegmentBackedUp", required = false, defaultValue = "-1") long lastSegmentBackedUp,
@@ -73,13 +74,21 @@ public class BackupInfoRestController {
                           sanitize(type));
         }
 
-        return localEventStore
-                .getBackupFilenames(context, EventType.valueOf(type), lastSegmentBackedUp, lastVersionBackedUp, false)
-                .collect(Collectors.toList());
+        final EventType eventType;
+        try {
+            eventType = EventType.valueOf(type.toUpperCase());
+        } catch (NullPointerException | IllegalArgumentException e) {
+            auditLog.warn("[{}] Malformed request for event store filenames. Type '{}' unknown.",
+                          AuditLog.username(principal), sanitize(type));
+            return ResponseEntity.badRequest().build();
+        }
+        return ResponseEntity.ok(localEventStore
+                .getBackupFilenames(context, eventType, lastSegmentBackedUp, lastVersionBackedUp, false)
+                .collect(Collectors.toList()));
     }
 
     @GetMapping("/eventstore")
-    public EventStoreBackupInfo eventStoreFilenames(
+    public ResponseEntity<EventStoreBackupInfo> eventStoreFilenames(
             @RequestParam(value = "targetContext", defaultValue = Topology.DEFAULT_CONTEXT) String context,
             @RequestParam(value = "type") String type,
             @RequestParam(value = "lastClosedSegmentBackedUp", required = false, defaultValue = "-1") long lastSegmentBackedUp,
@@ -92,10 +101,19 @@ public class BackupInfoRestController {
                           sanitize(type));
         }
 
-        return new EventStoreBackupInfo(localEventStore.getFirstCompletedSegment(context, EventType.valueOf(type)),
-                                                                             localEventStore
-                                                                                     .getBackupFilenames(context, EventType.valueOf(type), lastSegmentBackedUp, lastVersionBackedUp, true)
-                                                                                     .collect(Collectors.toList()));
+        final EventType eventType;
+        try {
+            eventType = EventType.valueOf(type.toUpperCase());
+        } catch (NullPointerException | IllegalArgumentException e) {
+            auditLog.warn("[{}] Malformed request for event store filenames. Type '{}' unknown.",
+                          AuditLog.username(principal), sanitize(type));
+            return ResponseEntity.badRequest().build();
+        }
+        return ResponseEntity.ok(new EventStoreBackupInfo(
+                localEventStore.getFirstCompletedSegment(context, EventType.valueOf(type)),
+                localEventStore.getBackupFilenames(context, eventType,
+                                                   lastSegmentBackedUp, lastVersionBackedUp,
+                                                   true).collect(Collectors.toList())));
     }
 
     /**
