@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -41,7 +41,8 @@ public class AxonServers implements Function<Predicate<String>, Stream<AxonServe
     @Nonnull
     public Stream<AxonServer> apply(Predicate<String> contextFilter) {
         return topology.nodes()
-                       .filter(n -> n.getContextNames().stream().anyMatch(contextFilter::test))
+                       .filter(n -> n.getContextNames().isEmpty() || n.getContextNames().stream()
+                                                                      .anyMatch(contextFilter::test))
                        .sorted(Comparator.comparing(AxonServerNode::getName))
                        .map(node -> (AxonServer) new AxonServer() {
 
