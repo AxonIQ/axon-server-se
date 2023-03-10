@@ -50,7 +50,7 @@ import javax.annotation.Nonnull;
  * @since 4.6.0
  */
 @Component
-@ConditionalOnProperty(value = "axoniq.axonserver.experimental.event-transformation")
+@ConditionalOnProperty(value = "axoniq.axonserver.preview.event-transformation")
 public class EventStoreTransformationGrpcController
         extends EventTransformationServiceGrpc.EventTransformationServiceImplBase
         implements AxonServerClientService {

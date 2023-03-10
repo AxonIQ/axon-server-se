@@ -1,6 +1,6 @@
 /*
- *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- *  under one or more contributor license agreements.
+ * Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -175,21 +175,21 @@ public class MessagingPlatformConfiguration {
     /**
      * The available features, keyed by name.
      */
-    private final Map<String, Boolean> experimental = new HashMap<>();
+    private final Map<String, Boolean> preview = new HashMap<>();
 
     public MessagingPlatformConfiguration(SystemInfoProvider systemInfoProvider) {
         this.systemInfoProvider = systemInfoProvider;
     }
 
     /**
-     * Logs the enabled experimental features at startup.
+     * Logs the enabled preview features at startup.
      */
     @PostConstruct
     public void init() {
         if (auditLog.isInfoEnabled()) {
-            experimental.forEach((featureName, enabled) -> {
+            preview.forEach((featureName, enabled) -> {
                 if (Boolean.TRUE.equals(enabled)) {
-                    auditLog.info("Experimental feature {} enabled.", featureName);
+                    auditLog.info("Preview of feature {} enabled.", featureName);
                 }
             });
         }
@@ -552,11 +552,11 @@ public class MessagingPlatformConfiguration {
         this.pluginPackageDirectory = pluginPackageDirectory;
     }
 
-    public Map<String, Boolean> getExperimental() {
-        return experimental;
+    public Map<String, Boolean> getPreview() {
+        return preview;
     }
 
     public boolean isExperimentalFeatureEnabled(final String name) {
-        return experimental.getOrDefault(name, false);
+        return preview.getOrDefault(name, false);
     }
 }
