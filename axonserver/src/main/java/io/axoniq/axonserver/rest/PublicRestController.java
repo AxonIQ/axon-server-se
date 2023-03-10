@@ -93,7 +93,7 @@ public class PublicRestController {
             "For _admin nodes the result contains all nodes, for non _admin nodes the"
                     + "result only contains nodes from contexts available on this node and the _admin nodes.")
     public List<JsonServerNode> getClusterNodes() {
-        return axonServerProvider.apply(c -> true)
+        return axonServerProvider.apply(null)
                                  .map(JsonServerNode::new)
                                  .sorted(Comparator.comparing(JsonServerNode::getName)).collect(Collectors.toList());
     }
