@@ -41,8 +41,8 @@ public class AxonServers implements Function<Predicate<String>, Stream<AxonServe
     @Nonnull
     public Stream<AxonServer> apply(Predicate<String> contextFilter) {
         return topology.nodes()
-                       .filter(n -> n.getContextNames().isEmpty() || n.getContextNames().stream()
-                                                                      .anyMatch(contextFilter::test))
+                       .filter(n -> contextFilter == null || n.getContextNames().stream()
+                                                              .anyMatch(contextFilter::test))
                        .sorted(Comparator.comparing(AxonServerNode::getName))
                        .map(node -> (AxonServer) new AxonServer() {
 
@@ -59,7 +59,7 @@ public class AxonServers implements Function<Predicate<String>, Stream<AxonServe
                                      @Override
                                      public List<String> contexts() {
                                          return node.getContextNames().stream()
-                                                    .filter(contextFilter::test)
+                                                    .filter(c -> contextFilter == null || contextFilter.test(c))
                                                     .sorted().collect(
                                                          Collectors.toList());
                                      }
