@@ -53,7 +53,7 @@ public class MessagingPlatformConfiguration {
     /**
      * gRPC address for axonserver platform
      */
-    private InetSocketAddress inetSocketAddress = new InetSocketAddress(8124);
+    private InetSocketAddress inetSocketAddress = new InetSocketAddress(DEFAULT_GRPC_PORT);
     /**
      * gRPC address for communication between messing platform nodes
      */
