@@ -22,6 +22,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.util.Assert;
 import org.springframework.util.unit.DataSize;
 
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.time.Duration;
 import java.util.HashMap;
@@ -43,18 +45,19 @@ public class MessagingPlatformConfiguration {
 
     private static final int RESERVED = 10000;
     private static final int DEFAULT_MAX_TRANSACTION_SIZE = GrpcUtil.DEFAULT_MAX_MESSAGE_SIZE - RESERVED;
+    public static final int DEFAULT_GRPC_PORT = 8124;
     public static final int DEFAULT_INTERNAL_GRPC_PORT = 8224;
 
     public static final String ALLOW_EMPTY_DOMAIN = "allow-empty-domain";
 
     /**
-     * gRPC port for axonserver platform
+     * gRPC address for axonserver platform
      */
-    private int port = 8124;
+    private InetSocketAddress inetSocketAddress = new InetSocketAddress(8124);
     /**
-     * gRPC port for communication between messing platform nodes
+     * gRPC address for communication between messing platform nodes
      */
-    private int internalPort = DEFAULT_INTERNAL_GRPC_PORT;
+    private InetSocketAddress internalInetSocketAddress = new InetSocketAddress(DEFAULT_INTERNAL_GRPC_PORT);
     /**
      * Node name of this axonserver platform node, if not set defaults to the hostname
      */
@@ -241,20 +244,52 @@ public class MessagingPlatformConfiguration {
         }
     }
 
+    public String getIpAddress() {
+        return inetSocketAddress.getAddress().getHostAddress();
+    }
+
+    public void setIpAddress(String ipAddress) {
+        try {
+            this.inetSocketAddress = new InetSocketAddress(InetAddress.getByName(ipAddress), inetSocketAddress.getPort());
+        } catch (UnknownHostException e) {
+            throw new IllegalArgumentException("IP address is invalid", e);
+        }
+    }
+
     public int getPort() {
-        return port;
+        return inetSocketAddress.getPort();
     }
 
     public void setPort(int port) {
-        this.port = port;
+        this.inetSocketAddress = new InetSocketAddress(inetSocketAddress.getAddress(), port);
+    }
+
+    public InetSocketAddress getInetSocketAddress() {
+        return inetSocketAddress;
+    }
+
+    public String getInternalIpAddress() {
+        return internalInetSocketAddress.getAddress().getHostAddress();
+    }
+
+    public void setInternalIpAddress(String ipAddress) {
+        try {
+            this.internalInetSocketAddress = new InetSocketAddress(InetAddress.getByName(ipAddress), internalInetSocketAddress.getPort());
+        } catch (UnknownHostException e) {
+            throw new IllegalArgumentException("Internal IP address is invalid", e);
+        }
     }
 
     public int getInternalPort() {
-        return internalPort;
+        return internalInetSocketAddress.getPort();
     }
 
     public void setInternalPort(int internalPort) {
-        this.internalPort = internalPort;
+        this.internalInetSocketAddress = new InetSocketAddress(internalInetSocketAddress.getAddress(), internalPort);
+    }
+
+    public InetSocketAddress getInternalInetSocketAddress() {
+        return internalInetSocketAddress;
     }
 
     public String getName() {

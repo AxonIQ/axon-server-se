@@ -79,7 +79,7 @@ public class Gateway implements SmartLifecycle {
 
     @Override
     public void start() {
-        NettyServerBuilder serverBuilder = NettyServerBuilder.forPort(routingConfiguration.getPort())
+        NettyServerBuilder serverBuilder = NettyServerBuilder.forAddress(routingConfiguration.getInetSocketAddress())
                                                              .permitKeepAliveWithoutCalls(true)
                                                              .permitKeepAliveTime(routingConfiguration.getMinKeepAliveTime(), TimeUnit.MILLISECONDS);
 
