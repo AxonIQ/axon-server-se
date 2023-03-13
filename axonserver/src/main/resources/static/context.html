@@ -465,7 +465,7 @@
                     });
             },
             isEphemeral(context) {
-                return Object.values(context.metaData).some(value => value === 'black_hole');
+                return Object.keys(context.metaData).some(key => key.startsWith("event.tier") && context.metaData[key] === 'black_hole');
             },
             isMultiTierConfigured() {
                 for (let nodeRole of Object.keys(this.chosenEventTiers)) {
