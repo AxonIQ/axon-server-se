@@ -1,11 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <parent>
         <artifactId>axonserver-se</artifactId>
         <groupId>io.axoniq.axonserver</groupId>
-        <version>2023.0.0-SNAPSHOT</version>
+        <version>2023.0.0</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
@@ -90,9 +88,8 @@
                         <phase>compile</phase>
                         <configuration>
                             <target>
-                                <echo message="${project.build.outputDirectory}/db/migration"/>
-                                <fixcrlf srcdir="${project.build.outputDirectory}/db/migration" eol="dos"
-                                         fixlast="false"/>
+                                <echo message="${project.build.outputDirectory}/db/migration" />
+                                <fixcrlf srcdir="${project.build.outputDirectory}/db/migration" eol="dos" fixlast="false" />
                             </target>
                         </configuration>
                         <goals>
