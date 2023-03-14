@@ -210,7 +210,7 @@
         </div>
     </div>
 
-    <section v-if="node.clustered" id="nodesOverview">
+    <section v-if="nodes.length > 1" id="nodesOverview">
         <h2>Nodes</h2>
 
         <paginated-table :rows="nodes" name="cluster">
@@ -233,6 +233,9 @@
                 <td>{{ n.grpcPort }}</td>
                 <td>{{ n.internalHostName }}</td>
                 <td>{{ n.grpcInternalPort }}</td>
+                <td v-if="admin">
+                    <span @click="unregister(n)" title="Unregister node"><i class="far fa-trash-alt"></i></span>
+                </td>
             </template>
         </paginated-table>
     </section>

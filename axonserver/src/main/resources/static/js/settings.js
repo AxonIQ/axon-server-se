@@ -22,6 +22,7 @@ globals.pageView = new Vue({
                                    context: null,
                                    webSocketInfo: globals.webSocketInfo,
                                    subscription: null,
+                                   admin: globals.admin,
                                    initialized: globals.initialized,
                                    initializeMode: "init",
                                    initContext: "default",
@@ -93,7 +94,7 @@ globals.pageView = new Vue({
                                    },
                                    resetEvents() {
                                        if (confirm("Are you sure you want to delete all event and snapshot data?")) {
-                                           axios.delete("v1/devmode/purge-events").then(response => {
+                                           axios.delete("v1/devmode/purge-events").then(_ => {
                                                this.reloadStatus()
                                            });
                                        }
@@ -115,13 +116,23 @@ globals.pageView = new Vue({
                                            alert("Enter the internal hostname of a member of the existing cluster");
                                            return
                                        }
-                                       setTimeout(function() { alert("This may take a while, please wait..."); }, 0);
+                                       setTimeout(function () {
+                                           alert("This may take a while, please wait...");
+                                       }, 0);
                                        axios.post("v1/cluster", {
                                            "internalHostName": this.joinHost,
                                            "internalGrpcPort": this.joinPort
                                        }).then(_ => {
                                            location.reload();
                                        })
+                                   },
+                                   unregister(node) {
+                                       if (confirm(`Unregister node ${node.name}`)) {
+                                           axios.delete(`v1/cluster/${node.name}`).then(_ => {
+                                               location.reload();
+                                           });
+                                       }
+
                                    }
                                }
                            });
