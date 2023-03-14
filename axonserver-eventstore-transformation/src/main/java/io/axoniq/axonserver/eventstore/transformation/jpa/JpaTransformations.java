@@ -6,6 +6,8 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
+import java.time.Instant;
+import java.util.Date;
 import java.util.Optional;
 
 public class JpaTransformations implements Transformations {
@@ -70,10 +72,19 @@ class JPATransformation implements Transformation {
                 return Status.APPLYING;
             case CANCELLED:
                 return Status.CANCELLED;
-            case FAILED:
-                return Status.FAILED;
             default:
                 throw new IllegalStateException("Unsupported transformation status");
         }
+    }
+
+    @Override
+    public Optional<String> applyRequester() {
+        return Optional.ofNullable(jpaEntity.applier());
+    }
+
+    @Override
+    public Optional<Instant> appliedAt() {
+        return Optional.ofNullable(jpaEntity.dateApplied())
+                       .map(Date::toInstant);
     }
 }

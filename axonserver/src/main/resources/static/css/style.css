@@ -553,7 +553,7 @@ input[type="search"] {
 	border-top-style: solid;
 	border-top-width: thin;
 	border-top-color: lightgrey;
-	color: black;
+	color: black !important;
 	border-left-style: solid;
 	border-left-width: thin;
 	border-left-color: lightgrey;

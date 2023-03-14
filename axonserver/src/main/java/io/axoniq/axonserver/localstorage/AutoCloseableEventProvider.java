@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -24,6 +24,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 
+/**
+ * Provides the event for a specific token using a {@link CloseableIterator} of {@link SerializedEventWithToken}.
+ */
 public class AutoCloseableEventProvider {
 
     private static final Logger logger = LoggerFactory.getLogger(AutoCloseableEventProvider.class);
@@ -34,17 +37,28 @@ public class AutoCloseableEventProvider {
     private final AtomicReference<CloseableIterator<SerializedEventWithToken>> iteratorRef = new AtomicReference<>();
     private final Function<Long, CloseableIterator<SerializedEventWithToken>> iteratorFactory;
 
+    /**
+     * Constructs an instance base on the specified {@link CloseableIterator} of {@link SerializedEventWithToken}.
+     *
+     * @param iteratorFactory used to iterate the events in the event store.
+     */
     public AutoCloseableEventProvider(Function<Long, CloseableIterator<SerializedEventWithToken>> iteratorFactory) {
         this.iteratorFactory = iteratorFactory;
     }
 
+    /**
+     * Returns a {@link Mono} of the {@link Event} with the specified token.
+     *
+     * @param token the token of the event to be retrieved
+     * @return a {@link Mono} of the {@link Event} with the specified token.
+     */
     public Mono<Event> event(long token) {
         return Mono.create(sink -> {
             cancelClosing();
             executorService.submit(() -> {
                 try {
                     readEvent(sink, token);
-                } catch (Throwable t) {
+                } catch (Exception t) {
                     logger.error("Error happened while trying to read the event.", t);
                     sink.error(t);
                 }
@@ -52,6 +66,11 @@ public class AutoCloseableEventProvider {
         });
     }
 
+    /**
+     * Closes the iterator used to access the event store.
+     *
+     * @return a {@link Mono} that completes when the close operation is completed.
+     */
     public Mono<Void> close() {
         return Mono.fromRunnable(() -> {
             cancelClosing();
@@ -69,7 +88,7 @@ public class AutoCloseableEventProvider {
         } else {
             SerializedEventWithToken next = iterator.next();
             if (next.getToken() > token) {
-                iterator = newIterator(iterator, token);
+                iterator = newIterator(token);
                 next = iterator.next();
             }
 
@@ -113,18 +132,21 @@ public class AutoCloseableEventProvider {
     private CloseableIterator<SerializedEventWithToken> iterator(long token) {
         CloseableIterator<SerializedEventWithToken> iterator = iteratorRef.get();
         if (iterator == null || !iterator.hasNext()) {
-            iterator = newIterator(null, token);
+            iterator = newIterator(token);
         }
         return iterator;
     }
 
-    private CloseableIterator<SerializedEventWithToken> newIterator(CloseableIterator<SerializedEventWithToken> current,
-                                                                    long token) {
+    private CloseableIterator<SerializedEventWithToken> newIterator(long token) {
+        CloseableIterator<SerializedEventWithToken> current = iteratorRef.get();
         if (current != null) {
+            logger.debug("Closing the open event iterator.");
             current.close();
         }
+        logger.debug("Creating a new event iterator starting from token {}", token);
         CloseableIterator<SerializedEventWithToken> iterator = iteratorFactory.apply(token);
         if (!iteratorRef.compareAndSet(current, iterator)) {
+            logger.debug("Another thread create the new event iterator. Closing the new one...");
             iterator.close();
             iterator = iteratorRef.get();
         }

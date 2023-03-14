@@ -1,3 +1,12 @@
+/*
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver.api
 
 /**
@@ -8,6 +17,7 @@ package io.axoniq.axonserver.api
  * @since 4.6
  */
 interface Authentication {
+
     /**
      * Returns the username of the authenticated user
      */
@@ -26,4 +36,15 @@ interface Authentication {
      */
     fun application(): Boolean
 
+    /**
+     * Returns {@code true} if the authentication is managed by Axon Server internally.
+     */
+    fun isLocallyManaged(): Boolean
+
+    /**
+     * Returns {@code true} if the authentication contains any role for the given context. Also returns {@code true} if the
+     * authentication contains a role for any context ('*').
+     * @param the name of the context
+     */
+    fun hasAnyRole(context: String): Boolean
 }

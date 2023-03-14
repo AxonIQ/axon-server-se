@@ -123,8 +123,8 @@ public class FileEventStorageEngine implements EventStorageEngine {
     }
 
     public void validate(int maxSegments) {
-        Stream<Long> segments = head.allSegments();
-        List<ValidationResult> resultList = segments.limit(maxSegments).parallel().map(this::validateSegment).collect(
+        Set<Long> segments = head.allSegments().limit(maxSegments).collect(Collectors.toSet());
+        List<ValidationResult> resultList = segments.parallelStream().map(this::validateSegment).collect(
                 Collectors.toList());
         resultList.stream().filter(validationResult -> !validationResult.isValid()).findFirst().ifPresent(
                 validationResult -> {
@@ -152,7 +152,7 @@ public class FileEventStorageEngine implements EventStorageEngine {
             while (iterator.hasNext()) {
                 last = iterator.next();
             }
-            return new ValidationResult(segment, last == null ? segment : last.getToken() + last.getEvents().size());
+            return new ValidationResult(segment, last == null ? segment : last.getToken() + last.getEventsCount());
         } catch (Exception ex) {
             return new ValidationResult(segment, ex.getMessage());
         }

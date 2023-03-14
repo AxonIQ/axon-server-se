@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -15,6 +15,7 @@ import io.axoniq.axonserver.access.roles.RoleController;
 import io.axoniq.axonserver.admin.user.api.UserAdminService;
 import io.axoniq.axonserver.admin.user.requestprocessor.LocalUserAdminService;
 import io.axoniq.axonserver.admin.user.requestprocessor.UserController;
+import io.axoniq.axonserver.eventstore.transformation.spi.TransformationsInProgressForContext;
 import io.axoniq.axonserver.exception.CriticalEventException;
 import io.axoniq.axonserver.grpc.AxonServerClientService;
 import io.axoniq.axonserver.grpc.DefaultInstructionAckSource;
@@ -68,6 +69,7 @@ import org.springframework.context.event.SimpleApplicationEventMulticaster;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.PlatformTransactionManager;
+import reactor.core.publisher.Mono;
 
 import java.time.Clock;
 import java.util.Collections;
@@ -290,5 +292,11 @@ public class AxonServerStandardConfiguration {
         //disable regular diskSpaceHealthIndicator bean
         //using FileSystemMonitor instead
         return null;
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public TransformationsInProgressForContext transformationsInProgressForContext() {
+        return context -> Mono.just(false);
     }
 }

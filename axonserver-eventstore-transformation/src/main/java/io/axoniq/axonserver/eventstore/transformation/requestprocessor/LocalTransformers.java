@@ -47,6 +47,13 @@ public class LocalTransformers implements Transformers {
         return transformers.computeIfAbsent(context, c -> contextTransformerMono(c).cache());
     }
 
+    @Override
+    public Mono<Void> clean(String context) {
+        return transformerFor(context)
+                .flatMap(ContextTransformer::clean)
+                .then(Mono.fromRunnable(() -> transformers.remove(context)));
+    }
+
     private Mono<ContextTransformer> contextTransformerMono(String context) {
         return Mono.fromSupplier(() -> new LocalContextTransformationStore(context,
                                                                            transformationRepository,

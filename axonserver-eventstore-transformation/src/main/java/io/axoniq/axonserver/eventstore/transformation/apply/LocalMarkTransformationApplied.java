@@ -19,8 +19,11 @@ public class LocalMarkTransformationApplied implements MarkTransformationApplied
     @Override
     public Mono<Void> markApplied(String context, String transformationId) {
         return transformers.transformerFor(context)
-                           .doOnNext(unused -> logger.warn("Marking as applied transformation {}", transformationId))
+                           .doFirst(() -> logger.info("Marking as applied transformation {}", transformationId))
                            .flatMap(ct -> ct.markApplied(transformationId))
-                           .doOnSuccess(unused -> logger.warn("Transformation {} marked applied.", transformationId));
+                           .doOnSuccess(unused -> logger.info("Transformation {} marked applied.", transformationId))
+                           .doOnError(error -> logger.warn("Error marking the transformation {} as applied.",
+                                                           transformationId,
+                                                           error));
     }
 }

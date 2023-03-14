@@ -9,6 +9,8 @@
 
 package io.axoniq.axonserver.rest;
 
+import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
+import io.axoniq.axonserver.config.SystemInfoProvider;
 import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
@@ -22,16 +24,19 @@ import io.axoniq.axonserver.message.query.QueryRegistrationCache;
 import io.axoniq.axonserver.message.query.RoundRobinQueryHandlerSelector;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
+import io.axoniq.axonserver.topology.DefaultTopology;
 import io.axoniq.axonserver.topology.Topology;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.jetbrains.annotations.NotNull;
-import org.junit.*;
+import org.junit.Before;
+import org.junit.Test;
 
 import java.security.Principal;
 import java.util.List;
 
-import static org.junit.Assert.*;
-import static org.mockito.Mockito.*;
+import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * @author Marc Gathier
@@ -67,11 +72,12 @@ public class MetricsRestControllerTest {
                 return 0;
             }
         });
-        commandMetricsRegistry = new CommandMetricsRegistry(new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector()));
+        commandMetricsRegistry = new CommandMetricsRegistry(new MeterFactory(new SimpleMeterRegistry(),
+                                                                             new DefaultMetricCollector()));
 
         QueryRegistrationCache queryRegistrationCache = new QueryRegistrationCache(new RoundRobinQueryHandlerSelector());
-        queryClient = new ClientStreamIdentification("context", "testclient");
-        queryRegistrationCache.add(new QueryDefinition("context", "query"), "result",
+        queryClient = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "testclient");
+        queryRegistrationCache.add(new QueryDefinition(Topology.DEFAULT_CONTEXT, "query"), "result",
                                    new QueryHandler<Object>(null,
                                                             queryClient, "testcomponent", "Target") {
                                        @Override
@@ -81,21 +87,26 @@ public class MetricsRestControllerTest {
                                    });
         principal = mock(Principal.class);
         when(principal.getName()).thenReturn("Testuser");
-        queryMetricsRegistry = new QueryMetricsRegistry(new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector()));
+        queryMetricsRegistry = new QueryMetricsRegistry(new MeterFactory(new SimpleMeterRegistry(),
+                                                                         new DefaultMetricCollector()));
         testSubject = new MetricsRestController(commandRegistrationCache, commandMetricsRegistry,
-                                                queryRegistrationCache, queryMetricsRegistry);
+                                                queryRegistrationCache, queryMetricsRegistry,
+                                                new DefaultTopology(new MessagingPlatformConfiguration(new SystemInfoProvider() {
+                                                })));
     }
 
     @Test
     public void getCommandMetrics() {
         List<CommandMetricsRegistry.CommandMetric> commands = testSubject.getCommandMetrics(principal);
         assertEquals(1, commands.size());
-        assertEquals("Target." + testclient.getContext(), commands.get(0).getClientId());
+        assertEquals("Target", commands.get(0).getClientId());
+        assertEquals(testclient.getContext(), commands.get(0).getContext());
         assertEquals(0, commands.get(0).getCount());
         commandMetricsRegistry.add("Sample", "Source", "Target", testclient.getContext(), 1);
         commands = testSubject.getCommandMetrics(principal);
         assertEquals(1, commands.size());
-        assertEquals("Target." + testclient.getContext(), commands.get(0).getClientId());
+        assertEquals("Target", commands.get(0).getClientId());
+        assertEquals(testclient.getContext(), commands.get(0).getContext());
         assertEquals(1, commands.get(0).getCount());
     }
 
@@ -103,10 +114,11 @@ public class MetricsRestControllerTest {
     public void getQueryMetrics() {
         List<QueryMetricsRegistry.QueryMetric> queries = testSubject.getQueryMetrics(principal);
         assertEquals(1, queries.size());
-        assertEquals("Target." + queryClient.getContext(), queries.get(0).getClientId());
+        assertEquals("Target", queries.get(0).getClientId());
+        assertEquals( queryClient.getContext(), queries.get(0).getContext());
         assertEquals(0, queries.get(0).getCount());
 
-        queryMetricsRegistry.addHandlerResponseTime(new QueryDefinition("context", "query"),
+        queryMetricsRegistry.addHandlerResponseTime(new QueryDefinition(Topology.DEFAULT_CONTEXT, "query"),
                                                     "Source",
                                                     "Target",
                                                     queryClient.getContext(),
@@ -114,7 +126,8 @@ public class MetricsRestControllerTest {
 
         queries = testSubject.getQueryMetrics(principal);
         assertEquals(1, queries.size());
-        assertEquals("Target." + queryClient.getContext(), queries.get(0).getClientId());
+        assertEquals("Target", queries.get(0).getClientId());
+        assertEquals( queryClient.getContext(), queries.get(0).getContext());
         assertEquals(1, queries.get(0).getCount());
     }
 }

@@ -31,7 +31,9 @@
 </template>
 
 <script>
-    module.exports = {
+import {v4 as uuidv4} from 'uuid';
+
+export default {
         name: 'component-command-metrics',
         props: [],
         data: function() {
@@ -59,7 +61,7 @@
         loadMetric(m) {
           if (this.clients.indexOf(m.clientId) === -1) {
             this.clients.push(m.clientId);
-            Vue.set(this.componentNames, m.clientId, m.componentName);
+            Vue.set(this.componentNames, m.clientId, m.componentName + "@" + m.context);
           }
           if (this.commands.indexOf(m.command) === -1) {
             this.commands.push(m.command);
@@ -72,7 +74,7 @@
 
             },
             connect(me) {
-              me.webSocketInfo.subscribe('/topic/commands', function (metric) {
+              me.webSocketInfo.subscribe('/topic/commands/' + uuidv4(), function (metric) {
                 me.loadMetric(JSON.parse(metric.body));
               }, function (subscription) {
                 me.subscription = subscription;

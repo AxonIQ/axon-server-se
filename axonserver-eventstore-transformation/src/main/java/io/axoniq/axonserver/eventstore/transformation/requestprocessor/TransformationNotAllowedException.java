@@ -1,9 +1,6 @@
 package io.axoniq.axonserver.eventstore.transformation.requestprocessor;
 
-import io.axoniq.axonserver.eventstore.transformation.NonTransientTransformationException;
-
-public class TransformationNotAllowedException extends IllegalStateException implements
-        NonTransientTransformationException {
+public class TransformationNotAllowedException extends IllegalStateException {
 
     public TransformationNotAllowedException() {
         super();

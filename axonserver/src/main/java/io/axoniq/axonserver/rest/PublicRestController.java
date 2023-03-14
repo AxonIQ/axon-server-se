@@ -36,6 +36,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Comparator;
 import java.util.List;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -49,7 +50,7 @@ import javax.servlet.http.HttpServletRequest;
 @RequestMapping("/v1/public")
 public class PublicRestController {
 
-    private final Function<String, Stream<AxonServer>> axonServerProvider;
+    private final Function<Predicate<String>, Stream<AxonServer>> axonServerProvider;
     private final Topology topology;
     private final CommandDispatcher commandDispatcher;
     private final QueryDispatcher queryDispatcher;
@@ -64,7 +65,7 @@ public class PublicRestController {
     @Value("${axoniq.axonserver.devmode.enabled:false}")
     private boolean isDevelopmentMode;
 
-    public PublicRestController(Function<String, Stream<AxonServer>> axonServerProvider,
+    public PublicRestController(Function<Predicate<String>, Stream<AxonServer>> axonServerProvider,
                                 Topology topology,
                                 CommandDispatcher commandDispatcher,
                                 QueryDispatcher queryDispatcher,
@@ -92,7 +93,8 @@ public class PublicRestController {
             "For _admin nodes the result contains all nodes, for non _admin nodes the"
                     + "result only contains nodes from contexts available on this node and the _admin nodes.")
     public List<JsonServerNode> getClusterNodes() {
-        return axonServerProvider.apply(null).map(n -> new JsonServerNode(n))
+        return axonServerProvider.apply(null)
+                                 .map(JsonServerNode::new)
                                  .sorted(Comparator.comparing(JsonServerNode::getName)).collect(Collectors.toList());
     }
 

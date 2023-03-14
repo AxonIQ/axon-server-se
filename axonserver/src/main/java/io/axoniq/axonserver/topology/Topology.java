@@ -9,7 +9,11 @@
 
 package io.axoniq.axonserver.topology;
 
+import io.axoniq.axonserver.api.Authentication;
+
+import java.util.Collections;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Stream;
 
 /**
@@ -94,5 +98,15 @@ public interface Topology {
 
     default boolean initialized() {
         return true;
+    }
+
+    /**
+     * Retrieves a {@link Set} of context names that the requester is allowed to see.
+     * @param includeAdmin include the admin context in the result
+     * @param authentication the authentication of the requester
+     * @return set of context names
+     */
+    default Set<String> visibleContexts(boolean includeAdmin, Authentication authentication) {
+        return Collections.singleton(DEFAULT_CONTEXT);
     }
 }

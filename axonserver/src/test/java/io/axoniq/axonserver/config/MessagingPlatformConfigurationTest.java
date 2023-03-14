@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -16,7 +16,6 @@ import org.springframework.util.unit.DataSize;
 
 import java.lang.invoke.MethodHandles;
 
-import static io.axoniq.axonserver.config.MessagingPlatformConfiguration.ALLOW_EMPTY_DOMAIN;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -48,9 +47,9 @@ public class MessagingPlatformConfigurationTest {
 
     private MessagingPlatformConfiguration buildConfigWithHostname(final String name,
                                                                    final String hostname, final String domain,
-                                                                   final String internalHostname, final String internalDomain,
-                                                                   final String systemHostname,
-                                                                   boolean allowEmptyDomain) {
+                                                                   final String internalHostname,
+                                                                   final String internalDomain,
+                                                                   final String systemHostname) {
         MessagingPlatformConfiguration result = new MessagingPlatformConfiguration(new SystemInfoProvider() {
             @Override
             public String getHostName() {
@@ -62,7 +61,6 @@ public class MessagingPlatformConfigurationTest {
         result.setDomain(domain);
         result.setInternalHostname(internalHostname);
         result.setInternalDomain((internalDomain));
-        result.getExperimental().put(ALLOW_EMPTY_DOMAIN, allowEmptyDomain);
         result.postConstruct();
 
         return result;
@@ -195,7 +193,12 @@ public class MessagingPlatformConfigurationTest {
     public void testNames() {
         for (NameTest test : standardTests) {
             final MessagingPlatformConfiguration conf = buildConfigWithHostname(
-                    test.name, test.hostname, test.domain, test.internalHostname, test.internalDomain, test.systemHostname, false);
+                    test.name,
+                    test.hostname,
+                    test.domain,
+                    test.internalHostname,
+                    test.internalDomain,
+                    test.systemHostname);
 
             logger.info("{}: [{}, {}, {}, {}, {}] => [{}, {}, {}, {}, {}]", test.testName,
                     value(test.name), value(test.hostname), value(test.domain), value(test.internalHostname), value(test.internalDomain),
@@ -219,7 +222,12 @@ public class MessagingPlatformConfigurationTest {
 
         for (NameTest test : emptyDomainTests) {
             final MessagingPlatformConfiguration conf = buildConfigWithHostname(
-                    test.name, test.hostname, test.domain, test.internalHostname, test.internalDomain, test.systemHostname, true);
+                    test.name,
+                    test.hostname,
+                    test.domain,
+                    test.internalHostname,
+                    test.internalDomain,
+                    test.systemHostname);
 
             logger.info("{}: [{}, {}, {}, {}, {}] => [{}, {}, {}, {}, {}]", test.testName,
                     value(test.name), value(test.hostname), value(test.domain), value(test.internalHostname), value(test.internalDomain),
@@ -239,13 +247,13 @@ public class MessagingPlatformConfigurationTest {
 
     @Test(expected = IllegalArgumentException.class)
     public void testMaxMessageSizeTooLarge() {
-        MessagingPlatformConfiguration configuration = buildConfigWithHostname("a", "b", "c", "d", "e", "f", true);
+        MessagingPlatformConfiguration configuration = buildConfigWithHostname("a", "b", "c", "d", "e", "f");
         configuration.setMaxMessageSize(DataSize.ofBytes(Integer.MAX_VALUE + 1L));
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testMaxMessageSizeTooSmall() {
-        MessagingPlatformConfiguration configuration = buildConfigWithHostname("a", "b", "c", "d", "e", "f", true);
+        MessagingPlatformConfiguration configuration = buildConfigWithHostname("a", "b", "c", "d", "e", "f");
         configuration.setMaxMessageSize(DataSize.ofBytes(-1));
     }
 

@@ -8,6 +8,7 @@
     "watch": "webpack --watch"
   },
   "dependencies": {
+    "uuid": "^9.0.0",
     "vue": "^2.6.14",
     "vue-simple-suggest": "^1.11.2"
   },

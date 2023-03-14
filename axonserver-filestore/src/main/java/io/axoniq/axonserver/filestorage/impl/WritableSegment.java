@@ -365,8 +365,8 @@ public class WritableSegment extends AbstractSegment {
                         segment,
                         size);
         }
-        try (RandomAccessFile raf = new RandomAccessFile(file, "rw")) {
-            FileChannel fileChannel = raf.getChannel();
+        try (RandomAccessFile raf = new RandomAccessFile(file, "rw");
+             FileChannel fileChannel = raf.getChannel()) {
             positionsPerSegmentMap.computeIfAbsent(segment, k -> new ConcurrentHashMap<>());
             MappedByteBuffer buffer = fileChannel.map(FileChannel.MapMode.READ_WRITE, 0, size);
             int bufferLimit = buffer.limit();

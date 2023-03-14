@@ -88,9 +88,10 @@ public class StandardIndexManager implements IndexManager {
      * @param eventType         content type of the event store (events or snapshots)
      * @param meterFactory      factory to create metrics meter
      */
-    public StandardIndexManager(String context, Supplier<StorageProperties> storageProperties, String storagePath, EventType eventType,
+    public StandardIndexManager(String context, Supplier<StorageProperties> storageProperties, String storagePath,
+                                EventType eventType,
                                 MeterFactory meterFactory) {
-        this(context, storageProperties, storagePath, eventType, null, meterFactory, ()->null);
+        this(context, storageProperties, storagePath, eventType, null, meterFactory, () -> null);
     }
 
     /**
@@ -140,7 +141,7 @@ public class StandardIndexManager implements IndexManager {
                                                            properties.getIndexSuffix());
         for (String indexFile : indexFiles) {
             FileVersion fileVersion = FileUtils.process(indexFile);
-            if (properties.dataFile(storagePath,fileVersion).exists()) {
+            if (properties.dataFile(storagePath, fileVersion).exists()) {
                 indexesDescending.compute(fileVersion.segment(),
                                           (s, old) -> old == null ? fileVersion.segmentVersion() : Math.max(
                                                   fileVersion.segmentVersion(), old));
@@ -395,7 +396,7 @@ public class StandardIndexManager implements IndexManager {
         filter.insertAll(indexEntriesMap.keySet());
         filter.store();
 
-    //    indexesDescending.put(segment, version);
+        //    indexesDescending.put(segment, version);
     }
 
     @Override
@@ -404,10 +405,12 @@ public class StandardIndexManager implements IndexManager {
     }
 
     @Override
-    public SortedMap<FileVersion, IndexEntries> lookupAggregateInClosedSegments(String aggregateId, long firstSequenceNumber,
-                                                                         long lastSequenceNumber, long maxResults,
-                                                                         long minToken,
-                                                                         long minTokenInPreviousSegment) {
+    public SortedMap<FileVersion, IndexEntries> lookupAggregateInClosedSegments(String aggregateId,
+                                                                                long firstSequenceNumber,
+                                                                                long lastSequenceNumber,
+                                                                                long maxResults,
+                                                                                long minToken,
+                                                                                long minTokenInPreviousSegment) {
         SortedMap<FileVersion, IndexEntries> results = new TreeMap<>();
         for (Map.Entry<Long, Integer> index : indexesDescending.entrySet()) {
             if (minTokenInPreviousSegment < minToken) {
@@ -524,21 +527,10 @@ public class StandardIndexManager implements IndexManager {
         }
 
         if (!indexesDescending.isEmpty()) {
-            for (Map.Entry<Long, Integer> segment : indexesDescending.entrySet()) {
-                IndexEntries indexEntries = getPositions(new FileVersion(segment.getKey(), segment.getValue()),
-                                                         aggregateId);
-                if (indexEntries != null && indexEntries.firstSequenceNumber() < maxSequenceNumber) {
-                    return new SegmentIndexEntries(new FileVersion(segment.getKey(), segment.getValue()),
-                                                   indexEntries.range(indexEntries.firstSequenceNumber(),
-                                                                      maxSequenceNumber,
-                                                                      EventType.SNAPSHOT.equals(eventType)));
-                }
-            }
             return lastIndexEntriesFromClosedSegments(aggregateId,
                                                       maxSequenceNumber,
                                                       indexesDescending.keySet().first());
         }
-
         return null;
     }
 

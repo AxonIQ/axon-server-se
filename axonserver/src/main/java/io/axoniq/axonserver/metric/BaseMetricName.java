@@ -87,6 +87,7 @@ public enum BaseMetricName implements MetricName {
     AXON_SEGMENT_MOVE_INITIATED("file.segment.moved.initiated", "Number of event store segment files initiated to be moved to next tier"),
     AXON_SEGMENT_MOVED("file.segment.moved.completed", "Number of event store segment files moved to next tier"),
     AXON_SEGMENT_MOVED_DURATION("file.segment.moved.duration", "Duration of moving event store segment files to next tier"),
+    AXON_SEGMENTS_PER_TIER( "file.segment.per.tier", "Current number of segments in a tier"),
     AXON_AGGREGATE_READTIME("local.aggregate.readtime", "Elapsed time for reading events from the event store"),
     AXON_AGGREGATE_SEGMENT_COUNT("local.aggregate.segments", "Number of segments where aggregate is found"),
     AXON_LAST_SEQUENCE_READTIME("local.lastsequence.readtime",

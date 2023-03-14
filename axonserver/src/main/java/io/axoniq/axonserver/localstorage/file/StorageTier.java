@@ -9,6 +9,8 @@
 
 package io.axoniq.axonserver.localstorage.file;
 
+import org.springframework.boot.convert.ApplicationConversionService;
+
 import java.io.File;
 import java.time.Duration;
 import java.util.Iterator;
@@ -189,14 +191,16 @@ public interface StorageTier {
                 long minTimestamp = System.currentTimeMillis() - retentionTimeInMillis;
                 long candidate = segmentIterator.next();
 
-
                 if (segments.firstKey() == candidate) {
                     return null;
                 }
 
-
-                Map.Entry<Long, Integer> firstEntry = segments.firstEntry();
-                if (dataFileResolver.apply(new FileVersion(firstEntry.getKey(), firstEntry.getValue())).lastModified() < minTimestamp) {
+                Integer candidateVersion = segments.get(candidate);
+                if (candidateVersion == null) {
+                    return null;
+                }
+                File file = dataFileResolver.apply(new FileVersion(candidate, candidateVersion));
+                if (file.lastModified() < minTimestamp) {
                     return candidate;
                 }
             }
@@ -212,7 +216,10 @@ public interface StorageTier {
             if (retentionTimeString == null) {
                 return null;
             }
-            return Duration.parse(retentionTimeString).toMillis();
+            Duration duration = ApplicationConversionService
+                    .getSharedInstance().convert(retentionTimeString, Duration.class);
+
+            return duration == null ? null : duration.toMillis();
         }
     }
 

@@ -116,6 +116,11 @@ public class StorageProperties implements Cloneable {
     private Boolean forceCleanMmapIndex;
 
     /**
+     * Forcefully clean memory mapped files
+     */
+    private Boolean forceClean;
+
+    /**
      * Define how many events to prefetch from disk when streaming events to the client
      */
     private int eventsPerSegmentPrefetch = 10;
@@ -354,6 +359,14 @@ public class StorageProperties implements Cloneable {
         return storagePath;
     }
 
+    public Boolean getForceClean() {
+        return forceClean;
+    }
+
+    public void setForceClean(Boolean forceClean) {
+        this.forceClean = forceClean;
+    }
+
     public String getStorage(String storageName, String context) {
         return String.format("%s/%s", getStorage(storageName), context);
     }
@@ -457,7 +470,7 @@ public class StorageProperties implements Cloneable {
     }
 
     public boolean isCleanRequired() {
-        return systemInfoProvider.javaOnWindows();
+        return Boolean.TRUE.equals(forceClean) || systemInfoProvider.javaOnWindows();
     }
 
     public void setSegmentsForSequenceNumberCheck(int segmentsForSequenceNumberCheck) {
@@ -541,5 +554,11 @@ public class StorageProperties implements Cloneable {
 
     public int segmentsForSequenceNumberCheck() {
         return segmentsForSequenceNumberCheck;
+    }
+
+    public StorageProperties withForceClean(boolean forceClean) {
+        StorageProperties clone = cloneProperties();
+        clone.forceClean = forceClean;
+        return clone;
     }
 }

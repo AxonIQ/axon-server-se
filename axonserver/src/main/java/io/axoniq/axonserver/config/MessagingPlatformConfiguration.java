@@ -45,8 +45,6 @@ public class MessagingPlatformConfiguration {
     private static final int DEFAULT_MAX_TRANSACTION_SIZE = GrpcUtil.DEFAULT_MAX_MESSAGE_SIZE - RESERVED;
     public static final int DEFAULT_INTERNAL_GRPC_PORT = 8224;
 
-    public static final String ALLOW_EMPTY_DOMAIN = "allow-empty-domain";
-
     /**
      * gRPC port for axonserver platform
      */
@@ -115,12 +113,12 @@ public class MessagingPlatformConfiguration {
     private int metricsSynchronizationRate;
 
     /**
-     * Whether to force applications to connect to Primary nodes or Messaging Only nodes.
-     * When false, all nodes for a context are eligible to accept client connections.
+     * Whether to force applications to connect to Primary nodes or Messaging Only nodes. When false, all nodes for a
+     * context are eligible to accept client connections.
      * <p>
      * Defaults to false.
      */
-    private boolean forceConnectionToPrimaryOrMessagingNode = false;
+    private boolean forceConnectionToPrimaryOrMessagingNode = true;
     /**
      * Expiry interval (minutes) of metrics
      */
@@ -177,21 +175,21 @@ public class MessagingPlatformConfiguration {
     /**
      * The available features, keyed by name.
      */
-    private final Map<String, Boolean> experimental = new HashMap<>();
+    private final Map<String, Boolean> preview = new HashMap<>();
 
     public MessagingPlatformConfiguration(SystemInfoProvider systemInfoProvider) {
         this.systemInfoProvider = systemInfoProvider;
     }
 
     /**
-     * Logs the enabled experimental features at startup.
+     * Logs the enabled preview features at startup.
      */
     @PostConstruct
     public void init() {
         if (auditLog.isInfoEnabled()) {
-            experimental.forEach((featureName, enabled) -> {
+            preview.forEach((featureName, enabled) -> {
                 if (Boolean.TRUE.equals(enabled)) {
-                    auditLog.info("Experimental feature {} enabled.", featureName);
+                    auditLog.info("Preview of feature {} enabled.", featureName);
                 }
             });
         }
@@ -334,7 +332,7 @@ public class MessagingPlatformConfiguration {
     }
 
     public String getInternalDomain() {
-        if ((internalDomain == null) || (StringUtils.isEmpty(internalDomain) && !isExperimentalFeatureEnabled(ALLOW_EMPTY_DOMAIN))) {
+        if (internalDomain == null) {
             internalDomain = getDomain();
         }
         return internalDomain;
@@ -554,11 +552,11 @@ public class MessagingPlatformConfiguration {
         this.pluginPackageDirectory = pluginPackageDirectory;
     }
 
-    public Map<String, Boolean> getExperimental() {
-        return experimental;
+    public Map<String, Boolean> getPreview() {
+        return preview;
     }
 
     public boolean isExperimentalFeatureEnabled(final String name) {
-        return experimental.getOrDefault(name, false);
+        return preview.getOrDefault(name, false);
     }
 }
