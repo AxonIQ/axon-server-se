@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -21,13 +21,18 @@ import org.springframework.boot.context.properties.NestedConfigurationProperty;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.util.Assert;
 import org.springframework.util.unit.DataSize;
+import org.springframework.validation.Errors;
+import org.springframework.validation.Validator;
+import org.springframework.validation.annotation.Validated;
 
 import java.net.UnknownHostException;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.BiConsumer;
+import javax.annotation.Nonnull;
 import javax.annotation.PostConstruct;
+import javax.validation.Valid;
 
 import static io.axoniq.axonserver.logging.AuditLog.enablement;
 
@@ -36,7 +41,8 @@ import static io.axoniq.axonserver.logging.AuditLog.enablement;
  */
 @Configuration
 @ConfigurationProperties(prefix = "axoniq.axonserver")
-public class MessagingPlatformConfiguration {
+@Validated
+public class MessagingPlatformConfiguration implements Validator {
 
     private static final Logger logger = LoggerFactory.getLogger(MessagingPlatformConfiguration.class);
     private static final Logger auditLog = AuditLog.getLogger();
@@ -103,8 +109,10 @@ public class MessagingPlatformConfiguration {
     private String webSocketAllowedOrigins = "*";
 
     @NestedConfigurationProperty
+    @Valid
     private SslConfiguration ssl = new SslConfiguration();
     @NestedConfigurationProperty
+    @Valid
     private AccessControlConfiguration accesscontrol = new AccessControlConfiguration();
 
     /**
@@ -558,5 +566,17 @@ public class MessagingPlatformConfiguration {
 
     public boolean isExperimentalFeatureEnabled(final String name) {
         return preview.getOrDefault(name, false);
+    }
+
+    @Override
+    public boolean supports(@Nonnull Class<?> clazz) {
+        return MessagingPlatformConfiguration.class.isAssignableFrom(clazz);
+    }
+
+    @Override
+    public void validate(@Nonnull Object target, @Nonnull Errors errors) {
+        if (this.getSsl() != null) {
+            this.getSsl().validate(errors);
+        }
     }
 }
