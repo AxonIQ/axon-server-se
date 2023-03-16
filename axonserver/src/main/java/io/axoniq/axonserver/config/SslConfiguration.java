@@ -10,6 +10,7 @@
 package io.axoniq.axonserver.config;
 
 import io.axoniq.axonserver.exception.ErrorCode;
+import io.grpc.util.AdvancedTlsX509TrustManager;
 import org.springframework.validation.Errors;
 
 import java.io.File;
@@ -45,6 +46,9 @@ public class SslConfiguration {
      * File containing the private key to be used in internal communication between Axon Server nodes.
      */
     private String internalPrivateKeyFile;
+
+    private AdvancedTlsX509TrustManager.Verification trustManagerVerification =
+            AdvancedTlsX509TrustManager.Verification.CERTIFICATE_AND_HOST_NAME_VERIFICATION;
 
     public boolean isEnabled() {
         return enabled;
@@ -98,6 +102,14 @@ public class SslConfiguration {
 
     public void setInternalTrustManagerFile(String internalTrustManagerFile) {
         this.internalTrustManagerFile = internalTrustManagerFile;
+    }
+
+    public AdvancedTlsX509TrustManager.Verification getTrustManagerVerification() {
+        return trustManagerVerification;
+    }
+
+    public void setTrustManagerVerification(AdvancedTlsX509TrustManager.Verification trustManagerVerification) {
+        this.trustManagerVerification = trustManagerVerification;
     }
 
     public void validate(Errors errors) {

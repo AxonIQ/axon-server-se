@@ -13,7 +13,6 @@ import io.axoniq.axonserver.AxonServerAccessController;
 import io.axoniq.axonserver.LicenseAccessController;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.exception.FailedToStartException;
-import io.axoniq.axonserver.util.DaemonThreadFactory;
 import io.grpc.Server;
 import io.grpc.ServerCredentials;
 import io.grpc.TlsServerCredentials;
@@ -21,6 +20,7 @@ import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder;
 import io.grpc.util.AdvancedTlsX509KeyManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 import org.springframework.stereotype.Component;
@@ -29,7 +29,9 @@ import java.io.File;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 
 /**
  * gRPC server setup for handling requests from client applications.
@@ -46,16 +48,32 @@ public class Gateway implements SmartLifecycle {
     private Server server;
     private final MessagingPlatformConfiguration routingConfiguration;
     private final LicenseAccessController licenseAccessController;
+    private final Supplier<ScheduledExecutorService> maintenanceSchedulerSupplier;
     private final ExecutorService executorService;
     private AdvancedTlsX509KeyManager.Closeable serverKeyClosable;
 
+    public Gateway(MessagingPlatformConfiguration messagingPlatformConfiguration,
+                   List<AxonServerClientService> axonServerClientServices,
+                   AxonServerAccessController axonServerAccessController,
+                   LicenseAccessController licenseAccessController) {
+        this(messagingPlatformConfiguration,
+             axonServerClientServices,
+             axonServerAccessController,
+             licenseAccessController,
+             Executors::newSingleThreadScheduledExecutor);
+    }
 
-    public Gateway(MessagingPlatformConfiguration messagingPlatformConfiguration, List<AxonServerClientService> axonServerClientServices,
-                   AxonServerAccessController axonServerAccessController, LicenseAccessController licenseAccessController) {
+    @Autowired
+    public Gateway(MessagingPlatformConfiguration messagingPlatformConfiguration,
+                   List<AxonServerClientService> axonServerClientServices,
+                   AxonServerAccessController axonServerAccessController,
+                   LicenseAccessController licenseAccessController,
+                   Supplier<ScheduledExecutorService> maintenanceSchedulerSupplier) {
         this.routingConfiguration = messagingPlatformConfiguration;
         this.axonServerClientServices = axonServerClientServices;
         this.axonServerAccessController = axonServerAccessController;
         this.licenseAccessController = licenseAccessController;
+        this.maintenanceSchedulerSupplier = maintenanceSchedulerSupplier;
         this.executorService = Executors.newFixedThreadPool(routingConfiguration.getExecutorThreadCount(),
                                                             new CustomizableThreadFactory("grpc-executor-"));
     }
@@ -99,8 +117,7 @@ public class Gateway implements SmartLifecycle {
                         new File(routingConfiguration.getSsl().getCertChainFile()),
                         1,
                         TimeUnit.MINUTES,
-                        Executors.newSingleThreadScheduledExecutor(
-                                new DaemonThreadFactory("certificate-check")));
+                        maintenanceSchedulerSupplier.get());
                 ServerCredentials serverCredentials = TlsServerCredentials.newBuilder()
                                                                           .keyManager(serverKeyManager)
                                                                           .clientAuth(TlsServerCredentials.ClientAuth.NONE)
