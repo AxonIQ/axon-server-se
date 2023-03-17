@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.rest;
 
+import io.axoniq.axonserver.AxonServerAccessController;
 import io.axoniq.axonserver.config.AccessControlConfiguration;
 import io.axoniq.axonserver.config.FeatureChecker;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
@@ -59,6 +60,7 @@ public class PublicRestController {
     private final SslConfiguration sslConfiguration;
     private final AccessControlConfiguration accessControlConfiguration;
     private final VersionInfoProvider versionInfoSupplier;
+    private final AxonServerAccessController accessController;
     private final Supplier<SubscriptionMetrics> subscriptionMetricsRegistry;
     private final boolean pluginsEnabled;
 
@@ -73,6 +75,7 @@ public class PublicRestController {
                                 FeatureChecker features,
                                 MessagingPlatformConfiguration messagingPlatformConfiguration,
                                 VersionInfoProvider versionInfoSupplier,
+                                AxonServerAccessController accessController,
                                 Supplier<SubscriptionMetrics> subscriptionMetricsRegistry) {
         this.axonServerProvider = axonServerProvider;
         this.topology = topology;
@@ -84,6 +87,7 @@ public class PublicRestController {
         this.accessControlConfiguration = messagingPlatformConfiguration.getAccesscontrol();
         this.pluginsEnabled = messagingPlatformConfiguration.isPluginsEnabled();
         this.versionInfoSupplier = versionInfoSupplier;
+        this.accessController = accessController;
         this.subscriptionMetricsRegistry = subscriptionMetricsRegistry;
     }
 
@@ -102,7 +106,7 @@ public class PublicRestController {
     @Operation(summary = "Retrieves general information on the configuration of the current node, including hostnames and ports for the gRPC and HTTP connections and contexts")
     public NodeConfiguration getNodeConfiguration() {
         NodeConfiguration node = new NodeConfiguration(topology.getMe());
-        node.setAuthentication(accessControlConfiguration.isEnabled());
+        node.setAuthentication(!accessController.allowAnonymousAccess());
         node.setSsl(sslConfiguration.isEnabled());
         node.setAdminNode(topology.isAdminNode());
         node.setDevelopmentMode(isDevelopmentMode);

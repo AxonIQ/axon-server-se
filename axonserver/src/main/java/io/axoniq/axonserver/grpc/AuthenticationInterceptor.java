@@ -43,11 +43,16 @@ public class AuthenticationInterceptor implements ServerInterceptor {
         StatusRuntimeException sre = null;
         Authentication authentication = null;
         if (token == null) {
-            AuditLog.getLogger().warn("{}: Request without token sent from {}",
-                                      context,
-                                      serverCall.getAttributes().get(Grpc.TRANSPORT_ATTR_REMOTE_ADDR));
-            sre = GrpcExceptionBuilder.build(ErrorCode.AUTHENTICATION_TOKEN_MISSING,
-                                             "No token for " + serverCall.getMethodDescriptor().getFullMethodName());
+            if (axonServerAccessController.allowAnonymousAccess()) {
+                authentication = GrpcContextAuthenticationProvider.USER_PRINCIPAL;
+            } else {
+                AuditLog.getLogger().warn("{}: Request without token sent from {}",
+                                          context,
+                                          serverCall.getAttributes().get(Grpc.TRANSPORT_ATTR_REMOTE_ADDR));
+                sre = GrpcExceptionBuilder.build(ErrorCode.AUTHENTICATION_TOKEN_MISSING,
+                                                 "No token for " + serverCall.getMethodDescriptor()
+                                                                             .getFullMethodName());
+            }
         } else {
             authentication = authentication(token);
             if (!axonServerAccessController.allowed(serverCall.getMethodDescriptor().getFullMethodName(),

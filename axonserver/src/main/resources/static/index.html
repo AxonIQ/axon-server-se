@@ -179,6 +179,7 @@
                             license: "free",
                             initialized: false,
                             pluginsEnabled: false,
+                            accessControl: false,
                             user: null
                         }, mounted() {
                     axios.get("v1/public/user").then(response => {
@@ -197,6 +198,7 @@
 
                         axios.get("v1/public/me").then(response => {
                             globals.authenticationEnabled = response.data.authentication;
+                            this.accessControl = response.data.authentication;
                             globals.adminNode = response.data.adminNode;
                             globals.initialized = response.data.initialized;
                             this.initialized = response.data.initialized;
@@ -358,7 +360,7 @@
                 style="float: left; background: url('img/axon-server-se.png') no-repeat left center;">Axon Server
                 SE</h1>
             <div id="logout" style="float:right; margin-top: 30px;">
-                <a v-if="loggedIn()" href="logout">Logout {{ user }}</a>
+                <a v-if="accessControl && loggedIn()" href="logout">Logout {{ user }}</a>
             </div>
         </header>
 

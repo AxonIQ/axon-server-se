@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -65,7 +65,7 @@ globals.pageView = new Vue(
                     }
                     return false;
                 },
-                save(user) {
+                save() {
                     this.feedback = "";
                     if (!this.user.userName) {
                         alert("Please enter name for user");
@@ -87,6 +87,13 @@ globals.pageView = new Vue(
                         }
                     }
 
+                    if (this.users.length === 0) {
+                        this.$modal.show('create-first-user');
+                    } else {
+                        this.doSaveUser();
+                    }
+                },
+                doSaveUser() {
                     this.user.roles = [];
                     if (this.isEnterprise()) {
                         if (this.newRole.context && this.newRole.role) {
@@ -105,13 +112,20 @@ globals.pageView = new Vue(
                     }
 
                     this.user.workingRoles = null
+                    const nrOfUsers = this.users.length
 
-                    axios.post('v1/users', user)
+                    axios.post('v1/users', this.user)
                             .then(() => {
                                 this.feedback = "User saved ";
                                 this.user = {roles: [], workingRoles: []};
                                 this.newRole = {};
                                 this.adminRole = false;
+                                this.$modal.hide('create-first-user');
+                                console.info(`${nrOfUsers} users`)
+                                if (nrOfUsers === 0) {
+                                    window.location.href = "logout";
+                                    return;
+                                }
                                 this.loadUsers();
                             });
 

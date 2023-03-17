@@ -1,5 +1,5 @@
 <!--
-  ~  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+  ~  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
   ~  under one or more contributor license agreements.
   ~
   ~  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -92,10 +92,35 @@
                     </li>
                     <li>
                         <span class="narrow">&nbsp;</span>
-                        <span><button @click.prevent="save(user)" class="button">Save</button></span>
+                        <span><button @click.prevent="save()" class="button">Save</button></span>
                     </li>
                 </ul>
             </form>
         </div>
     </section>
+
+    <modal name="create-first-user" width="600" height="330">
+        <div class="column configuration modal">
+            <h2>Creating first user</h2>
+            <p>
+                You are about to create the first user. Once this user is created access control will be enforced, both
+                for the UI and for the gRPC connection and you will be redirected to the login page.
+            </p>
+            <p>
+                Do you want to continue?
+            </p>
+            <form>
+                <ul>
+                    <li>
+                        <span>&nbsp;</span>
+                        <span>
+                  <button class="button" @click.prevent="doSaveUser()">Create user</button>
+                  <button class="button" @click.prevent="$modal.hide('create-first-user')">Cancel</button>
+                  </span>
+                    </li>
+                </ul>
+            </form>
+        </div>
+    </modal>
+
 </div>

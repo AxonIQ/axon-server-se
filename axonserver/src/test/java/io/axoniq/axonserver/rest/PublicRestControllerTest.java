@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.rest;
 
+import io.axoniq.axonserver.AxonServerAccessController;
 import io.axoniq.axonserver.config.FeatureChecker;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.config.SystemInfoProvider;
@@ -32,6 +33,8 @@ import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * @author Marc Gathier
@@ -63,6 +66,9 @@ public class PublicRestControllerTest {
             }
         });
         clusterController = new DefaultTopology(messagePlatformConfiguration);
+        AxonServerAccessController accessController = mock(AxonServerAccessController.class);
+        when(accessController.allowAnonymousAccess()).thenReturn(!messagePlatformConfiguration.getAccesscontrol()
+                                                                                              .isEnabled());
         testSubject = new PublicRestController(new AxonServers(clusterController),
                                                clusterController,
                                                commandDispatcher,
@@ -71,6 +77,7 @@ public class PublicRestControllerTest {
                                                limits,
                                                messagePlatformConfiguration,
                                                new DefaultVersionInfoProvider(),
+                                               accessController,
                                                () -> new FakeSubscriptionMetrics(500, 400, 1000));
 
     }

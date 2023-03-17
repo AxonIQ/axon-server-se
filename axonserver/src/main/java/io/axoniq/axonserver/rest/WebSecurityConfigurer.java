@@ -27,6 +27,7 @@ import org.springframework.security.config.annotation.web.configuration.WebSecur
 import org.springframework.security.config.annotation.web.configurers.ExpressionUrlAuthorizationConfigurer;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
@@ -37,8 +38,10 @@ import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
+import javax.servlet.Filter;
 import javax.servlet.FilterChain;
 import javax.servlet.ServletException;
 import javax.servlet.ServletOutputStream;
@@ -48,8 +51,8 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 /**
- * The default {@link WebSecurityConfigurerAdapter} for Axon Server. This one configures the token filter, and sets
- * all rules for protecting (or not) the UI and REST API.
+ * The default {@link WebSecurityConfigurerAdapter} for Axon Server. This one configures the token filter, and sets all
+ * rules for protecting (or not) the UI and REST API.
  *
  * @author Marc Gathier
  */
@@ -85,35 +88,33 @@ public class WebSecurityConfigurer extends WebSecurityConfigurerAdapter {
 
         http.csrf().disable();
         http.headers().frameOptions().disable();
-        if (accessControlConfiguration.isEnabled()) {
-            logger.debug("Access control is ENABLED. Setting up filters and matchers.");
+        logger.debug("Access control is ENABLED. Setting up filters and matchers.");
 
-            final TokenAuthenticationFilter tokenFilter = new TokenAuthenticationFilter(accessController);
-            http.addFilterBefore(tokenFilter, BasicAuthenticationFilter.class);
-            http.exceptionHandling()
-                    .accessDeniedHandler(this::handleAccessDenied)
-                    // only redirect to login page for html pages
-                    .defaultAuthenticationEntryPointFor(new LoginUrlAuthenticationEntryPoint("/login"),
-                            new AntPathRequestMatcher("/**/*.html"));
-            ExpressionUrlAuthorizationConfigurer<HttpSecurity>.ExpressionInterceptUrlRegistry auth = http
-                    .authorizeRequests();
+        final TokenAuthenticationFilter tokenFilter = new TokenAuthenticationFilter(accessController);
+        final NoUsersAuthenticationFilter noUsersAuthenticationFilter = new NoUsersAuthenticationFilter();
+        http.addFilterBefore(noUsersAuthenticationFilter, BasicAuthenticationFilter.class);
+        http.addFilterBefore(tokenFilter, NoUsersAuthenticationFilter.class);
+        http.exceptionHandling()
+            .accessDeniedHandler(this::handleAccessDenied)
+            // only redirect to login page for html pages
+            .defaultAuthenticationEntryPointFor(new LoginUrlAuthenticationEntryPoint("/login"),
+                                                new AntPathRequestMatcher("/**/*.html"));
+        ExpressionUrlAuthorizationConfigurer<HttpSecurity>.ExpressionInterceptUrlRegistry auth = http
+                .authorizeRequests();
 
-                auth.antMatchers("/", "/**/*.html", "/v1/**", "/v2/**", "/internal/**")
-                        .authenticated()
-                        .accessDecisionManager(new AffirmativeBased(
-                                Collections.singletonList(
-                                        new RestRequestAccessDecisionVoter(accessController))));
-            auth
-                    .anyRequest().permitAll()
-                    .and()
-                    .formLogin().loginPage("/login").permitAll()
-                    .and()
-                    .logout().permitAll()
-                    .and()
-                    .httpBasic(); // Allow accessing rest calls using basic authentication header
-        } else {
-            http.authorizeRequests().anyRequest().permitAll();
-        }
+        auth.antMatchers("/", "/**/*.html", "/v1/**", "/v2/**", "/internal/**")
+            .authenticated()
+            .accessDecisionManager(new AffirmativeBased(
+                    Collections.singletonList(
+                            new RestRequestAccessDecisionVoter(accessController))));
+        auth
+                .anyRequest().permitAll()
+                .and()
+                .formLogin().loginPage("/login").permitAll()
+                .and()
+                .logout().permitAll()
+                .and()
+                .httpBasic(); // Allow accessing rest calls using basic authentication header
     }
 
     /**
@@ -148,8 +149,8 @@ public class WebSecurityConfigurer extends WebSecurityConfigurerAdapter {
             this.authenticated = authenticated;
             this.name = name;
             this.roles = roles.stream()
-                    .map(s -> (GrantedAuthority) () -> s)
-                    .collect(Collectors.toSet());
+                              .map(s -> (GrantedAuthority) () -> s)
+                              .collect(Collectors.toSet());
         }
 
         @Override
@@ -232,6 +233,65 @@ public class WebSecurityConfigurer extends WebSecurityConfigurerAdapter {
                     SecurityContextHolder.getContext().setAuthentication(null);
                 }
             }
+        }
+    }
+
+    private class NoUsersAuthenticationFilter implements Filter {
+
+        @Override
+        public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain filterChain)
+                throws IOException, ServletException {
+            if (SecurityContextHolder.getContext().getAuthentication() == null
+                    && accessController.allowAnonymousAccess()) {
+                SecurityContextHolder.getContext().setAuthentication(new AllowAllAuthenticationToken());
+            }
+            filterChain.doFilter(servletRequest, servletResponse);
+        }
+    }
+
+    private class AllowAllAuthenticationToken implements Authentication {
+
+        private final Set<GrantedAuthority> authorities = new HashSet<>();
+
+        public AllowAllAuthenticationToken() {
+            authorities.add(new SimpleGrantedAuthority("ADMIN@_admin"));
+            authorities.add(new SimpleGrantedAuthority("CONTEXT_ADMIN@*"));
+            authorities.add(new SimpleGrantedAuthority("USE_CONTEXT@*"));
+        }
+
+        @Override
+        public Collection<? extends GrantedAuthority> getAuthorities() {
+            return authorities;
+        }
+
+        @Override
+        public Object getCredentials() {
+            return "";
+        }
+
+        @Override
+        public Object getDetails() {
+            return null;
+        }
+
+        @Override
+        public Object getPrincipal() {
+            return "AllowAll";
+        }
+
+        @Override
+        public boolean isAuthenticated() {
+            return true;
+        }
+
+        @Override
+        public void setAuthenticated(boolean isAuthenticated) throws IllegalArgumentException {
+
+        }
+
+        @Override
+        public String getName() {
+            return "Admin";
         }
     }
 }

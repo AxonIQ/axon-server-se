@@ -85,6 +85,12 @@ public class AxonServerStandardAccessController implements AxonServerAccessContr
                 GrpcContextAuthenticationProvider.USER_PRINCIPAL;
     }
 
+    @Override
+    public boolean allowAnonymousAccess() {
+        return messagingPlatformConfiguration.getAccesscontrol() == null
+                || !messagingPlatformConfiguration.getAccesscontrol().isEnabled();
+    }
+
     private boolean isAdminToken(String token) {
         return (token != null) && token.equals(messagingPlatformConfiguration.getAccesscontrol().getAdminToken());
     }

@@ -67,4 +67,8 @@ public interface AxonServerAccessController {
      * @throws io.axoniq.axonserver.exception.InvalidTokenException when the token is unknown
      */
     Authentication authenticate(String token);
+
+    default boolean allowAnonymousAccess() {
+        return false;
+    }
 }
