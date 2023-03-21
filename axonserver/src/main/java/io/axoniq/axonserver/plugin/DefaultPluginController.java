@@ -79,12 +79,12 @@ public class DefaultPluginController implements PluginController {
 
         Map<String, Iterable<ConfigurationError>> errors = configurationManager.errors(
                 pluginKey,
-                Topology.DEFAULT_CONTEXT,
+                context,
                 properties
         );
 
         if (errors.isEmpty()){
-            pluginContextManager.updateConfiguration(Topology.DEFAULT_CONTEXT,
+            pluginContextManager.updateConfiguration(context,
                     pluginKey.getSymbolicName(),
                     pluginKey.getVersion(),
                     properties);
@@ -95,7 +95,7 @@ public class DefaultPluginController implements PluginController {
 
     @Override
     public void updatePluginStatus(PluginKey pluginKey, String context, boolean active) {
-        pluginContextManager.updateStatus(Topology.DEFAULT_CONTEXT,
+        pluginContextManager.updateStatus(context,
                                           pluginKey.getSymbolicName(),
                                           pluginKey.getVersion(),
                                           active);
