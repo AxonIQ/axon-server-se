@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -943,15 +943,19 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
          * Close all activity on a context and release all resources.
          */
         public void close(boolean deleteData) {
-            logger.info("Start closing the Workers[{}] for context {} with deleteData = {}.",
-                        System.identityHashCode(this), context, deleteData);
-            trackingEventManager.close();
-            eventStorageEngine.close(deleteData);
-            snapshotStorageEngine.close(deleteData);
-            meterFactory.remove(gauge);
-            meterFactory.remove(snapshotGauge);
-            logger.info("Workers[{}] closed for context {} with deleteData = {}.",
-                        System.identityHashCode(this), context, deleteData);
+            try {
+                logger.info("Start closing the Workers[{}] for context {} with deleteData = {}.",
+                            System.identityHashCode(this), context, deleteData);
+                trackingEventManager.close();
+                eventStorageEngine.close(deleteData);
+                snapshotStorageEngine.close(deleteData);
+                meterFactory.remove(gauge);
+                meterFactory.remove(snapshotGauge);
+                logger.info("Workers[{}] closed for context {} with deleteData = {}.",
+                            System.identityHashCode(this), context, deleteData);
+            } catch (Exception ex) {
+                logger.warn("{}: Failed to close - {}", context, ex.getMessage());
+            }
         }
 
         private TrackingEventProcessorManager.EventTracker createEventTracker(long trackingToken,

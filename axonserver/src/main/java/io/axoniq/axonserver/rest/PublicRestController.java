@@ -44,6 +44,7 @@ import javax.servlet.http.HttpServletRequest;
 
 /**
  * Rest calls to retrieve information about the configuration of Axon Server. Used by UI and CLI.
+ *
  * @author Marc Gathier
  */
 @RestController("PublicRestController")
@@ -136,18 +137,23 @@ public class PublicRestController {
 
     @GetMapping(path = "status")
     @Operation(summary = "Retrieves status information, used by UI")
-    public StatusInfo status(@RequestParam(value = "context", defaultValue = Topology.DEFAULT_CONTEXT, required = false) String context) {
+    public StatusInfo status(
+            @RequestParam(value = "context", defaultValue = Topology.DEFAULT_CONTEXT, required = false) String context) {
         SubscriptionMetrics subscriptionMetrics = this.subscriptionMetricsRegistry.get();
         StatusInfo statusInfo = new StatusInfo();
-        statusInfo.setCommandRate(commandDispatcher.commandRate(context));
-        statusInfo.setQueryRate(queryDispatcher.queryRate(context));
-        if( ! context.startsWith("_")) {
-            statusInfo.setEventRate(eventDispatcher.eventRate(context));
-            statusInfo.setSnapshotRate(eventDispatcher.snapshotRate(context));
-            statusInfo.setNrOfEvents(eventDispatcher.getNrOfEvents(context));
-            statusInfo.setEventTrackers(eventDispatcher.eventTrackerStatus(context));
+        try {
+            statusInfo.setCommandRate(commandDispatcher.commandRate(context));
+            statusInfo.setQueryRate(queryDispatcher.queryRate(context));
+            statusInfo.setNrOfActiveSubscriptionQueries(subscriptionMetrics.activesCount());
+            if (!context.startsWith("_")) {
+                statusInfo.setEventRate(eventDispatcher.eventRate(context));
+                statusInfo.setSnapshotRate(eventDispatcher.snapshotRate(context));
+                statusInfo.setNrOfEvents(eventDispatcher.getNrOfEvents(context));
+                statusInfo.setEventTrackers(eventDispatcher.eventTrackerStatus(context));
+            }
+        } catch (Exception ex) {
+            statusInfo.setMessage(ex.getMessage());
         }
-        statusInfo.setNrOfActiveSubscriptionQueries(subscriptionMetrics.activesCount());
         return statusInfo;
     }
 
@@ -158,7 +164,8 @@ public class PublicRestController {
         if (request.getUserPrincipal() instanceof Authentication) {
             Authentication token = (Authentication) request.getUserPrincipal();
             return new UserInfo(token.getName(),
-                                token.getAuthorities().stream().map(GrantedAuthority::getAuthority).collect(Collectors.toSet()));
+                                token.getAuthorities().stream().map(GrantedAuthority::getAuthority)
+                                     .collect(Collectors.toSet()));
         }
 
         return null;
@@ -177,7 +184,6 @@ public class PublicRestController {
 
         JsonServerNode(AxonServer n) {
             wrapped = n;
-
         }
 
 

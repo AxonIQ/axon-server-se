@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -27,6 +27,8 @@ public class StatusInfo {
     private long nrOfActiveSubscriptionQueries;
     private long nrOfSubscriptionQueriesUpdates;
     private Map<String, Iterable<Long>> eventTrackers;
+
+    private String message;
 
     public MeterFactory.RateMeter getCommandRate() {
         return commandRate;
@@ -106,5 +108,13 @@ public class StatusInfo {
 
     public void setEventRate(MeterFactory.RateMeter eventRate) {
         this.eventRate = eventRate;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public void setMessage(String message) {
+        this.message = message;
     }
 }

@@ -46,6 +46,16 @@
 
 <div id="settings">
 
+    <div v-if="initialized && !node.adminNode" class="msg error">
+        This is not an ADMIN node
+    </div>
+
+    <div v-if="health.aggregateStatus !== 'UP'">
+        <div v-for="(msg,idx) in health.details" class="msg warning" v-bind="idx">
+            {{ msg }}
+        </div>
+    </div>
+
     <div v-if="!node.ssl" id="sslDisabled" class="msg warning">
         SSL disabled
     </div>
@@ -56,10 +66,6 @@
 
     <div v-if="!node.authentication" id="authenticationDisabled" class="msg warning">
         Authentication disabled
-    </div>
-
-    <div v-if="initialized && !node.adminNode" class="msg warning">
-        This is not an ADMIN node
     </div>
 
     <div v-if="!initialized" class="msg white">
@@ -140,7 +146,8 @@
                     </li>
                     <li>
                         <span>Last event token</span>
-                        <span id="nrEvents" class="number">{{status.nrOfEvents}}</span>
+                        <span id="nrEvents" class="number" v-if="!status.message">{{ status.nrOfEvents }}</span>
+                        <span id="nrEvents" class="number" v-if="status.message" :title="status.message">Unknown</span>
                     </li>
                 </ul>
 

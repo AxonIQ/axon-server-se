@@ -26,7 +26,12 @@ globals.pageView = new Vue({
                                    initializeMode: "init",
                                    initContext: "default",
                                    joinHost: null,
-                                   joinPort: 8224
+                                   joinPort: 8224,
+                                   source: null,
+                                   health: {
+                                       aggregateStatus: "UP",
+                                       details: []
+                                   }
                                },
                                mounted() {
                                    axios.get("v1/public/license").then(response => {
@@ -38,8 +43,13 @@ globals.pageView = new Vue({
                                    axios.get("v1/public").then(response => {
                                        this.nodes = response.data
                                    });
+
                                    this.timer = setInterval(this.reloadStatus, 5000);
                                    let me = this;
+                                   this.source = new EventSource("v1/public/health-messages");
+                                   this.source.addEventListener('message', function (event) {
+                                       me.health = JSON.parse(event.data);
+                                   });
                                    if (globals.isEnterprise()) {
                                        me.webSocketInfo.subscribe('/topic/cluster', function () {
                                            me.initOverview();
@@ -67,6 +77,9 @@ globals.pageView = new Vue({
                                    clearInterval(this.timer);
                                    if (this.subscription) {
                                        this.subscription.unsubscribe();
+                                   }
+                                   if (this.source) {
+                                       source.close();
                                    }
                                },
                                methods: {
