@@ -61,7 +61,7 @@ public class DefaultPluginController implements PluginController {
     @Override
     public List<PluginPropertyGroup> listProperties(PluginKey pluginKey, String context) {
         List<PluginPropertyGroup> definedProperties = configurationManager.configuration(pluginKey);
-        pluginContextManager.getStatus(Topology.DEFAULT_CONTEXT,
+        pluginContextManager.getStatus(context,
                                        pluginKey.getSymbolicName(),
                                        pluginKey.getVersion())
                             .ifPresent(status -> PluginPropertyUtils.setValues(definedProperties,
@@ -75,7 +75,7 @@ public class DefaultPluginController implements PluginController {
     public void updateConfiguration(PluginKey pluginKey, String context,
                                     Map<String, Map<String, Object>> properties) throws ConfigurationValidationException {
         properties = PluginPropertyUtils.validateProperties(properties,
-                                                            listProperties(pluginKey, Topology.DEFAULT_CONTEXT));
+                                                            listProperties(pluginKey, context));
 
         Map<String, Iterable<ConfigurationError>> errors = configurationManager.errors(
                 pluginKey,
