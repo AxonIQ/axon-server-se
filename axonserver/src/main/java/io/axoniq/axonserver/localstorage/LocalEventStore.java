@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -490,6 +490,18 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         });
     }
 
+    public Flux<SerializedEventWithToken> snapshots(String context, long firstToken) {
+        return Flux.fromIterable(() -> {
+            EventStorageEngine reader = workers(context).snapshotStorageEngine;
+            return reader.getGlobalIterator(Math.min(reader.getFirstToken(), firstToken));
+        });
+    }
+
+    public Optional<Long> lastSnapshotSequence(String context, String aggregateId) {
+        EventStorageEngine reader = workers(context).snapshotStorageEngine;
+        return reader.getLastSequenceNumber(aggregateId);
+    }
+
     private StreamObserver<GetEventsRequest> listEvents(String context, Authentication authentication,
                                                         StreamObserver<SerializedEventWithToken> responseStreamObserver) {
         return new StreamObserver<GetEventsRequest>() {
@@ -855,8 +867,16 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     public Mono<Void> compact(String context) {
         return workers(context).compact();
     }
+
     public EventStorageEngine getSnapshotStorage(String context) {
         return workers(context).snapshotStorageEngine;
+    }
+
+    public Flux<Long> transformSnapshots(String context, int segmentVersion, Flux<EventWithToken> transformedEvents) {
+        return workersMap.get(context)
+                .snapshotStorageEngine
+                .transformContents(segmentVersion, transformedEvents)
+                .subscribeOn(Schedulers.fromExecutorService(dataFetcher));
     }
 
     private class Workers {
