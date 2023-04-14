@@ -407,12 +407,7 @@ public class FileEventStorageEngine implements EventStorageEngine {
     }
 
     private Mono<Void> renameTransformedSegmentIfNeeded(FileVersion fileVersion) {
-        return Mono.fromSupplier(() -> storagePropertiesSupplier.get().dataFile(storagePath, fileVersion))
-                   .filter(dataFile -> !dataFile.exists())
-                   .flatMap(dataFile -> Mono.fromSupplier(() -> transformedDataFile(fileVersion))
-                                            .filter(File::exists)
-                                            .switchIfEmpty(Mono.error(new RuntimeException("File does not exist.")))
-                                            .flatMap(tempFile -> FileUtils.rename(tempFile, dataFile)));
+        return head.renameTransformedSegmentIfNeeded(fileVersion, transformedDataFile(fileVersion));
     }
 
     private File transformedDataFile(FileVersion segment) {

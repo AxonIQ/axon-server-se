@@ -10,6 +10,7 @@
 package io.axoniq.axonserver.localstorage.file;
 
 import org.springframework.boot.convert.ApplicationConversionService;
+import reactor.core.publisher.Mono;
 
 import java.io.File;
 import java.time.Duration;
@@ -118,6 +119,8 @@ public interface StorageTier {
      * @return a stream of segment numbers
      */
     Stream<Long> allSegments();
+
+    Mono<Void> renameTransformedSegmentIfNeeded(FileVersion fileVersion, File transformedDataFile);
 
 
     /**

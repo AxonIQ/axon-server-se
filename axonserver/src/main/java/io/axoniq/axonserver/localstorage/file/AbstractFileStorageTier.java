@@ -19,6 +19,7 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Tags;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.publisher.Mono;
 
 import java.io.File;
 import java.util.Arrays;
@@ -156,6 +157,26 @@ public abstract class AbstractFileStorageTier implements StorageTier {
         initialized.set(true);
     }
 
+    @Override
+    public Mono<Void> renameTransformedSegmentIfNeeded(FileVersion fileVersion, File transformedDataFile) {
+        return Mono.defer(() -> {
+            if (segments.containsKey(fileVersion.segment())) {
+                return doRenameTransformedSegmentIfNeeded(fileVersion, transformedDataFile);
+            }
+
+            return invokeOnNext(n -> n.renameTransformedSegmentIfNeeded(fileVersion, transformedDataFile),
+                                Mono.empty());
+        });
+    }
+
+    private Mono<Void> doRenameTransformedSegmentIfNeeded(FileVersion fileVersion, File transformedDataFile) {
+        return Mono.fromSupplier(() -> storagePropertiesSupplier.get().dataFile(storagePath, fileVersion))
+                   .filter(dataFile -> !dataFile.exists())
+                   .flatMap(dataFile -> Mono.fromSupplier(() -> transformedDataFile)
+                                            .filter(File::exists)
+                                            .switchIfEmpty(Mono.error(new RuntimeException("File does not exist.")))
+                                            .flatMap(tempFile -> FileUtils.rename(tempFile, dataFile)));
+    }
 
     protected Map<Long, Integer> prepareSegmentStore(long lastInitialized) {
         StorageProperties storageProperties = storagePropertiesSupplier.get();

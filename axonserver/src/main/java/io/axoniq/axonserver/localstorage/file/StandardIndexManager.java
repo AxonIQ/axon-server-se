@@ -339,18 +339,36 @@ public class StandardIndexManager implements IndexManager {
     }
 
     @Override
-    public Mono<Void> activateVersion(long segment, int segmentVersion) {
-        FileVersion fileVersion = new FileVersion(segment, segmentVersion);
+    public Mono<Void> activateVersion(FileVersion fileVersion) {
+        return Mono.defer(() -> {
+            File transformedIndex = storageProperties.get().transformedIndex(storagePath, fileVersion);
+            return activateVersion(fileVersion, transformedIndex);
+        });
+    }
+
+    public Mono<Void> activateVersion(FileVersion fileVersion, File transformedIndex) {
+        if (indexesDescending.containsKey(fileVersion.segment())) {
+            return doActivateVersion(fileVersion, transformedIndex);
+        }
+
+        IndexManager nextIndexManager = next.get();
+        if (nextIndexManager != null) {
+            return nextIndexManager.activateVersion(fileVersion, transformedIndex);
+        }
+        return Mono.empty();
+    }
+
+    private Mono<Void> doActivateVersion(FileVersion fileVersion, File transformedIndex) {
         return Mono.fromSupplier(() -> storageProperties.get().index(storagePath, fileVersion))
                    .filter(indexFile -> !indexFile.exists())
-                   .flatMap(indexFile -> Mono.fromSupplier(() -> storageProperties.get().transformedIndex(storagePath,
-                                                                                                          fileVersion))
+                   .flatMap(indexFile -> Mono.fromSupplier(() -> transformedIndex)
                                              .filter(File::exists)
                                              .switchIfEmpty(Mono.error(new RuntimeException())) //TODO custom exception
-                                             .flatMap(tempIndex -> FileUtils.rename(tempIndex, indexFile)))
+                                             .flatMap(tempIndex -> FileUtils.rename(transformedIndex, indexFile)))
 
-                   .doOnSuccess(v -> indexesDescending.put(segment, segmentVersion));
+                   .doOnSuccess(v -> indexesDescending.put(fileVersion.segment(), fileVersion.segmentVersion()));
     }
+
 
     @Override
     public void createNewVersion(long segment, int version, Map<String, List<IndexEntry>> indexEntriesMap) {

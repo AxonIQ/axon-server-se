@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -80,7 +80,15 @@ public class FileUtils {
     public static Mono<Void> rename(File source, File target) {
         return Mono.<Void>create(sink -> {
             try {
-                Files.move(source.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                if (Files.getFileStore(source.toPath()).equals(Files.getFileStore(target.getParentFile().toPath()))) {
+                    Files.move(source.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                } else {
+                    File temp = File.createTempFile(target.getName(), ".tmp", target.getParentFile());
+                    temp.deleteOnExit();
+                    Files.copy(source.toPath(), temp.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                    Files.move(temp.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                    Files.delete(source.toPath());
+                }
                 sink.success();
             } catch (Exception e) {
                 sink.error(e);

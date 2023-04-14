@@ -161,15 +161,9 @@ public interface IndexManager {
 
     boolean remove(FileVersion fileVersion);
 
-    default Mono<Void> activateVersion(FileVersion fileVersion) {
-        return activateVersion(fileVersion.segment(), fileVersion.segmentVersion());
-    }
+    Mono<Void> activateVersion(FileVersion fileVersion);
 
-    /**
-     * Rename the temporary index if it exists into the active segmentVersion and active it.
-     *
-     */
-    Mono<Void> activateVersion(long segment, int segmentVersion);
+    Mono<Void> activateVersion(FileVersion fileVersion, File transformedIndex);
 
     /**
      * todo comment

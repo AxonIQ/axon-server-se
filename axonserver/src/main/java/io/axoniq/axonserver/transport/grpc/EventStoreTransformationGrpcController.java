@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -62,7 +62,7 @@ public class EventStoreTransformationGrpcController
     private final EventStoreTransformationService eventStoreTransformationService;
 
     /**
-     * Constructs an isntance based on the specified parameters.
+     * Constructs an instance based on the specified parameters.
      *
      * @param contextProvider                 used to retrieve the current context
      * @param authenticationProvider          used to retrieve the current authentication
