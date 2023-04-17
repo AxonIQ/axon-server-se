@@ -59,6 +59,7 @@ import org.springframework.beans.factory.BeanCreationNotAllowedException;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.actuate.system.DiskSpaceHealthIndicator;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.flyway.FlywayMigrationStrategy;
 import org.springframework.context.ApplicationEvent;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.ApplicationListener;
@@ -94,6 +95,14 @@ public class AxonServerStandardConfiguration {
     @ConditionalOnMissingBean(StorageTransactionManagerFactory.class)
     public StorageTransactionManagerFactory storageTransactionManagerFactory() {
         return new DefaultStorageTransactionManagerFactory();
+    }
+
+    @Bean
+    public FlywayMigrationStrategy cleanMigrateStrategy() {
+        return flyway -> {
+            flyway.repair();
+            flyway.migrate();
+        };
     }
 
     @Bean
