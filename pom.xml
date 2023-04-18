@@ -5,7 +5,7 @@
     <groupId>io.axoniq.axonserver</groupId>
     <artifactId>axonserver-se</artifactId>
     <packaging>pom</packaging>
-    <version>2023.0.1-SNAPSHOT</version>
+    <version>2023.0.1</version>
 
     <name>AxonIQ Axon Server SE</name>
     <inceptionYear>2019</inceptionYear>
@@ -248,7 +248,7 @@
         <connection>scm:git:https://github.com/AxonIQ/axon-server-se.git</connection>
         <developerConnection>scm:git:https://github.com/AxonIQ/axon-server-se.git</developerConnection>
         <url>https://github.com/AxonIQ/axon-server-se</url>
-        <tag>axonserver-se-2023.0.0</tag>
+        <tag>axonserver-se-2023.0.1</tag>
     </scm>
 
     <distributionManagement>
