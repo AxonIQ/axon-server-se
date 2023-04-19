@@ -51,7 +51,8 @@
                                         name: ext.name,
                                         version: ext.version,
                                         configuration: response.data,
-                                        context: context
+                                        context: context,
+                                        errors: null
                                     };
                                     this.newPlugin = null;
                                 });
@@ -103,9 +104,18 @@
                             }
                             updatedPlugin.properties[item.id] = properties;
                         }
-                        axios.post("v1/plugins/configuration", updatedPlugin).then(response => {
-                            this.currentPlugin = null;
-                            this.loadPlugins();
+                        this.currentPlugin.errors = null
+                        const uninterceptedAxiosInstance = axios.create();
+                        uninterceptedAxiosInstance.post("v1/plugins/configuration", updatedPlugin)
+                            .catch(error => {
+                                this.currentPlugin.errors = error.response.data;
+                                alert("Invalid plugin configuration")
+                            }).then(response => {
+                            if (!this.currentPlugin.errors) {
+                                // if failure don't reload
+                                this.currentPlugin = null;
+                                this.loadPlugins();
+                            }
                         })
                     },
                     install() {
@@ -157,6 +167,15 @@
                     },
                     isText(attr) {
                         return attr.type === "TEXT";
+                    },
+                    getErrors(group, attr) {
+                        if (this.currentPlugin.errors) {
+                            let groupErrors = this.currentPlugin.errors[group.id];
+                            if (groupErrors) {
+                                return groupErrors.filter(({fieldKey}) => fieldKey === attr.id);
+                            }
+                        }
+                        return [];
                     },
                     add() {
                         let fd = new FormData();
@@ -349,6 +368,13 @@
                                                         </span>
                                                     </li>
                                                 </ul>
+                                                 <div v-if="getErrors(group, attr).length > 0">
+                                                     <ul>
+                                                         <li v-for="error in getErrors(group, attr)">
+                                                            <span style="color: red">{{ error.message }}</span>
+                                                         </li>
+                                                     </ul>
+                                                 </div>
                                             </td>
                                         </tr>
                                     </tbody>
