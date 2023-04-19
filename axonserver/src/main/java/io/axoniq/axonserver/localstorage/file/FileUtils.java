@@ -86,8 +86,9 @@ public class FileUtils {
                     File temp = File.createTempFile(target.getName(), ".tmp", target.getParentFile());
                     temp.deleteOnExit();
                     Files.copy(source.toPath(), temp.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                    Files.move(temp.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
                     Files.delete(source.toPath());
+                    Files.move(temp.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                    //TODO test case when it fails here
                 }
                 sink.success();
             } catch (Exception e) {

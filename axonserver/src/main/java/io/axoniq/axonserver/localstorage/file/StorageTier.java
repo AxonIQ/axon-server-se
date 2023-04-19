@@ -32,6 +32,8 @@ import javax.annotation.Nonnull;
  */
 public interface StorageTier {
 
+    String LOCK_ID = "MULTI-TIER";
+
     /**
      * Get the set of segments in storage.
      *

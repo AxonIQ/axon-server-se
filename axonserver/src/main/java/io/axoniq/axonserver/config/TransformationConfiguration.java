@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -59,6 +59,7 @@ import io.axoniq.axonserver.eventstore.transformation.spi.TransformationsInProgr
 import io.axoniq.axonserver.filestorage.impl.StorageProperties;
 import io.axoniq.axonserver.localstorage.AutoCloseableEventProvider;
 import io.axoniq.axonserver.localstorage.ContextEventProviderSupplier;
+import io.axoniq.axonserver.localstorage.EventStoreLockProvider;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.axoniq.axonserver.localstorage.transformation.EventStoreTransformer;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -193,11 +194,13 @@ public class TransformationConfiguration {
     public TransformationTask transformationApplyTask(TransformationApplyExecutor applier,
                                                       MarkTransformationApplied markTransformationApplied,
                                                       CleanTransformationApplied cleanTransformationApplied,
-                                                      Transformations transformations) {
+                                                      Transformations transformations,
+                                                      EventStoreLockProvider eventStoreLockProvider) {
         return new ActionScheduledTask(
                 new TransformationApplyAction(applier, markTransformationApplied,
                                               cleanTransformationApplied,
-                                              transformations));
+                                              transformations,
+                                              eventStoreLockProvider));
     }
 
     @Bean
