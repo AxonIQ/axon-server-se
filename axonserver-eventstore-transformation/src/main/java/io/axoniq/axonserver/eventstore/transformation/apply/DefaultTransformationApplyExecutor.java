@@ -62,6 +62,7 @@ public class DefaultTransformationApplyExecutor implements TransformationApplyEx
                    .then(transformer.transformEvents(transformation.context(),
                                                      transformation.version(),
                                                      transformedEvents)
+                                    .doOnError(throwable -> logger.warn("Transform events failed.", throwable))
                                     .concatMap(progress -> localStateStore.incrementLastSequence(transformation.id(),
                                                                                                  progress))
                                     .then(localStateStore.markAsApplied(transformation.id()))

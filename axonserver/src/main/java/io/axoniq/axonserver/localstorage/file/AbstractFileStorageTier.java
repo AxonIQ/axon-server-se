@@ -19,6 +19,7 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Tags;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.io.File;
@@ -149,6 +150,12 @@ public abstract class AbstractFileStorageTier implements StorageTier {
 
     public Stream<Long> allSegments() {
         return Stream.concat(getSegments().stream(), invokeOnNext(StorageTier::allSegments, Stream.empty()));
+    }
+
+    @Override
+    public Flux<FileVersion> fileVersions(String suffix) {
+        return Flux.concat(Flux.fromArray(FileUtils.getFilesWithSuffix(new File(storagePath), suffix))
+                               .map(FileUtils::process), invokeOnNext(n -> n.fileVersions(suffix), Flux.empty()));
     }
 
     public void initSegments(long lastInitialized) {

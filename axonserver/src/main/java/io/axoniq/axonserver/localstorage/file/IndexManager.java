@@ -75,7 +75,7 @@ public interface IndexManager {
      * @param segment the segment number
      * @return true if all index related files for the segment have been removed
      */
-    boolean remove(long segment);
+    //boolean remove(long segment);
 
     /**
      * Returns index files for segment

@@ -46,6 +46,9 @@ public class JpaLocalTransformationProgressStore implements TransformationProgre
                                                                                             state.lastAppliedSequence(),
                                                                                             true))
                                          .doOnNext(repository::save)
+                                         .doOnSubscribe(s -> System.out.println(String.format(
+                                                 "Transformation %s marked as applied on JPA repository",
+                                                 transformationId)))
                                          .then();
     }
 

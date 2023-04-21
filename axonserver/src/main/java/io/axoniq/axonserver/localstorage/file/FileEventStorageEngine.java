@@ -375,10 +375,10 @@ public class FileEventStorageEngine implements EventStorageEngine {
                                                                     indexManager,
                                                                     this::transactionsForTransformation,
                                                                     storagePath)),
-                              resources -> transformedEvents.concatMap(event -> resources.transform(event)
-                                                                                         .thenReturn(1L)),
-                              currentSegmentTransformer -> currentSegmentTransformer.completeCurrentSegment()
-                                                                                    .then(activateTransformation()),
+                              resources -> transformedEvents.concatMap(resources::transform)
+                                                            .concatWith(resources.completeCurrentSegment())
+                                                            .filter(count -> count > 0),
+                              currentSegmentTransformer -> activateTransformation(),
                               TransformationResources::rollback,
                               TransformationResources::cancel);
     }
@@ -395,8 +395,7 @@ public class FileEventStorageEngine implements EventStorageEngine {
     }
 
     private Flux<FileVersion> fileVersions(String suffix) {
-        return Flux.fromArray(FileUtils.getFilesWithSuffix(new File(storagePath), suffix))
-                   .map(FileUtils::process);
+        return head.fileVersions(suffix);
     }
 
     private Mono<Void> activateSegment(FileVersion fileVersion) {
@@ -417,8 +416,10 @@ public class FileEventStorageEngine implements EventStorageEngine {
     @Override
     public Mono<Void> deleteOldVersions() {
         return fileVersions(storagePropertiesSupplier.get().getEventsSuffix())
+                .doOnNext(fileVersion -> System.out.println("version " + fileVersion.toString()))
                 .filter(fileVersion -> head.currentSegmentVersion(fileVersion.segment())
                         != fileVersion.segmentVersion())
+                .doOnNext(fileVersion -> System.out.println("version to delete" + fileVersion.toString()))
                 .flatMapSequential(this::delete)
                 .then();
     }

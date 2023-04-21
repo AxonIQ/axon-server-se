@@ -596,6 +596,7 @@ public class StandardIndexManager implements IndexManager {
      * Removes the index and bloom filter for the segment
      *
      * @param segment the segment number
+     * TODO: Change to remove all versions of the segment
      */
     public boolean remove(long segment) {
         StorageProperties properties = storageProperties.get();
@@ -613,7 +614,6 @@ public class StandardIndexManager implements IndexManager {
         return FileUtils.delete(properties.index(storagePath, segment)) &&
                 FileUtils.delete(properties.bloomFilter(storagePath, segment));
     }
-
     @Override
     public boolean remove(FileVersion fileVersion) {
         StandardIndex index = indexMap.remove(fileVersion); //TODO

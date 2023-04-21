@@ -10,6 +10,7 @@
 package io.axoniq.axonserver.localstorage.file;
 
 import org.springframework.boot.convert.ApplicationConversionService;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.io.File;
@@ -123,6 +124,8 @@ public interface StorageTier {
     Stream<Long> allSegments();
 
     Mono<Void> renameTransformedSegmentIfNeeded(FileVersion fileVersion, File transformedDataFile);
+
+    Flux<FileVersion> fileVersions(String suffix);
 
 
     /**

@@ -12,6 +12,7 @@ package io.axoniq.axonserver.localstorage.file;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
 import reactor.core.publisher.Mono;
 
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -20,6 +21,8 @@ class TransformationResources {
 
     private final AtomicReference<SegmentTransformer> segmentTransformerRef =
             new AtomicReference<>(new NoopSegmentTransformer());
+
+    private final AtomicLong count = new AtomicLong();
 
     private final Function<Long, Long> segmentForToken;
     private final Supplier<StorageProperties> storagePropertiesSupplier;
@@ -42,8 +45,39 @@ class TransformationResources {
         this.storagePath = storagePath;
     }
 
+//    public Flux<Long> transform(Flux<EventWithToken> events){
+//        return Flux.create(fluxSink -> {
+//            events.concatMap(event -> transform(event, fluxSink))
+//                    .then(completeCurrentSegment())
+//                    .doOnSuccess(s -> fluxSink.next(count.getAndSet(0L)))
+//                    .doOnError(error -> fluxSink.error(error))
+//                    .subscribe();
+//        });
+//    }
+//
+//    public Mono<Void> transform(EventWithToken eventWithToken, FluxSink<Long> fluxSink) {
+//        long segment = segmentForToken.apply(eventWithToken.getToken());
+//        if (segment > segmentTransformerRef.get().segment()) {
+//            DefaultSegmentTransformer segmentTransformer =
+//                    new DefaultSegmentTransformer(storagePropertiesSupplier.get(),
+//                                                  segment,
+//                                                  transformationVersion,
+//                                                  indexManager,
+//                                                  () -> transactionIteratorSupplier.apply(segment),
+//                                                  storagePath);
+//            SegmentTransformer prevSegmentTransformer = segmentTransformerRef.getAndSet(segmentTransformer);
+//            return prevSegmentTransformer.completeSegment()
+//                                         .then(segmentTransformer.initialize())
+//                                         .then(segmentTransformer.transformEvent(eventWithToken))
+//                    .doOnSuccess(v -> fluxSink.next(count.getAndSet(0L)))
+//                                         .doOnError(error -> error.printStackTrace());
+//        }
+//        return segmentTransformerRef.get()
+//                                    .transformEvent(eventWithToken)
+//                                    .doOnSuccess(v -> count.incrementAndGet());
+//    }
 
-    public Mono<Void> transform(EventWithToken eventWithToken) {
+    public Mono<Long> transform(EventWithToken eventWithToken) {
         long segment = segmentForToken.apply(eventWithToken.getToken());
         if (segment > segmentTransformerRef.get().segment()) {
             DefaultSegmentTransformer segmentTransformer =
@@ -56,24 +90,33 @@ class TransformationResources {
             SegmentTransformer prevSegmentTransformer = segmentTransformerRef.getAndSet(segmentTransformer);
             return prevSegmentTransformer.completeSegment()
                                          .then(segmentTransformer.initialize())
-                                         .then(segmentTransformer.transformEvent(eventWithToken));
+                                         .then(segmentTransformer.transformEvent(eventWithToken))
+                                         .thenReturn(count.getAndSet(0L))
+                                         .doOnError(error -> error.printStackTrace());
         }
         return segmentTransformerRef.get()
-                                    .transformEvent(eventWithToken);
+                                    .transformEvent(eventWithToken)
+                                    .doOnSuccess(v -> count.incrementAndGet())
+                                    .thenReturn(0L);
     }
 
-    public Mono<Void> completeCurrentSegment() {
-        return segmentTransformerRef.get()
-                                    .completeSegment();
+    public Mono<Long> completeCurrentSegment() {
+        return Mono.defer(() ->
+                                  segmentTransformerRef.get()
+                                                       .completeSegment()
+                                                       .thenReturn(count.getAndSet(0L))
+        );
     }
 
     public Mono<Void> rollback(Throwable t) {
-        return segmentTransformerRef.get()
-                                    .rollback(t);
+        return Mono.defer(() -> segmentTransformerRef.get()
+                                                     .rollback(t)
+                                                     .doOnSubscribe(s -> System.out.println("Rollback invoked")));
     }
 
     public Mono<Void> cancel() {
-        return segmentTransformerRef.get()
-                                    .cancel();
+        return Mono.defer(() ->
+                                  segmentTransformerRef.get()
+                                                       .cancel());
     }
 }
