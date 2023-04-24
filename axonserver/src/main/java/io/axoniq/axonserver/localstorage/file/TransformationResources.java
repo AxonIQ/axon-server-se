@@ -45,60 +45,35 @@ class TransformationResources {
         this.storagePath = storagePath;
     }
 
-//    public Flux<Long> transform(Flux<EventWithToken> events){
-//        return Flux.create(fluxSink -> {
-//            events.concatMap(event -> transform(event, fluxSink))
-//                    .then(completeCurrentSegment())
-//                    .doOnSuccess(s -> fluxSink.next(count.getAndSet(0L)))
-//                    .doOnError(error -> fluxSink.error(error))
-//                    .subscribe();
-//        });
-//    }
-//
-//    public Mono<Void> transform(EventWithToken eventWithToken, FluxSink<Long> fluxSink) {
-//        long segment = segmentForToken.apply(eventWithToken.getToken());
-//        if (segment > segmentTransformerRef.get().segment()) {
-//            DefaultSegmentTransformer segmentTransformer =
-//                    new DefaultSegmentTransformer(storagePropertiesSupplier.get(),
-//                                                  segment,
-//                                                  transformationVersion,
-//                                                  indexManager,
-//                                                  () -> transactionIteratorSupplier.apply(segment),
-//                                                  storagePath);
-//            SegmentTransformer prevSegmentTransformer = segmentTransformerRef.getAndSet(segmentTransformer);
-//            return prevSegmentTransformer.completeSegment()
-//                                         .then(segmentTransformer.initialize())
-//                                         .then(segmentTransformer.transformEvent(eventWithToken))
-//                    .doOnSuccess(v -> fluxSink.next(count.getAndSet(0L)))
-//                                         .doOnError(error -> error.printStackTrace());
-//        }
-//        return segmentTransformerRef.get()
-//                                    .transformEvent(eventWithToken)
-//                                    .doOnSuccess(v -> count.incrementAndGet());
-//    }
-
     public Mono<Long> transform(EventWithToken eventWithToken) {
-        long segment = segmentForToken.apply(eventWithToken.getToken());
-        if (segment > segmentTransformerRef.get().segment()) {
-            DefaultSegmentTransformer segmentTransformer =
-                    new DefaultSegmentTransformer(storagePropertiesSupplier.get(),
-                                                  segment,
-                                                  transformationVersion,
-                                                  indexManager,
-                                                  () -> transactionIteratorSupplier.apply(segment),
-                                                  storagePath);
-            SegmentTransformer prevSegmentTransformer = segmentTransformerRef.getAndSet(segmentTransformer);
-            return prevSegmentTransformer.completeSegment()
-                                         .then(segmentTransformer.initialize())
-                                         .then(segmentTransformer.transformEvent(eventWithToken))
-                                         .thenReturn(count.getAndSet(0L))
-                                         .doOnError(error -> error.printStackTrace());
-        }
-        return segmentTransformerRef.get()
-                                    .transformEvent(eventWithToken)
-                                    .doOnSuccess(v -> count.incrementAndGet())
-                                    .thenReturn(0L);
+        return Mono.defer(() -> {
+            long segment = segmentForToken.apply(eventWithToken.getToken());
+            if (segment == -1L) {
+                //if the segment has been deleted because of black hole (multi-tier) the result is -1
+                return Mono.empty();
+            }
+            if (segment > segmentTransformerRef.get().segment()) {
+                DefaultSegmentTransformer segmentTransformer =
+                        new DefaultSegmentTransformer(storagePropertiesSupplier.get(),
+                                                      segment,
+                                                      transformationVersion,
+                                                      indexManager,
+                                                      () -> transactionIteratorSupplier.apply(segment),
+                                                      storagePath);
+                SegmentTransformer prevSegmentTransformer = segmentTransformerRef.getAndSet(segmentTransformer);
+                return prevSegmentTransformer.completeSegment()
+                                             .then(segmentTransformer.initialize())
+                                             .then(segmentTransformer.transformEvent(eventWithToken))
+                                             .thenReturn(count.getAndSet(1L))
+                                             .doOnError(error -> error.printStackTrace());
+            }
+            return segmentTransformerRef.get()
+                                        .transformEvent(eventWithToken)
+                                        .doOnSuccess(v -> count.incrementAndGet())
+                                        .thenReturn(0L);
+        });
     }
+
 
     public Mono<Long> completeCurrentSegment() {
         return Mono.defer(() ->

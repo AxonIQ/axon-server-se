@@ -596,15 +596,21 @@ public class StandardIndexManager implements IndexManager {
      * Removes the index and bloom filter for the segment
      *
      * @param segment the segment number
-     * TODO: Change to remove all versions of the segment
+     *                TODO: Change to remove all versions of the segment
      */
-    public boolean remove(long segment) {
+    public boolean removeAllVersions(long segment) {
         StorageProperties properties = storageProperties.get();
         if (activeIndexes.remove(segment) == null) {
             Integer version = indexesDescending.remove(segment);
             if (version != null) {
+                for (int i = 0; i < version; i++) {
+                    FileVersion oldVersion = new FileVersion(segment, i);
+                    if (properties.index(storagePath, oldVersion).exists()) {
+                        remove(oldVersion);
+                    }
+                }
                 FileVersion fileVersion = new FileVersion(segment, version);
-                StandardIndex index = indexMap.remove(fileVersion); //TODO
+                StandardIndex index = indexMap.remove(fileVersion);
                 if (index != null) {
                     index.close();
                 }
@@ -616,7 +622,7 @@ public class StandardIndexManager implements IndexManager {
     }
     @Override
     public boolean remove(FileVersion fileVersion) {
-        StandardIndex index = indexMap.remove(fileVersion); //TODO
+        StandardIndex index = indexMap.remove(fileVersion);
         if (index != null) {
             index.close();
         }

@@ -70,12 +70,12 @@ public interface IndexManager {
     boolean validIndex(FileVersion segment);
 
     /**
-     * Removes index entries for a specific segment.
+     * Removes all versions of index files for the segment
      *
      * @param segment the segment number
      * @return true if all index related files for the segment have been removed
      */
-    //boolean remove(long segment);
+    boolean removeAllVersions(long segment);
 
     /**
      * Returns index files for segment
