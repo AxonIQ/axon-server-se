@@ -10,6 +10,8 @@
 package io.axoniq.axonserver.localstorage.file;
 
 import io.axoniq.axonserver.grpc.event.EventWithToken;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 
 import java.util.concurrent.atomic.AtomicLong;
@@ -18,6 +20,8 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 class TransformationResources {
+
+    private final static Logger logger = LoggerFactory.getLogger(TransformationResources.class);
 
     private final AtomicReference<SegmentTransformer> segmentTransformerRef =
             new AtomicReference<>(new NoopSegmentTransformer());
@@ -64,8 +68,7 @@ class TransformationResources {
                 return prevSegmentTransformer.completeSegment()
                                              .then(segmentTransformer.initialize())
                                              .then(segmentTransformer.transformEvent(eventWithToken))
-                                             .thenReturn(count.getAndSet(1L))
-                                             .doOnError(error -> error.printStackTrace());
+                                             .thenReturn(count.getAndSet(1L));
             }
             return segmentTransformerRef.get()
                                         .transformEvent(eventWithToken)
@@ -86,7 +89,7 @@ class TransformationResources {
     public Mono<Void> rollback(Throwable t) {
         return Mono.defer(() -> segmentTransformerRef.get()
                                                      .rollback(t)
-                                                     .doOnSubscribe(s -> System.out.println("Rollback invoked")));
+                                                     .doOnSubscribe(s -> logger.debug("Rollback invoked")));
     }
 
     public Mono<Void> cancel() {

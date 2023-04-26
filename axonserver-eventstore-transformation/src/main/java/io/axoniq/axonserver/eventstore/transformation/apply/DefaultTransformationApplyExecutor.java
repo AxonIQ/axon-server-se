@@ -72,7 +72,9 @@ public class DefaultTransformationApplyExecutor implements TransformationApplyEx
                                               transformation.context()))
                    .doOnSuccess(v -> logger.info("Transformation {} applied successfully to local store.",
                                                  transformation.id()))
-                   .doOnError(t -> logger.warn("Failed to apply to local store the transformation {}", transformation));
+                   .doOnError(t -> logger.warn("Failed to apply to local store the transformation {}",
+                                               transformation,
+                                               t));
     }
 
     private EventWithToken eventWithToken(TransformationAction transformationAction) {

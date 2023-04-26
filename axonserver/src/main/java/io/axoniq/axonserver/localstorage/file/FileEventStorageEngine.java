@@ -416,10 +416,10 @@ public class FileEventStorageEngine implements EventStorageEngine {
     @Override
     public Mono<Void> deleteOldVersions() {
         return fileVersions(storagePropertiesSupplier.get().getEventsSuffix())
-                .doOnNext(fileVersion -> System.out.println("version " + fileVersion.toString()))
+                .doOnNext(fileVersion -> logger.debug("{} : check delete version {}", context, fileVersion))
                 .filter(fileVersion -> head.currentSegmentVersion(fileVersion.segment())
                         != fileVersion.segmentVersion())
-                .doOnNext(fileVersion -> System.out.println("version to delete" + fileVersion.toString()))
+                .doOnNext(fileVersion -> logger.debug("{} : version to delete {}", context, fileVersion))
                 .flatMapSequential(this::delete)
                 .then();
     }
