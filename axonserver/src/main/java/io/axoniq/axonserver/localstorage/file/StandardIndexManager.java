@@ -717,11 +717,14 @@ public class StandardIndexManager implements IndexManager {
         activeIndexes.clear();
         bloomFilterPerSegment.clear();
         indexMap.forEach((segment, index) -> index.close());
-        indexMap.clear(); //TODO
-        indexesDescending.clear();
+        indexMap.clear();
         if (cleanupTask != null && !cleanupTask.isDone()) {
             cleanupTask.cancel(true);
         }
+        if (delete) {
+            indexesDescending.keySet().forEach(this::removeAllVersions);
+        }
+        indexesDescending.clear();
         IndexManager nextIndexManager = next.get();
         if (nextIndexManager != null) {
             nextIndexManager.cleanup(delete);
