@@ -57,10 +57,6 @@ public abstract class EventIterator implements Iterator<EventInformation>, AutoC
         return eventsInTransaction.remove(0);
     }
 
-    public List<EventInformation> pendingEvents() {
-        return eventsInTransaction;
-    }
-
     public Long getTokenAt(long instant) {
         if (hasNext()) {
             EventInformation event = next();
