@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -27,7 +27,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.RandomAccessFile;
-import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
@@ -107,7 +106,8 @@ public class WritableFileStorageTier extends AbstractFileStorageTier {
         indexManager.remove(realFirst);
         long sequence = realFirst.segment();
         Map<String, List<IndexEntry>> loadedEntries = new HashMap<>();
-        try (EventByteBufferIterator iterator = new EventByteBufferIterator(buffer, realFirst.segment())) {
+        int iteratorPosition;
+        try (EventIterator iterator = buffer.createEventIterator()) {
             while (iterator.hasNext()) {
                 EventInformation event = iterator.next();
                 if (event.isDomainEvent()) {
@@ -122,14 +122,15 @@ public class WritableFileStorageTier extends AbstractFileStorageTier {
                 }
                 sequence++;
             }
+            iteratorPosition = iterator.position();
             lastToken.set(sequence - 1);
         }
 
         indexManager.addToActiveSegment(realFirst.segment(), loadedEntries);
 
-        buffer.putInt(buffer.position(), 0);
+        buffer.putInt(iteratorPosition, 0);
         WritePosition writePosition = new WritePosition(sequence,
-                                                        buffer.position(),
+                                                        iteratorPosition,
                                                         realFirst.segmentVersion(),
                                                         buffer,
                                                         realFirst.segment(),
@@ -291,7 +292,7 @@ public class WritableFileStorageTier extends AbstractFileStorageTier {
                                                                               segment.segment(),
                                                                               segment.segmentVersion(),
                                                                               eventTransformer,
-                                                                              storageProperties.isCleanRequired());
+                                                                              storageProperties);
             readBuffers.put(segment.segment(), writableEventSource);
             return writableEventSource;
         } catch (IOException ioException) {
@@ -417,51 +418,21 @@ public class WritableFileStorageTier extends AbstractFileStorageTier {
 
     private void write(WritePosition writePosition, List<ProcessedEvent> eventList,
                        Map<String, List<IndexEntry>> indexEntries) {
-        ByteBufferEventSource source = writePosition.buffer.duplicate();
-        ByteBuffer writeBuffer = source.getBuffer();
-        writeBuffer.position(writePosition.position);
-        int count = eventList.size();
-        int from = 0;
-        int to = Math.min(count, from + MAX_EVENTS_PER_BLOCK);
-        int firstSize = writeBlock(writeBuffer, eventList, 0, to, indexEntries, writePosition.sequence);
-        while (to < count) {
-            from = to;
-            to = Math.min(count, from + MAX_EVENTS_PER_BLOCK);
-            int positionBefore = writeBuffer.position();
-            int blockSize = writeBlock(writeBuffer, eventList, from, to, indexEntries, writePosition.sequence + from);
-            int positionAfter = writeBuffer.position();
-            writeBuffer.putInt(positionBefore, blockSize);
-            writeBuffer.position(positionAfter);
-        }
-        writeBuffer.putInt(writePosition.position, firstSize);
-        source.close();
+        writePosition.buffer.write(eventList,
+                                   writePosition.position,
+                                   writePosition.sequence,
+                                   (event, token, position) -> addIndexEntry(event, token, position, indexEntries));
     }
 
-    private int writeBlock(ByteBuffer writeBuffer, List<ProcessedEvent> eventList, int from, int to,
-                           Map<String, List<IndexEntry>> indexEntries, long token) {
-        writeBuffer.putInt(0);
-        writeBuffer.put(TRANSACTION_VERSION);
-        writeBuffer.putShort((short) (to - from));
-        Checksum checksum = new Checksum();
-        int eventsPosition = writeBuffer.position();
-        int eventsSize = 0;
-        for (int i = from; i < to; i++) {
-            ProcessedEvent event = eventList.get(i);
-            int position = writeBuffer.position();
-            writeBuffer.putInt(event.getSerializedSize());
-            writeBuffer.put(event.toByteArray());
-            if (event.isDomainEvent()) {
-                indexEntries.computeIfAbsent(event.getAggregateIdentifier(),
-                                             k -> new ArrayList<>())
-                            .add(new IndexEntry(event.getAggregateSequenceNumber(), position, token));
-            }
-            eventsSize += event.getSerializedSize() + 4;
-            token++;
+    private void addIndexEntry(ProcessedEvent event, long token, int position,
+                               Map<String, List<IndexEntry>> indexEntries) {
+        if (event.isDomainEvent()) {
+            indexEntries.computeIfAbsent(event.getAggregateIdentifier(),
+                                         k -> new ArrayList<>())
+                        .add(new IndexEntry(event.getAggregateSequenceNumber(), position, token));
         }
-
-        writeBuffer.putInt(checksum.update(writeBuffer, eventsPosition, writeBuffer.position() - eventsPosition).get());
-        return eventsSize;
     }
+
 
     private WritePosition claim(int eventBlockSize, int nrOfEvents, int segmentVersion) {
         int blocks = (int) Math.ceil(nrOfEvents / (double) MAX_EVENTS_PER_BLOCK);
@@ -575,7 +546,7 @@ public class WritableFileStorageTier extends AbstractFileStorageTier {
 
     protected Optional<EventSource> localEventSource(long segment) {
         if (readBuffers.containsKey(segment)) {
-            return Optional.of(readBuffers.get(segment).duplicate());
+            return Optional.of(readBuffers.get(segment));
         }
         return Optional.empty();
     }

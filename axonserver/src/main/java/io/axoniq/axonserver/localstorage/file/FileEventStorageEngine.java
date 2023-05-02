@@ -334,20 +334,20 @@ public class FileEventStorageEngine implements EventStorageEngine {
                 boolean done = false;
                 long minTimestampInSegment = Long.MAX_VALUE;
                 EventInformation eventWithToken;
-                EventIterator iterator = eventSource.createEventIterator();
-                while (!done && iterator.hasNext()) {
-                    eventWithToken = iterator.next();
-                    minTimestampInSegment = Math.min(minTimestampInSegment,
-                                                     eventWithToken.getEvent().getTimestamp());
-                    if (eventWithToken.getToken() > queryOptions.getMaxToken()) {
-                        done = true;
-                    }
-
-                    if (!done && eventWithToken.getToken() >= queryOptions.getMinToken()
-                            && eventWithToken.getEvent().getTimestamp()
-                            >= queryOptions.getMinTimestamp()
-                            && !consumer.test(eventWithToken.asEventWithToken(snapshot))) {
-                        done = true;
+                try (EventIterator iterator = eventSource.createEventIterator()) {
+                    while (!done && iterator.hasNext()) {
+                        eventWithToken = iterator.next();
+                        minTimestampInSegment = Math.min(minTimestampInSegment,
+                                                         eventWithToken.getEvent().getTimestamp());
+                        if (eventWithToken.getToken() > queryOptions.getMaxToken()) {
+                            done = true;
+                        }
+                        if (!done && eventWithToken.getToken() >= queryOptions.getMinToken()
+                                && eventWithToken.getEvent().getTimestamp()
+                                >= queryOptions.getMinTimestamp()
+                                && !consumer.test(eventWithToken.asEventWithToken(snapshot))) {
+                            done = true;
+                        }
                     }
                 }
                 if (queryOptions.getMinToken() > eventSource.segment()
@@ -355,7 +355,6 @@ public class FileEventStorageEngine implements EventStorageEngine {
                         .getMinTimestamp()) {
                     done = true;
                 }
-                iterator.close();
                 eventSource.close();
 
                 return done;
