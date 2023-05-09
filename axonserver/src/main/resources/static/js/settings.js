@@ -27,7 +27,8 @@ globals.pageView = new Vue({
                                    initializeMode: "init",
                                    initContext: "default",
                                    joinHost: null,
-                                   joinPort: 8224
+                                   joinPort: 8224,
+                                   unregisterNode: null
                                },
                                mounted() {
                                    axios.get("v1/public/license").then(response => {
@@ -100,7 +101,9 @@ globals.pageView = new Vue({
                                        }
                                    },
                                    initCluster() {
-                                       setTimeout(function() { alert("This may take a while, please wait..."); }, 0);
+                                       setTimeout(function () {
+                                           alert("This may take a while, please wait...");
+                                       }, 0);
                                        if (!this.initContext) {
                                            axios.post("v1/context/init").then(_ => {
                                                location.reload();
@@ -127,12 +130,18 @@ globals.pageView = new Vue({
                                        })
                                    },
                                    unregister(node) {
-                                       if (confirm(`Unregister node ${node.name}`)) {
-                                           axios.delete(`v1/cluster/${node.name}`).then(_ => {
-                                               location.reload();
-                                           });
-                                       }
+                                       this.unregisterNode = node.name
+                                       this.$modal.show('unregister-node')
 
+                                   },
+                                   hideModal(name) {
+                                       this.$modal.hide(name);
+                                   },
+                                   doUnregister() {
+                                       axios.delete(`v1/cluster/${this.unregisterNode}`).then(_ => {
+                                           location.reload();
+                                           this.hideModal('unregister-node');
+                                       });
                                    }
                                }
                            });
