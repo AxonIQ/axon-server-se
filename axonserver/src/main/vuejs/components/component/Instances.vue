@@ -1,5 +1,5 @@
 <!--
-  -  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+  -  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
   -  under one or more contributor license agreements.
   -
   -  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -22,7 +22,10 @@
             <tbody>
             <tr v-for="instance in instances">
               <td>
-                <div>{{ instance.name }}</div>
+                <div>{{ instance.name }}
+                  <span @click="reconnect(instance.name)" title="Request reconnect"><i
+                      class="fas fa-redo-alt"></i></span>
+                </div>
               </td>
               <td>
                 <div>{{ instance.axonServerNode }}<span style="color: gray;font-size: 13px;margin-left: 5px;"> &#8592; {{ instance.context }}
@@ -58,12 +61,21 @@
         }, beforeDestroy() {
             if( this.subscription) this.subscription.unsubscribe();
         }, methods: {
-            loadComponentInstances(){
-                axios.get("v1/components/"+encodeURI(this.component)+"/instances?context=" + this.context).then(response => {
-                    this.instances = response.data;
+        loadComponentInstances() {
+          axios.get("v1/components/" + encodeURI(this.component) + "/instances?context="
+                        + this.context).then(response => {
+            this.instances = response.data;
+          });
+        },
+        reconnect(instance) {
+          if (confirm(`Request application ${instance} to reconnect`)) {
+            axios.patch("v1/instructions?client=" + encodeURIComponent(instance))
+                .then(response => {
+                  console.info("Requested reconnect");
                 });
-            }
+          }
         }
+      }
     }
 </script>
 
