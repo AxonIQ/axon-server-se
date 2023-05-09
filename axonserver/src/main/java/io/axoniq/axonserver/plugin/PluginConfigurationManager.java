@@ -26,6 +26,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static java.util.stream.Collectors.toMap;
+
 /**
  * Facade to update configuration on installed plugins and to
  * retrieve the defined configuration items for a plugin.
@@ -81,6 +83,33 @@ public class PluginConfigurationManager {
                 properties == null ? defaultProperties(bundleInfo) : properties;
         configurationListeners.forEach(listener -> listener
                 .updated(context, nonNullProperties.get(listener.configuration().name())));
+    }
+
+    /**
+     * Validates the configuration for a context in a plugin.
+     *
+     * @param bundleInfo the name and version of the plugin
+     * @param context    the context for the configuration
+     * @param properties the new properties to be validated
+     */
+    public Map<String, Iterable<ConfigurationError>> errors(PluginKey bundleInfo, String context,
+                                                              Map<String, Map<String, Object>> properties) {
+        Set<ConfigurationListener> configurationListeners = osgiController.getConfigurationListeners(bundleInfo);
+
+        Map<String, Map<String, Object>> nonNullProperties =
+                properties == null ? defaultProperties(bundleInfo) : properties;
+
+        return reduceValidated(configurationListeners.stream().collect(
+                toMap(
+                        listener -> listener.configuration().name(),
+                        listener -> listener.validate(context, nonNullProperties.get(listener.configuration().name())))
+                ));
+    }
+
+    private static Map<String, Iterable<ConfigurationError>> reduceValidated(Map<String, Validated<Map<String, Object>>> validatedMap) {
+        Map<String, Iterable<ConfigurationError>> errors = new HashMap<>();
+        validatedMap.forEach((key, value) -> value.ifInvalid(e -> errors.put(key, e)));
+        return errors;
     }
 
     private Map<String, Map<String, Object>> defaultProperties(PluginKey bundleInfo) {

@@ -19,6 +19,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
@@ -28,6 +30,7 @@ import static org.mockito.Mockito.*;
  */
 public class PluginConfigurationManagerTest {
 
+    public static final String INVALID_VALUE_FOR_A_ID_2 = "invalid value for a id2";
     private PluginConfigurationManager testSubject;
     private SampleConfigurationListener sampleConfigurationListener;
 
@@ -38,7 +41,7 @@ public class PluginConfigurationManagerTest {
         Bundle mockBundle = mock(Bundle.class);
         when(osgiController.getBundle(any())).thenReturn(mockBundle);
         when(osgiController.getConfigurationListeners(any())).thenReturn(Collections
-                                                                                 .singleton(sampleConfigurationListener));
+                .singleton(sampleConfigurationListener));
         testSubject = new PluginConfigurationManager(osgiController);
     }
 
@@ -58,6 +61,23 @@ public class PluginConfigurationManagerTest {
         testSubject.updateConfiguration(new PluginKey("demo", "1.0"), "context", properties);
         Map<String, ?> config = sampleConfigurationListener.configurationPerContext.get("context");
         assertEquals(1, config.size());
+    }
+
+    @Test
+    public void validateNewConfigurationBeforeApplying() {
+        Map<String, Map<String, Object>> properties = new HashMap<>();
+        String contextName = "demo";
+        properties.computeIfAbsent(contextName, d -> new HashMap<>()).put("id1", "value1");
+        properties.computeIfAbsent(contextName, d -> new HashMap<>()).put("id2", INVALID_VALUE_FOR_A_ID_2);
+        Map<String, Iterable<ConfigurationError>> errors = testSubject.errors(new PluginKey(contextName, "1.0"), "context", properties);
+
+        assertFalse(errors.isEmpty());
+        assertTrue(errors.containsKey(contextName));
+        List<ConfigurationError> demoErrorList = StreamSupport.stream(errors.get(contextName).spliterator(), false)
+                .collect(Collectors.toList());
+        assertEquals(1, demoErrorList.size());
+        assertEquals("id2", demoErrorList.get(0).getFieldKey());
+        assertEquals("the provided value is invalid for this key", demoErrorList.get(0).getMessage());
     }
 
     @Test
@@ -88,6 +108,14 @@ public class PluginConfigurationManagerTest {
             return new Configuration(Arrays.asList(
                     PluginPropertyDefinition.newBuilder("id1", "name1").build()
             ), "demo");
+        }
+
+        @Override
+        public <R extends Map<String, ?>> Validated<R> validate(String context, R configuration) {
+            if (INVALID_VALUE_FOR_A_ID_2.equals(configuration.get("id2"))) {
+                return new Invalid<>(List.of(new ConfigurationError("id2", "the provided value is invalid for this key")));
+            }
+            return new Valid<>(configuration);
         }
     }
 }

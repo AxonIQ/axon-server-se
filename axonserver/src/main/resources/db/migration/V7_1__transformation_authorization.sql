@@ -7,13 +7,26 @@
  *
  */
 
-insert into roles (role, description) values ('TRANSFORM', 'Transform events.');
-insert into roles (role, description) values ('TRANSFORM_ADMIN', 'Applies transformation.');
+/*
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
 
-insert into function_roles (id, function, role) values (160, 'TRANSFORM', 'TRANSFORM');
-insert into function_roles (id, function, role) values (161, 'LIST_TRANSFORMATIONS', 'TRANSFORM');
-insert into function_roles (id, function, role)
-values (162, 'APPLY_TRANSFORMATION', 'TRANSFORM_ADMIN');
+insert into roles (role, description)
+values ('TRANSFORM', 'Transform events.');
+insert into roles (role, description)
+values ('TRANSFORM_ADMIN', 'Applies transformation.');
+
+insert into function_roles (function, role)
+values ('TRANSFORM', 'TRANSFORM');
+insert into function_roles (function, role)
+values ('LIST_TRANSFORMATIONS', 'TRANSFORM');
+insert into function_roles (function, role)
+values ('APPLY_TRANSFORMATION', 'TRANSFORM_ADMIN');
 
 insert into paths_to_functions (path, function)
 values ('io.axoniq.axonserver.grpc.event.EventTransformationService/Transformations', 'LIST_TRANSFORMATIONS');
