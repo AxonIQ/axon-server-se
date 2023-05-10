@@ -131,6 +131,11 @@ public class ByteBufferEventSource implements EventSource {
         }
     }
 
+    @SuppressWarnings("deprecation")
+    @Override
+    protected void finalize() throws Throwable {
+        clean(0);
+    }
 
     private class TransactionByteBufferIterator implements TransactionIterator {
 
