@@ -33,11 +33,7 @@ public class InputStreamEventIteratorTest {
                                                                .getResource(
                                                                        "/data/default/00000000000000000000.events")
                                                                .getFile()));
-        InputStreamEventSource eventSource = new InputStreamEventSource(file,
-                                                                        0,
-                                                                        0,
-                                                                        new DefaultEventTransformerFactory());
-        testSubject = new InputStreamEventIterator(eventSource, 0);
+        testSubject = new InputStreamEventIterator(file, new DefaultEventTransformerFactory(), 0, 0);
     }
 
     @Test

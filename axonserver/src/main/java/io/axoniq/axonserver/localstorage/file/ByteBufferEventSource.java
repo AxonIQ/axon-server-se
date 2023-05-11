@@ -62,31 +62,23 @@ public class ByteBufferEventSource implements EventSource {
         this.cleanerHack = storageProperties.isCleanRequired();
     }
 
-
-    private SerializedEvent readEvent(ByteBuffer reader) {
-        int size = reader.getInt();
-        byte[] bytes = new byte[size];
-        reader.get(bytes);
-        return new SerializedEvent(eventTransformer.fromStorage(bytes));
+    @Override
+    public Reader reader() {
+        duplicatesCount.incrementAndGet();
+        try {
+            checkClosed();
+            return new ByteBufferReader();
+        } catch (IllegalStateException illegalStateException) {
+            duplicatesCount.decrementAndGet();
+            throw illegalStateException;
+        }
     }
+
 
     public int version() {
         return version;
     }
 
-    public SerializedEvent readEvent(int position) {
-        duplicatesCount.incrementAndGet();
-        try {
-            checkClosed();
-            ByteBuffer duplicate = buffer.duplicate();
-            duplicate.position(position);
-            return readEvent(duplicate);
-        } catch (OutOfMemoryError oom) {
-            throw new RuntimeException(oom);
-        } finally {
-            duplicatesCount.decrementAndGet();
-        }
-    }
 
     @Override
     public TransactionIterator createTransactionIterator(long token, boolean validating) {
@@ -131,10 +123,47 @@ public class ByteBufferEventSource implements EventSource {
         }
     }
 
+    private SerializedEvent doReadEvent(ByteBuffer reader) {
+        int size = reader.getInt();
+        byte[] bytes = new byte[size];
+        reader.get(bytes);
+        return new SerializedEvent(eventTransformer.fromStorage(bytes));
+    }
+
+
     @SuppressWarnings("deprecation")
     @Override
     protected void finalize() throws Throwable {
         clean(0);
+    }
+
+    private class ByteBufferReader implements Reader {
+
+        private final ByteBuffer reader;
+
+        private ByteBufferReader() {
+            this.reader = buffer.duplicate();
+        }
+
+        @Override
+        public SerializedEvent readEvent(int position) {
+            duplicatesCount.incrementAndGet();
+            try {
+                checkClosed();
+                reader.position(position);
+                return doReadEvent(reader);
+            } catch (OutOfMemoryError oom) {
+                throw new RuntimeException(oom);
+            } finally {
+                duplicatesCount.decrementAndGet();
+            }
+        }
+
+
+        @Override
+        public void close() {
+            duplicatesCount.decrementAndGet();
+        }
     }
 
     private class TransactionByteBufferIterator implements TransactionIterator {
@@ -187,7 +216,7 @@ public class ByteBufferEventSource implements EventSource {
             List<SerializedEvent> events = new ArrayList<>(nrOfMessages);
             int position = reader.position();
             for (int idx = 0; idx < nrOfMessages; idx++) {
-                events.add(readEvent(reader));
+                events.add(doReadEvent(reader));
             }
             next = new SerializedTransactionWithToken(currentSequenceNumber, eventFormatVersion, events);
             currentSequenceNumber += nrOfMessages;
@@ -277,7 +306,7 @@ public class ByteBufferEventSource implements EventSource {
                 int position = reader.position();
                 eventsInTransaction.add(new EventInformation(position,
                                                              new SerializedEventWithToken(currentSequenceNumber,
-                                                                                          readEvent(reader))));
+                                                                                          doReadEvent(reader))));
                 currentSequenceNumber++;
             } catch (BufferUnderflowException io) {
                 throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR,

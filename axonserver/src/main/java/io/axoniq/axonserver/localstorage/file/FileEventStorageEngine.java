@@ -307,16 +307,16 @@ public class FileEventStorageEngine implements EventStorageEngine {
         int processed = 0;
 
         if (buffer.isPresent()) {
-            EventSource eventSource = buffer.get();
-            for (int i = 0; i < indexEntries.size() && i < maxResults; i++) {
-                SerializedEvent event = eventSource.readEvent(indexEntries.get(i));
-                if (event.getAggregateSequenceNumber() >= minSequenceNumber
-                        && event.getAggregateSequenceNumber() < maxSequenceNumber) {
-                    onEvent.accept(event);
+            try (EventSource.Reader eventSource = buffer.get().reader()) {
+                for (int i = 0; i < indexEntries.size() && i < maxResults; i++) {
+                    SerializedEvent event = eventSource.readEvent(indexEntries.get(i));
+                    if (event.getAggregateSequenceNumber() >= minSequenceNumber
+                            && event.getAggregateSequenceNumber() < maxSequenceNumber) {
+                        onEvent.accept(event);
+                    }
+                    processed++;
                 }
-                processed++;
             }
-            eventSource.close();
         }
 
         return processed;
@@ -355,7 +355,6 @@ public class FileEventStorageEngine implements EventStorageEngine {
                         .getMinTimestamp()) {
                     done = true;
                 }
-                eventSource.close();
 
                 return done;
             });
@@ -540,13 +539,9 @@ public class FileEventStorageEngine implements EventStorageEngine {
     private Optional<SerializedEvent> readSerializedEvent(long minSequenceNumber, long maxSequenceNumber,
                                                           SegmentIndexEntries lastEventPosition) {
         return head.eventSource(lastEventPosition.fileVersion())
-                   .map(e -> {
-                       try (e) {
-                           return e.readLastInRange(minSequenceNumber,
-                                                    maxSequenceNumber,
-                                                    lastEventPosition.indexEntries().positions());
-                       }
-                   });
+                   .map(e -> e.readLastInRange(minSequenceNumber,
+                                               maxSequenceNumber,
+                                               lastEventPosition.indexEntries().positions()));
     }
 
     @Override

@@ -31,7 +31,7 @@ import static junit.framework.TestCase.assertTrue;
 /**
  * @author Marc Gathier
  */
-public class InputStreamStrorageTierEventStoreTest {
+public class InputStreamStorageTierEventStoreTest {
 
     private InputStreamStrorageTierEventStore testSubject;
 
@@ -76,7 +76,6 @@ public class InputStreamStrorageTierEventStoreTest {
             assertEquals(5, next.getToken());
             while (iterator.hasNext()) {
                 next = iterator.next();
-                System.out.println(next.getPosition());
             }
             assertEquals(13, next.getToken());
         }
@@ -84,7 +83,7 @@ public class InputStreamStrorageTierEventStoreTest {
 
     @Test
     public void readBackwards() {
-        EventSource eventSource = testSubject.localEventSource(0).get();
+        EventSource.Reader eventSource = testSubject.localEventSource(0).get().reader();
         int[] positions = {432, 502, 572, 642, 712, 782, 852, 922};
         for (int i = positions.length - 1; i >= 0; i--) {
             eventSource.readEvent(positions[i]);

@@ -1,3 +1,12 @@
+/*
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver.localstorage.file;
 
 import io.axoniq.axonserver.localstorage.DataFetcherSchedulerProvider;
@@ -71,19 +80,20 @@ public class EventSourceFlux implements Supplier<Flux<SerializedEvent>> {
                           eventSource -> Flux.just(eventSource)
                                              .flatMap(es -> Flux.fromIterable(indexEntries.positions())
                                                                 .limitRate(prefetch, prefetch / 2)
-                                                                .publishOn(Schedulers.fromExecutorService(dataFetcherSchedulerProvider.get()))
+                                                                .publishOn(Schedulers.fromExecutorService(
+                                                                        dataFetcherSchedulerProvider.get()))
                                                                 .map(es::readEvent))
-                , EventSource::close);
+                , EventSource.Reader::close);
     }
 
     @Nonnull
-    private EventSource openEventSource() throws EventSourceNotFoundException {
+    private EventSource.Reader openEventSource() throws EventSourceNotFoundException {
         Optional<EventSource> optional = eventSourceFactory.create();
         if (!optional.isPresent()) {
             logger.warn("Event source not found for segment {}", segment);
-           throw new EventSourceNotFoundException();
+            throw new EventSourceNotFoundException();
         }
-        return optional.get();
+        return optional.get().reader();
     }
 
 }

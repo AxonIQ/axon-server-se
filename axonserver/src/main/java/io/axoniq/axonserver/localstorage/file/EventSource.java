@@ -20,22 +20,15 @@ import java.util.List;
  * @author Marc Gathier
  * @since 4.0
  */
-public interface EventSource extends AutoCloseable {
+public interface EventSource {
+
 
     /**
-     * Reads an event from this segment.
+     * Create a reader that can be used to read events from specific positions in the file.
      *
-     * @param position the offset in the segment
-     * @return the event
+     * @return a reader that can be used to read events from specific positions in the file
      */
-    SerializedEvent readEvent(int position);
-
-    /**
-     * Closes this segment.
-     */
-    default void close() {
-        // no-action
-    }
+    Reader reader();
 
     /**
      * Creates an iterator to iterate through the transactions stored in this segment.
@@ -83,14 +76,29 @@ public interface EventSource extends AutoCloseable {
      */
     default SerializedEvent readLastInRange(long minSequenceNumber, long maxSequenceNumber,
                                             List<Integer> positions) {
-        for (int i = positions.size() - 1; i >= 0; i--) {
-            SerializedEvent event = readEvent(positions.get(i));
-            if (event.getAggregateSequenceNumber() >= minSequenceNumber
-                    && event.getAggregateSequenceNumber() < maxSequenceNumber) {
-                return event;
+        try (Reader reader = reader()) {
+            for (int i = positions.size() - 1; i >= 0; i--) {
+                SerializedEvent event = reader.readEvent(positions.get(i));
+                if (event.getAggregateSequenceNumber() >= minSequenceNumber
+                        && event.getAggregateSequenceNumber() < maxSequenceNumber) {
+                    return event;
+                }
             }
         }
 
         return null;
+    }
+
+    interface Reader extends AutoCloseable {
+
+        /**
+         * Reads an event from this segment.
+         *
+         * @param position the offset in the segment
+         * @return the event
+         */
+        SerializedEvent readEvent(int position);
+
+        void close();
     }
 }

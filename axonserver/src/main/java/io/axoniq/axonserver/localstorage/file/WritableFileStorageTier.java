@@ -189,7 +189,7 @@ public class WritableFileStorageTier extends AbstractFileStorageTier {
             }
         } finally {
             readBuffers.remove(latestSegment.segment());
-            buffer.close();
+            buffer.clean(0);
         }
         return new FileVersion(token, 0);
     }

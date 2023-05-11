@@ -11,8 +11,12 @@ package io.axoniq.axonserver.localstorage.file;
 
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
+import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
+import io.axoniq.axonserver.localstorage.transformation.EventTransformer;
+import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 
+import java.io.File;
 import java.io.IOException;
 
 /**
@@ -20,14 +24,16 @@ import java.io.IOException;
  */
 public class InputStreamEventIterator extends EventIterator {
 
-    private final InputStreamEventSource eventSource;
     private final PositionKeepingDataInputStream reader;
+    private final EventTransformer eventTransformer;
 
-    public InputStreamEventIterator(InputStreamEventSource eventSource, long start) {
-        reader = eventSource.getStream();
-        this.eventSource = eventSource;
-        currentSequenceNumber = eventSource.segment();
+
+    public InputStreamEventIterator(File dataFile, EventTransformerFactory eventTransformerFactory, long segment,
+                                    long start) {
         try {
+            reader = new PositionKeepingDataInputStream(dataFile);
+            currentSequenceNumber = segment;
+            eventTransformer = eventTransformerFactory.get(reader.flags());
             forwardTo(start);
         } catch (IOException e) {
             throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR, e.getMessage(), e);
@@ -69,9 +75,14 @@ public class InputStreamEventIterator extends EventIterator {
     private void addEvent() throws IOException {
         int position = reader.position();
         eventsInTransaction.add(new EventInformation(position,
-                                                     new SerializedEventWithToken(currentSequenceNumber, eventSource.readEvent())));
+                                                     new SerializedEventWithToken(currentSequenceNumber, readEvent())));
         currentSequenceNumber++;
     }
+
+    private SerializedEvent readEvent() throws IOException {
+        return new SerializedEvent(eventTransformer.fromStorage(reader.readEvent()));
+    }
+
 
     protected boolean readTransaction() {
         try {
@@ -100,7 +111,11 @@ public class InputStreamEventIterator extends EventIterator {
 
     @Override
     protected void doClose() {
-        eventSource.close();
+        try {
+            reader.close();
+        } catch (IOException e) {
+            // ignore close exceptions
+        }
     }
 
     private void processVersion(PositionKeepingDataInputStream reader) throws IOException {

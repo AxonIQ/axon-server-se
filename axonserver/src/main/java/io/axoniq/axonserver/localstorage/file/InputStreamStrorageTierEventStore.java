@@ -75,27 +75,22 @@ public class InputStreamStrorageTierEventStore extends AbstractFileStorageTier {
     }
 
 
-
     @Override
     protected Optional<EventSource> localEventSource(FileVersion segment) {
         logger.debug("Get eventsource: {}", segment);
-        InputStreamEventSource eventSource = get(segment, false);
+        InputStreamEventSource eventSource = get(segment);
         logger.trace("result={}", eventSource);
-        if (eventSource == null) {
-            return Optional.empty();
-        }
-        return Optional.of(eventSource);
+        return Optional.ofNullable(eventSource);
     }
 
-    private InputStreamEventSource get(FileVersion segment, boolean force) {
-        if (!force && !segments.containsKey(segment.segment())) {
+    private InputStreamEventSource get(FileVersion segment) {
+        if (!segments.containsKey(segment.segment())) {
             return null;
         }
 
         fileOpenMeter.increment();
         return new InputStreamEventSource(dataFile(segment),
                                           segment.segment(),
-                                          segment.segmentVersion(),
                                           eventTransformerFactory);
     }
 }
