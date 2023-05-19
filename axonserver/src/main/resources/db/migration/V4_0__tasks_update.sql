@@ -1,3 +1,12 @@
+/*
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 create table if not exists task
 (
     task_id        varchar(200) not null primary key,
@@ -7,13 +16,9 @@ create table if not exists task
     status         INTEGER      not null,
     retry_interval BIGINT,
     task_executor  varchar(200) not null,
-    timestamp      BIGINT       not null
+    timestamp      BIGINT       not null,
+    message        varchar(255)
 );
-
-alter table task
-    add (
-        message varchar(255)
-        );
 
 
 insert into PATHS_TO_FUNCTIONS
