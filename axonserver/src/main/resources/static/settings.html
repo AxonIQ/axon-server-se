@@ -210,7 +210,7 @@
         </div>
     </div>
 
-    <section v-if="node.clustered" id="nodesOverview">
+    <section v-if="nodes.length > 1" id="nodesOverview">
         <h2>Nodes</h2>
 
         <paginated-table :rows="nodes" name="cluster">
@@ -233,7 +233,35 @@
                 <td>{{ n.grpcPort }}</td>
                 <td>{{ n.internalHostName }}</td>
                 <td>{{ n.grpcInternalPort }}</td>
+                <td v-if="admin">
+                    <span @click="unregister(n)" title="Unregister node"><i class="far fa-trash-alt"></i></span>
+                </td>
             </template>
         </paginated-table>
     </section>
+
+    <modal name="unregister-node" width="600" height="330">
+        <div class="column configuration modal">
+            <h2>Unregister node {{ unregisterNode }}</h2>
+            <p>
+                Are you sure you want to remove node {{ unregisterNode }} from the cluster?
+            </p>
+            <p>
+                If the node is currently unavailable, please make sure that you remove the control database on that node
+                before you restart it.
+            </p>
+            <form>
+                <ul>
+                    <li>
+                        <span>&nbsp;</span>
+                        <span>
+                  <button class="button" @click.prevent="doUnregister()">Unregister node</button>
+                  <button class="button" @click.prevent="hideModal('unregister-node')">Cancel</button>
+                  </span>
+                    </li>
+                </ul>
+            </form>
+        </div>
+    </modal>
+
 </div>
