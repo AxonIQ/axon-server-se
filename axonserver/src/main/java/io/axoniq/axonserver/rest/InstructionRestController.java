@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -9,7 +9,8 @@
 
 package io.axoniq.axonserver.rest;
 
-import io.axoniq.axonserver.grpc.PlatformService;
+import io.axoniq.axonserver.applicationevents.AxonServerEventPublisher;
+import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.logging.AuditLog;
 import io.swagger.v3.oas.annotations.Parameter;
 import org.slf4j.Logger;
@@ -32,21 +33,18 @@ public class InstructionRestController {
 
     private static final Logger auditLog = AuditLog.getLogger();
 
-    private final PlatformService platformService;
+    private final AxonServerEventPublisher eventPublisher;
 
-    public InstructionRestController(PlatformService platformService) {
-        this.platformService = platformService;
+    public InstructionRestController(AxonServerEventPublisher eventPublisher) {
+        this.eventPublisher = eventPublisher;
     }
 
     @PatchMapping
-    public String requestReconnect(@RequestParam(value = "client") String clientId,
-                                   @Parameter(hidden = true) final Principal principal) {
-        auditLog.info("[{}] Request client \"{}\" to reconnect.", AuditLog.username(principal), clientId);
-
-        if (platformService.requestReconnect(clientId, "reconnect requested through REST interface")) {
-            return clientId + ": requested reconnect";
-        } else {
-            return clientId + ": not connected to this server";
+    public void requestReconnect(@RequestParam(value = "client") String clientId,
+                                 @Parameter(hidden = true) final Principal principal) {
+        if (auditLog.isInfoEnabled()) {
+            auditLog.info("[{}] Request client \"{}\" to reconnect.", AuditLog.username(principal), clientId);
         }
+        eventPublisher.publishEvent(new TopologyEvents.RequestClientReconnect(clientId));
     }
 }
