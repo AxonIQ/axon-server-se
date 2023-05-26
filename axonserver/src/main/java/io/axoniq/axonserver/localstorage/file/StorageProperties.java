@@ -88,11 +88,11 @@ public class StorageProperties implements Cloneable {
     /**
      * Delay to clear ByteBuffers from off-heap memory for writable segments
      */
-    private int primaryCleanupDelay = 15;
+    private int primaryCleanupDelay = 0;
     /**
      * Delay to clear ByteBuffers from off-heap memory for read-only segments
      */
-    private int secondaryCleanupDelay = 15;
+    private int secondaryCleanupDelay = 0;
     /**
      * Maximum number of indexes to keep open in memory
      */

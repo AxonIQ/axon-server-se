@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -10,7 +10,6 @@
 package io.axoniq.axonserver.localstorage.file;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
@@ -20,10 +19,14 @@ import java.io.RandomAccessFile;
 public class PositionKeepingDataInputStream {
 
     private int position = 0;
-    private RandomAccessFile reader;
+    private final RandomAccessFile reader;
+    private final byte version;
+    private final int flags;
 
-    public PositionKeepingDataInputStream(File file) throws FileNotFoundException {
+    public PositionKeepingDataInputStream(File file) throws IOException {
         reader = new RandomAccessFile(file, "r");
+        version = readByte();
+        flags = readInt();
     }
 
     public byte readByte() throws IOException {
@@ -85,5 +88,13 @@ public class PositionKeepingDataInputStream {
         long l = reader.readLong();
         position += 8;
         return l;
+    }
+
+    public int flags() {
+        return flags;
+    }
+
+    public byte version() {
+        return version;
     }
 }

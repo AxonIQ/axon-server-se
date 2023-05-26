@@ -108,13 +108,9 @@ public abstract class AbstractFileStorageTier implements StorageTier {
     public Optional<SerializedEvent> readSerializedEvent(long minSequenceNumber, long maxSequenceNumber,
                                                          SegmentIndexEntries lastEventPosition) {
         return localEventSource(lastEventPosition.fileVersion())
-                .map(e -> {
-                    try (e) {
-                        return e.readLastInRange(minSequenceNumber,
-                                                 maxSequenceNumber,
-                                                 lastEventPosition.indexEntries().positions());
-                    }
-                });
+                .map(e -> e.readLastInRange(minSequenceNumber,
+                                            maxSequenceNumber,
+                                            lastEventPosition.indexEntries().positions()));
     }
 
     public Integer currentSegmentVersion(Long segment) {

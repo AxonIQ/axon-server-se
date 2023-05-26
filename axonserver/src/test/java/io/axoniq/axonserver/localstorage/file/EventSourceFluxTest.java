@@ -42,13 +42,30 @@ class EventSourceFluxTest {
                 return Optional.of(new EventSource() {
 
                     final AtomicBoolean closed = new AtomicBoolean();
+                    final Reader reader = new Reader() {
+                        @Override
+                        public SerializedEvent readEvent(int position) {
+                            if (closed.get()) {
+                                throw new IllegalStateException("Attempting to read from closed stream");
+                            }
+                            return new SerializedEvent(Event.getDefaultInstance());
+                        }
+
+                        @Override
+                        public void close() {
+                            closed.set(true);
+                            closedCount.incrementAndGet();
+                            try {
+                                Thread.sleep(10);
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    };
 
                     @Override
-                    public SerializedEvent readEvent(int position) {
-                        if (closed.get()) {
-                            throw new IllegalStateException("Attempting to read from closed stream");
-                        }
-                        return new SerializedEvent(Event.getDefaultInstance());
+                    public Reader reader() {
+                        return reader;
                     }
 
                     @Override
@@ -64,17 +81,6 @@ class EventSourceFluxTest {
                     @Override
                     public long segment() {
                         return 0;
-                    }
-
-                    @Override
-                    public void close() {
-                        closed.set(true);
-                        closedCount.incrementAndGet();
-                        try {
-                            Thread.sleep(10);
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                        }
                     }
                 });
             }

@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -57,10 +57,6 @@ public abstract class EventIterator implements Iterator<EventInformation>, AutoC
         return eventsInTransaction.remove(0);
     }
 
-    public List<EventInformation> pendingEvents() {
-        return eventsInTransaction;
-    }
-
     public Long getTokenAt(long instant) {
         if (hasNext()) {
             EventInformation event = next();
@@ -80,4 +76,5 @@ public abstract class EventIterator implements Iterator<EventInformation>, AutoC
         return null;
     }
 
+    public abstract int position();
 }

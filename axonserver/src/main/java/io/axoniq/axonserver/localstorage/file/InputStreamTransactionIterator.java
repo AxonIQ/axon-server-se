@@ -14,7 +14,10 @@ import io.axoniq.axonserver.exception.EventStoreValidationException;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
+import io.axoniq.axonserver.localstorage.transformation.EventTransformer;
+import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -25,16 +28,17 @@ import java.util.NoSuchElementException;
  */
 public class InputStreamTransactionIterator implements TransactionIterator {
 
-    private final InputStreamEventSource eventSource;
     private final PositionKeepingDataInputStream reader;
+    private final EventTransformer eventTransformer;
     private long currentSequenceNumber;
     private SerializedTransactionWithToken next;
 
-    public InputStreamTransactionIterator(InputStreamEventSource eventSource, long start) {
-        this.eventSource = eventSource;
-        this.reader = eventSource.getStream();
-        this.currentSequenceNumber = eventSource.segment();
+    public InputStreamTransactionIterator(File file, EventTransformerFactory eventTransformerFactory, long segment,
+                                          long start) {
         try {
+            this.reader = new PositionKeepingDataInputStream(file);
+            this.currentSequenceNumber = segment;
+            this.eventTransformer = eventTransformerFactory.get(reader.flags());
             forwardTo(start);
         } catch (IOException e) {
             throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR, e.getMessage(), e);
@@ -78,16 +82,23 @@ public class InputStreamTransactionIterator implements TransactionIterator {
             short nrOfMessages = reader.readShort();
             List<SerializedEvent> events = new ArrayList<>(nrOfMessages);
             for (int idx = 0; idx < nrOfMessages; idx++) {
-                events.add(eventSource.readEvent());
+                events.add(readEvent());
             }
             next = new SerializedTransactionWithToken(currentSequenceNumber, eventFormatVersion, events);
             currentSequenceNumber += nrOfMessages;
             reader.readInt(); // checksum
             return true;
         } catch (IOException | RuntimeException io) {
-            throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR, "Failed to read event: " + currentSequenceNumber, io);
+            throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR,
+                                                 "Failed to read event: " + currentSequenceNumber,
+                                                 io);
         }
     }
+
+    private SerializedEvent readEvent() throws IOException {
+        return new SerializedEvent(eventTransformer.fromStorage(reader.readEvent()));
+    }
+
 
     @Override
     public boolean hasNext() {
@@ -109,8 +120,12 @@ public class InputStreamTransactionIterator implements TransactionIterator {
 
     @Override
     public void close() {
+        try {
+            reader.close();
+        } catch (IOException e) {
+            // ignore exceptions on closing a reader
+        }
         next = null;
-        eventSource.close();
     }
 
 }
