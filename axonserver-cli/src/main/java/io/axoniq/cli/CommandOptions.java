@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -212,7 +212,7 @@ public class CommandOptions {
      * Comma separated list of Axon Server node names as secondary nodes for the replication group.
      */
     public static final Option SECONDARY_NODES = Option
-            .builder("s")
+            .builder("sec")
             .hasArgs()
             .valueSeparator(',')
             .longOpt("secondary")
