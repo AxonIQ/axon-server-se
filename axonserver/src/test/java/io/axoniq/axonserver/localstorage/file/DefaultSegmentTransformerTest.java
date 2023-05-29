@@ -84,8 +84,8 @@ public class DefaultSegmentTransformerTest {
                                                               event("new-payload", "agg-0", 0))))
                                        .then(testSubject.completeSegment())
                     )
-                    .expectComplete()
-                    .verify();
+                    .expectNext(1L)
+                    .verifyComplete();
 
         assertEquals(0, indexEntriesMap.size());
     }
@@ -101,8 +101,8 @@ public class DefaultSegmentTransformerTest {
                                                               event("new-payload", "agg-0", 0))))
                                        .then(testSubject.completeSegment())
                     )
-                    .expectComplete()
-                    .verify();
+                    .expectNext(1L)
+                    .verifyComplete();
 
         assertEquals(2, indexEntriesMap.size());
         assertEquals(3, indexEntres());
@@ -119,8 +119,8 @@ public class DefaultSegmentTransformerTest {
                                                               Event.getDefaultInstance())))
                                        .then(testSubject.completeSegment())
                     )
-                    .expectComplete()
-                    .verify();
+                    .expectNext(1L)
+                    .verifyComplete();
 
         assertEquals(2, indexEntriesMap.size());
         assertEquals(3, indexEntres());
@@ -137,8 +137,8 @@ public class DefaultSegmentTransformerTest {
                                                               event("new-payload", "agg-1", 0))))
                                        .then(testSubject.completeSegment())
                     )
-                    .expectComplete()
-                    .verify();
+                    .expectNext(1L)
+                    .verifyComplete();
 
         assertEquals(2, indexEntriesMap.size());
         assertEquals(3, indexEntres());
@@ -155,8 +155,8 @@ public class DefaultSegmentTransformerTest {
                                                               event("new-payload", "agg-1", 1))))
                                        .then(testSubject.completeSegment())
                     )
-                    .expectComplete()
-                    .verify();
+                    .expectNext(1L)
+                    .verifyComplete();
 
         assertEquals(2, indexEntriesMap.size());
         assertEquals(3, indexEntres());

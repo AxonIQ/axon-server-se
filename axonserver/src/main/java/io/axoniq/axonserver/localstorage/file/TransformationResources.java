@@ -26,8 +26,6 @@ class TransformationResources {
     private final AtomicReference<SegmentTransformer> segmentTransformerRef =
             new AtomicReference<>(new NoopSegmentTransformer());
 
-    private final AtomicLong count = new AtomicLong();
-
     private final Function<Long, Long> segmentForToken;
     private final Supplier<StorageProperties> storagePropertiesSupplier;
     private final int transformationVersion;
@@ -66,24 +64,20 @@ class TransformationResources {
                                                       storagePath);
                 SegmentTransformer prevSegmentTransformer = segmentTransformerRef.getAndSet(segmentTransformer);
                 return prevSegmentTransformer.completeSegment()
-                                             .then(segmentTransformer.initialize())
-                                             .then(segmentTransformer.transformEvent(eventWithToken))
-                                             .thenReturn(count.getAndSet(1L));
+                                             .transform(countMono -> segmentTransformer.initialize()
+                                                                                       .then(segmentTransformer.transformEvent(eventWithToken))
+                                                                                       .then(countMono));
             }
             return segmentTransformerRef.get()
                                         .transformEvent(eventWithToken)
-                                        .doOnSuccess(v -> count.incrementAndGet())
                                         .thenReturn(0L);
         });
     }
 
 
     public Mono<Long> completeCurrentSegment() {
-        return Mono.defer(() ->
-                                  segmentTransformerRef.get()
-                                                       .completeSegment()
-                                                       .thenReturn(count.getAndSet(0L))
-        );
+        return Mono.defer(() -> segmentTransformerRef.get()
+                                                     .completeSegment());
     }
 
     public Mono<Void> rollback(Throwable t) {
