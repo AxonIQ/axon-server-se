@@ -62,6 +62,7 @@ import io.axoniq.axonserver.localstorage.ContextEventProviderSupplier;
 import io.axoniq.axonserver.localstorage.EventStoreLockProvider;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.axoniq.axonserver.localstorage.transformation.EventStoreTransformer;
+import io.axoniq.axonserver.localstorage.transformation.LockingEventStoreTransformer;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -155,12 +156,19 @@ public class TransformationConfiguration {
         return new JpaLocalTransformationProgressStore(repository);
     }
 
+    @Bean
+    public EventStoreTransformer lockingEventStoreTransformer(EventStoreTransformer delegate,
+                                                              EventStoreLockProvider eventStoreLockProvider){
+        return new LockingEventStoreTransformer(eventStoreLockProvider,
+                                                delegate);
+    }
+
 
     @Bean
     public TransformationApplyExecutor localTransformationApplier(
             TransformationEntryStoreProvider transformationEntryStoreSupplier,
             TransformationProgressStore localTransformationProgressStore,
-            EventStoreTransformer eventStoreTransformer) {
+            @Qualifier("lockingEventStoreTransformer") EventStoreTransformer eventStoreTransformer) {
         return new DefaultTransformationApplyExecutor(transformationEntryStoreSupplier,
                                                       localTransformationProgressStore,
                                                       eventStoreTransformer::transformEvents);
@@ -194,18 +202,16 @@ public class TransformationConfiguration {
     public TransformationTask transformationApplyTask(TransformationApplyExecutor applier,
                                                       MarkTransformationApplied markTransformationApplied,
                                                       CleanTransformationApplied cleanTransformationApplied,
-                                                      Transformations transformations,
-                                                      EventStoreLockProvider eventStoreLockProvider) {
+                                                      Transformations transformations) {
         return new ActionScheduledTask(
                 new TransformationApplyAction(applier, markTransformationApplied,
                                               cleanTransformationApplied,
-                                              transformations,
-                                              eventStoreLockProvider));
+                                              transformations));
     }
 
     @Bean
     public EventStoreCompactionExecutor transformationCompactionExecutor(
-            EventStoreTransformer eventStoreTransformer) {
+            @Qualifier("lockingEventStoreTransformer") EventStoreTransformer eventStoreTransformer) {
         return new DefaultEventStoreCompactionExecutor(eventStoreTransformer::compact);
     }
 

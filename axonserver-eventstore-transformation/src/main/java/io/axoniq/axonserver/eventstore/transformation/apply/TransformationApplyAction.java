@@ -3,18 +3,14 @@ package io.axoniq.axonserver.eventstore.transformation.apply;
 import io.axoniq.axonserver.eventstore.transformation.ActionSupplier;
 import io.axoniq.axonserver.eventstore.transformation.api.EventStoreTransformationService.Transformation;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.Transformations;
-import io.axoniq.axonserver.util.IdLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 
-import java.util.function.Function;
 
 public class TransformationApplyAction implements ActionSupplier {
 
     private static final Logger logger = LoggerFactory.getLogger(TransformationApplyAction.class);
-
-    private static final String LOCK_ID_FORMAT = "Event-Transformation-%s";
 
     private final TransformationApplyExecutor applier;
     private final MarkTransformationApplied markTransformationApplied;
@@ -22,18 +18,14 @@ public class TransformationApplyAction implements ActionSupplier {
     private final CleanTransformationApplied cleanTransformationApplied;
     private final Transformations transformations;
 
-    private final Function<String, IdLock> eventStoreLockPerContextProvider;
-
     public TransformationApplyAction(TransformationApplyExecutor applier,
                                      MarkTransformationApplied markTransformationApplied,
                                      CleanTransformationApplied cleanTransformationApplied,
-                                     Transformations transformations,
-                                     Function<String, IdLock> eventStoreLockPerContextProvider) {
+                                     Transformations transformations) {
         this.applier = applier;
         this.markTransformationApplied = markTransformationApplied;
         this.cleanTransformationApplied = cleanTransformationApplied;
         this.transformations = transformations;
-        this.eventStoreLockPerContextProvider = eventStoreLockPerContextProvider;
     }
 
 
@@ -47,13 +39,6 @@ public class TransformationApplyAction implements ActionSupplier {
     }
 
     private Mono<Void> apply(Transformation transformation) {
-        return Mono.defer(() -> {
-            IdLock.Ticket ticket = eventStoreLockPerContextProvider
-                    .apply(transformation.context())
-                    .request(String.format(LOCK_ID_FORMAT, transformation.id()));
-            if (!ticket.isAcquired()) {
-                return Mono.empty();
-            }
             return applier.apply(new ApplierTransformation(transformation))
                           .doOnError(t -> logger.error(
                                   "An error happened while applying the transformation: {}.",
@@ -64,9 +49,7 @@ public class TransformationApplyAction implements ActionSupplier {
                                   transformation.id()))
                           .then(markTransformationApplied.markApplied(
                                   transformation.context(),
-                                  transformation.id()))
-                          .doFinally(s -> ticket.release());
-        });
+                                  transformation.id()));
     }
 
 
