@@ -2,6 +2,7 @@ package io.axoniq.axonserver.localstorage.transformation;
 
 import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.localstorage.EventStoreLockProvider;
+import io.axoniq.axonserver.util.IdLock;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -30,16 +31,19 @@ public class LockingEventStoreTransformer implements EventStoreTransformer {
     }
 
 
-
-    private <T, P extends Publisher<T>> Flux<T> executeInLock(String context, P action){
-        return Flux.usingWhen(Mono.fromSupplier(() -> eventStoreLockProvider.apply(context)
-                                                                            .request("transformation")),
-                              ticket -> {
-                                  if (ticket.isAcquired()){
-                                      return action;
-                                  }
-                                  return Mono.error(new RuntimeException("unable to acquire Event Store lock"));
-                              },
+    private <T, P extends Publisher<T>> Flux<T> executeInLock(String context, P action) {
+        return Flux.usingWhen(Mono.<IdLock.Ticket>create(sink -> {
+                                                             IdLock.Ticket ticket = eventStoreLockProvider
+                                                                     .apply(context)
+                                                                     .request("transformation");
+                                                             if (ticket.isAcquired()) {
+                                                                 sink.success(ticket);
+                                                             } else {
+                                                                 sink.error(new RuntimeException("unable to acquire Event Store lock"));
+                                                             }
+                                                         }
+                              ),
+                              ticket -> action,
                               ticket -> Mono.fromRunnable(ticket::release)
         );
     }

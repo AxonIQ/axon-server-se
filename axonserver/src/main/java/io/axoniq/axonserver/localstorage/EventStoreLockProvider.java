@@ -20,7 +20,7 @@ import java.util.function.Function;
 @Component
 public class EventStoreLockProvider implements Function<String, IdLock> {
 
-    private Map<String, IdLock> lockPerContext = new ConcurrentHashMap<>();
+    private final Map<String, IdLock> lockPerContext = new ConcurrentHashMap<>();
 
     @Override
     public IdLock apply(String context) {

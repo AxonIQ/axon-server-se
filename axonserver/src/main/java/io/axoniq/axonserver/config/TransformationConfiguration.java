@@ -156,7 +156,7 @@ public class TransformationConfiguration {
         return new JpaLocalTransformationProgressStore(repository);
     }
 
-    @Bean
+    @Bean @Primary
     public EventStoreTransformer lockingEventStoreTransformer(EventStoreTransformer delegate,
                                                               EventStoreLockProvider eventStoreLockProvider){
         return new LockingEventStoreTransformer(eventStoreLockProvider,
