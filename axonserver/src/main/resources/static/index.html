@@ -160,7 +160,7 @@
                             }).then(data => {
                                         let product = "axonserver";
                                         let productVersion = data.version
-                                        return axios.get(`https://download.axoniq.io/updates?module=${product}&version=${productVersion}`)
+                                        return axios.get(`https://download.axoniq.io/updates?module=${product}&version=${productVersion}&licenseType=${data.licenseType}`)
                                     }
                             ).then(updatesData => {
                                 if (updatesData.data !== undefined && updatesData.data.length !== 0) {
