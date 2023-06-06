@@ -44,6 +44,10 @@ public class MessagingPlatformException extends RuntimeException {
         return false;
     }
 
+    public Object getErrorPayload() {
+        return getMessage();
+    }
+
     public ErrorCode getErrorCode() {
         return errorCode;
     }

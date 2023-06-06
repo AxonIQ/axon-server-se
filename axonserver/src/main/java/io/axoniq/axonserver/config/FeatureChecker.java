@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -26,18 +26,6 @@ public interface FeatureChecker {
         return false;
     }
 
-    default boolean isBigData() {
-        return false;
-    }
-
-    default boolean isScale() {
-        return false;
-    }
-
-    default boolean isSecurity() {
-        return false;
-    }
-
     default List<String> getFeatureList() {
         return Collections.emptyList();
     }
@@ -59,6 +47,14 @@ public interface FeatureChecker {
     }
 
     default int getMaxContexts() {
+        return 1;
+    }
+
+    default int getMaxReplicationGroups() {
+        return 1;
+    }
+
+    default int getMaxApplications() {
         return 1;
     }
 }

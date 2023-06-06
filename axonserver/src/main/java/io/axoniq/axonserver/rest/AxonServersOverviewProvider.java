@@ -8,6 +8,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -23,11 +24,11 @@ import java.util.stream.StreamSupport;
 @Component
 public class AxonServersOverviewProvider {
 
-    private final Function<String, Stream<Application>> applicationProvider;
-    private final Function<String, Stream<AxonServer>> axonServerProvider;
+    private final Function<Predicate<String>, Stream<Application>> applicationProvider;
+    private final Function<Predicate<String>, Stream<AxonServer>> axonServerProvider;
 
-    public AxonServersOverviewProvider(Function<String, Stream<Application>> applicationProvider,
-                                       Function<String, Stream<AxonServer>> axonServerProvider) {
+    public AxonServersOverviewProvider(Function<Predicate<String>, Stream<Application>> applicationProvider,
+                                       Function<Predicate<String>, Stream<AxonServer>> axonServerProvider) {
         this.applicationProvider = applicationProvider;
         this.axonServerProvider = axonServerProvider;
     }
@@ -41,14 +42,14 @@ public class AxonServersOverviewProvider {
     }
 
     public List<ConnectedApplication> listApplications(String context) {
-        return applicationProvider.apply(context)
+        return applicationProvider.apply(c -> context == null || c.equals(context))
                                   .map(ConnectedApplication::new)
                                   .sorted(Comparator.comparing(ConnectedApplication::getName)).collect(Collectors
                                                                                                                .toList());
     }
 
     public List<ServerNode> listNodes(String context) {
-        return axonServerProvider.apply(context)
+        return axonServerProvider.apply(c -> context == null || c.equals(context))
                                  .map(ServerNode::new)
                                  .filter(s -> s.hasContext(context))
                                  .sorted(Comparator.comparing(ServerNode::getName)).collect(Collectors.toList());

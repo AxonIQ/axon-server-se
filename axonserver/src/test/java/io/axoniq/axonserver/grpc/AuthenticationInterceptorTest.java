@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -10,6 +10,7 @@
 package io.axoniq.axonserver.grpc;
 
 import io.axoniq.axonserver.AxonServerAccessController;
+import io.axoniq.axonserver.config.TokenAuthentication;
 import io.grpc.Attributes;
 import io.grpc.Metadata;
 import io.grpc.MethodDescriptor;
@@ -22,6 +23,9 @@ import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.springframework.security.core.Authentication;
+
+import java.util.Collections;
 
 import static io.grpc.Status.Code.PERMISSION_DENIED;
 import static org.junit.Assert.assertEquals;
@@ -60,8 +64,12 @@ public class AuthenticationInterceptorTest {
 
     @Before
     public void setup() {
-        when(accessController.allowed(eq("path1"), any(), eq("1234"))).thenReturn(false);
-        when(accessController.allowed(eq("path2"), any(), eq("1234"))).thenReturn(true);
+        Authentication validAuthentication = new TokenAuthentication(true, "name", Collections.emptySet());
+        when(accessController.allowed(eq("path1"), any(), eq(validAuthentication))).thenReturn(false);
+        when(accessController.allowed(eq("path2"), any(), eq(validAuthentication))).thenReturn(true);
+
+        when(accessController.authenticate("1234")).thenReturn(validAuthentication);
+
         when(call.getAttributes()).thenReturn(Attributes.EMPTY);
         testSubject = new AuthenticationInterceptor(accessController);
 
@@ -69,8 +77,8 @@ public class AuthenticationInterceptorTest {
         trailers = ArgumentCaptor.forClass(Metadata.class);
         path1 =
                 MethodDescriptor.<String, String>newBuilder().setFullMethodName("path1")
-                        .setType(MethodDescriptor.MethodType.CLIENT_STREAMING)
-                        .setRequestMarshaller(marshaller)
+                                .setType(MethodDescriptor.MethodType.CLIENT_STREAMING)
+                                .setRequestMarshaller(marshaller)
                         .setResponseMarshaller(marshaller)
                         .build();
         path2 =

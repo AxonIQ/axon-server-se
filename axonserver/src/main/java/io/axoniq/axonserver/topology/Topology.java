@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -9,7 +9,11 @@
 
 package io.axoniq.axonserver.topology;
 
+import io.axoniq.axonserver.api.Authentication;
+
+import java.util.Collections;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Stream;
 
 /**
@@ -50,12 +54,22 @@ public interface Topology {
     }
 
     /**
-     * Gets the names of all contexts where the current Axon Server instance is member of. In Axon Server Standard this only contains DEFAULT_CONTEXT, in
-     * Axon Server Enterprise this is dynamic.
+     * Gets the names of all contexts where the current Axon Server instance is member of. In Axon Server Standard this
+     * only contains DEFAULT_CONTEXT, in Axon Server Enterprise this is dynamic.
      *
      * @return names of contexts
      */
     default Iterable<String> getMyContextNames() {
+        return getMe().getContextNames();
+    }
+
+    /**
+     * Gets the names of all contexts known in this Axon Server. In Axon Server Standard this only contains
+     * DEFAULT_CONTEXT, in Axon Server Enterprise this is dynamic.
+     *
+     * @return names of contexts
+     */
+    default Iterable<String> knownContexts() {
         return getMe().getContextNames();
     }
 
@@ -80,5 +94,19 @@ public interface Topology {
 
     default boolean validContext(String context) {
         return true;
+    }
+
+    default boolean initialized() {
+        return true;
+    }
+
+    /**
+     * Retrieves a {@link Set} of context names that the requester is allowed to see.
+     * @param includeAdmin include the admin context in the result
+     * @param authentication the authentication of the requester
+     * @return set of context names
+     */
+    default Set<String> visibleContexts(boolean includeAdmin, Authentication authentication) {
+        return Collections.singleton(DEFAULT_CONTEXT);
     }
 }

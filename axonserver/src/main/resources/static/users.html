@@ -1,5 +1,5 @@
 <!--
-  ~  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+  ~  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
   ~  under one or more contributor license agreements.
   ~
   ~  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -14,15 +14,15 @@
         <paginated-table :rows="users" name="users">
             <template #header>
                 <th>Username</th>
-                <th v-if="isEnterprise()">Roles</th>
-                <th v-if="!isEnterprise()">Administrator</th>
+                <th v-if="hasFeatures()">Roles</th>
+                <th v-if="!hasFeatures()">Administrator</th>
             </template>
             <template #row="user">
                 <td>{{ user.userName }}</td>
-                <td v-if="isEnterprise()">
+                <td v-if="hasFeatures()">
                     <span v-for="role in user.roles">{{ role }}<br></span>
                 </td>
-                <td v-if="!isEnterprise()">
+                <td v-if="!hasFeatures()">
                     {{ administrator(user) }}
                 </td>
                 <td v-if="admin">
@@ -51,11 +51,11 @@
                         <input data-lpignore="true" style="padding: 1px 2px" type="password"
                                v-model="user.password2"/>
                     </li>
-                    <li v-if="!isEnterprise()">
+                    <li v-if="!hasFeatures()">
                         <span class="narrow">Administrator</span>
                         <input type="checkbox" v-model="adminRole"/>
                     </li>
-                    <li v-if="isEnterprise()">
+                    <li v-if="hasFeatures()">
                         <span class="narrow">Roles</span>
                         <span style="padding: 0;">
                             <table class="nestedTable">

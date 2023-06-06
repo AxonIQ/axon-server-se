@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -28,6 +28,7 @@ import io.axoniq.axonserver.commandprocessing.spi.CommandHandlerRegistry;
 import io.axoniq.axonserver.commandprocessing.spi.CommandRequestProcessor;
 import io.axoniq.axonserver.commandprocessing.spi.interceptor.CommandHandlerSubscribedInterceptor;
 import io.axoniq.axonserver.commandprocessing.spi.interceptor.CommandHandlerUnsubscribedInterceptor;
+import io.axoniq.axonserver.eventstore.transformation.spi.TransformationsInProgressForContext;
 import io.axoniq.axonserver.exception.CriticalEventException;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
@@ -74,6 +75,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.actuate.system.DiskSpaceHealthIndicator;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.flyway.FlywayMigrationStrategy;
 import org.springframework.context.ApplicationEvent;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.ApplicationListener;
@@ -85,6 +87,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.PlatformTransactionManager;
 import reactor.core.scheduler.Schedulers;
+import reactor.core.publisher.Mono;
 
 import java.time.Clock;
 import java.util.ArrayList;
@@ -111,6 +114,14 @@ public class AxonServerStandardConfiguration {
     @ConditionalOnMissingBean(StorageTransactionManagerFactory.class)
     public StorageTransactionManagerFactory storageTransactionManagerFactory() {
         return new DefaultStorageTransactionManagerFactory();
+    }
+
+    @Bean
+    public FlywayMigrationStrategy cleanMigrateStrategy() {
+        return flyway -> {
+            flyway.repair();
+            flyway.migrate();
+        };
     }
 
     @Bean
@@ -366,5 +377,11 @@ public class AxonServerStandardConfiguration {
         //disable regular diskSpaceHealthIndicator bean
         //using FileSystemMonitor instead
         return null;
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public TransformationsInProgressForContext transformationsInProgressForContext() {
+        return context -> Mono.just(false);
     }
 }

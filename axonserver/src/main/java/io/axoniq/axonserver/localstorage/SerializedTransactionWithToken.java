@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -20,13 +20,14 @@ import java.util.Objects;
 public class SerializedTransactionWithToken {
 
     private final long token;
-    private final byte version;
+    private final byte eventFormatVersion;
     private final List<SerializedEvent> events;
 
-    public SerializedTransactionWithToken(long token, byte version,
+    public SerializedTransactionWithToken(long token,
+                                          byte eventFormatVersion,
                                           List<SerializedEvent> events) {
         this.token = token;
-        this.version = version;
+        this.eventFormatVersion = eventFormatVersion;
         this.events = events;
     }
 
@@ -38,8 +39,8 @@ public class SerializedTransactionWithToken {
         return events;
     }
 
-    public int getVersion() {
-        return version;
+    public int getEventFormatVersion() {
+        return eventFormatVersion;
     }
 
     @Override
@@ -64,7 +65,7 @@ public class SerializedTransactionWithToken {
         return events.size();
     }
 
-    public Event getEvents(int i) {
+    public Event getEvent(int i) {
         return events.get(i).asEvent();
     }
 }

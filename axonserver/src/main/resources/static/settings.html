@@ -1,5 +1,5 @@
 <!--
-  ~  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+  ~  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
   ~  under one or more contributor license agreements.
   ~
   ~  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -58,24 +58,59 @@
         Authentication disabled
     </div>
 
-    <div v-if="!node.adminNode" class="msg warning">
+    <div v-if="initialized && !node.adminNode" class="msg warning">
         This is not an ADMIN node
     </div>
 
+    <div v-if="!initialized" class="msg white">
+        <h4>It appears that you have a fresh installation. How would you like to initialize this node?</h4>
+
+        Would you like to complete the installation and use this node as a standalone node or as the first node in a
+        cluster (Enterprise Edition only), or as a node in an existing cluster?
+
+        <div style="margin-top: 15px">
+            Action:
+            <br/>
+            <select v-model="initializeMode" style="margin-top: 10px">
+                <option value="init">Start as standalone node or first node</option>
+                <option value="join">Join an existing cluster</option>
+            </select>
+            <div v-if="initializeMode === 'init'" style="margin-top: 10px">
+                With context name:
+                <br/>
+                <input v-model="initContext"/>
+                <br/>
+                <button style="margin-top: 15px" @click="initCluster()">Finish</button>
+            </div>
+            <div v-if="initializeMode === 'join'" style="margin-top: 15px">
+                Internal hostname of one of the nodes in the cluster to join:
+                <br/>
+                <input v-model="joinHost"/>
+                <br/>
+                Internal port:
+                <br/>
+                <input v-model="joinPort" type="number"/>
+                <br/>
+                <button style="margin-top: 15px" @click="joinCluster()">Join</button>
+            </div>
+        </div>
+    </div>
     <div class="column-wrapper">
 
         <div class="column configuration titleButton">
             <section>
                 <h2>Configuration</h2>
-                <span v-if="node.clustered" @click="downloadTemplate" class="icon download-contents" title="Download cluster configuration as Cluster Template Yaml file."><i class="fas fa-file-export"></i></span>
+                <span v-disable="!node.clustered" @click="downloadTemplate" class="icon download-contents"
+                      title="Download cluster configuration as Cluster Template Yaml file."><i
+                        class="fas fa-file-export"></i></span>
                 <ul>
                     <li>
                         <span>Node Name</span>
-                        <span id="nodeName">{{node.name}}</span>
+                        <span id="nodeName">{{ node.name }}</span>
                     </li>
                     <li>
                         <span>Host Name</span>
-                        <span id="hostName">{{node.hostName}}</span>
+                        <span id="hostName">{{ node.hostName }}</span>
                     </li>
                     <li>
                         <span>Http Port</span>
@@ -160,9 +195,12 @@
                         <span id="expiryDate"
                               v-bind:style="{ color: (new Date().valueOf() >= new Date(license.expiryDate).valueOf()) ? 'red':'' }"> {{license.expiryDate | formatDate}}</span>
                     </li>
+                    <li v-if="!isEnterprise()">
+                    <span></span>
+                    <span><a href="https://www.axoniq.io/axon-server-trial" target="_blank" class="info">Try Enterprise for free</a></span></li>
                 </ul>
             </section>
-            <section v-if="license.featureList.length > 0">
+            <section v-if="initialized && license.featureList.length > 0">
                 <h3>Upload license</h3>
                 <form id="licenseForm" enctype="multipart/form-data">
                     <input type="file" id="license" name="licenseFile"/>
@@ -172,7 +210,7 @@
         </div>
     </div>
 
-    <section v-if="node.clustered" id="nodesOverview">
+    <section v-if="nodes.length > 1" id="nodesOverview">
         <h2>Nodes</h2>
 
         <paginated-table :rows="nodes" name="cluster">
@@ -195,7 +233,35 @@
                 <td>{{ n.grpcPort }}</td>
                 <td>{{ n.internalHostName }}</td>
                 <td>{{ n.grpcInternalPort }}</td>
+                <td v-if="admin">
+                    <span @click="unregister(n)" title="Unregister node"><i class="far fa-trash-alt"></i></span>
+                </td>
             </template>
         </paginated-table>
     </section>
+
+    <modal name="unregister-node" width="600" height="330">
+        <div class="column configuration modal">
+            <h2>Unregister node {{ unregisterNode }}</h2>
+            <p>
+                Are you sure you want to remove node {{ unregisterNode }} from the cluster?
+            </p>
+            <p>
+                If the node is currently unavailable, please make sure that you remove the control database on that node
+                before you restart it.
+            </p>
+            <form>
+                <ul>
+                    <li>
+                        <span>&nbsp;</span>
+                        <span>
+                  <button class="button" @click.prevent="doUnregister()">Unregister node</button>
+                  <button class="button" @click.prevent="hideModal('unregister-node')">Cancel</button>
+                  </span>
+                    </li>
+                </ul>
+            </form>
+        </div>
+    </modal>
+
 </div>

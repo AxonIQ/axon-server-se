@@ -17,6 +17,8 @@ import io.axoniq.axonserver.message.query.QueryDefinition;
 import io.axoniq.axonserver.message.query.QueryHandler;
 import io.axoniq.axonserver.message.query.QueryMetricsRegistry;
 import io.axoniq.axonserver.message.query.QueryRegistrationCache;
+import io.axoniq.axonserver.topology.Topology;
+import io.axoniq.axonserver.transport.rest.PrincipalAuthentication;
 import io.swagger.v3.oas.annotations.Parameter;
 import org.slf4j.Logger;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -46,15 +48,18 @@ import java.util.stream.Collectors;
     private final CommandMetricsRegistry commandMetricsRegistry;
     private final QueryRegistrationCache queryRegistrationCache;
     private final QueryMetricsRegistry queryMetricsRegistry;
+    private final Topology topology;
 
     public MetricsRestController(CommandHandlerRegistry commandHandlerRegistry,
                                  CommandMetricsRegistry commandMetricsRegistry,
                                  QueryRegistrationCache queryRegistrationCache,
-                                 QueryMetricsRegistry queryMetricsRegistry) {
+                                 QueryMetricsRegistry queryMetricsRegistry,
+                                 Topology topology) {
         this.commandHandlerRegistry = commandHandlerRegistry;
         this.commandMetricsRegistry = commandMetricsRegistry;
         this.queryRegistrationCache = queryRegistrationCache;
         this.queryMetricsRegistry = queryMetricsRegistry;
+        this.topology = topology;
     }
 
 
@@ -64,7 +69,8 @@ import java.util.stream.Collectors;
         auditLog.debug("[{}] Request to list command metrics.", AuditLog.username(principal));
 
 
-        return commandHandlerRegistry.all().map(this::getMetrics);
+        Set<String> contexts = topology.visibleContexts(false, new PrincipalAuthentication(principal));
+        return commandHandlerRegistry.all(contexts).map(this::getMetrics);
     }
 
     private CommandMetricsRegistry.CommandMetric getMetrics(CommandHandler commandHandler) {
@@ -81,17 +87,19 @@ import java.util.stream.Collectors;
     @GetMapping("/query-metrics")
     public List<QueryMetricsRegistry.QueryMetric> getQueryMetrics(@Parameter(hidden = true) final Principal principal) {
         auditLog.debug("[{}] Request to list query metrics.", AuditLog.username(principal));
-
+        Set<String> contexts = topology.visibleContexts(false, new PrincipalAuthentication(principal));
         List<QueryMetricsRegistry.QueryMetric> metrics = new ArrayList<>();
         queryRegistrationCache.getAll().forEach((queryDefinition, handlersPerComponent) -> metrics.addAll(
-                getQueryMetrics(queryDefinition, handlersPerComponent)));
+                getQueryMetrics(queryDefinition, contexts, handlersPerComponent)));
         return metrics;
     }
 
     private List<QueryMetricsRegistry.QueryMetric> getQueryMetrics(QueryDefinition queryDefinition,
+                                                                   Set<String> contexts,
                                                                    Map<String, Set<QueryHandler<?>>> handlersPerComponent) {
         return handlersPerComponent.entrySet().stream().map(queryHandlers -> queryHandlers.getValue().stream()
-                                                                                          .map(queryHandler -> queryMetricsRegistry.queryMetric(
+                                                                                          .filter(queryHandler -> contexts.contains(queryHandler.getClientStreamIdentification().getContext()))
+                                           .map(queryHandler -> queryMetricsRegistry.queryMetric(
                                                                                                   queryDefinition,
                                                                                                   queryHandler.getClientId(),
                                                                                                   queryHandler.getClientStreamIdentification()

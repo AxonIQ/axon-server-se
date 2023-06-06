@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <artifactId>axonserver-se</artifactId>
+        <groupId>io.axoniq.axonserver</groupId>
+        <version>2023.1.0-SNAPSHOT</version>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+
+    <artifactId>axonserver-eventstore-transformation</artifactId>
+
+    <properties>
+        <maven.compiler.source>8</maven.compiler.source>
+        <maven.compiler.target>8</maven.compiler.target>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-protobuf</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.axoniq</groupId>
+            <artifactId>axonserver-plugin-api</artifactId>  <!--TODO used only for importing proto generated classes-->
+        </dependency>
+        <dependency>
+            <groupId>io.axoniq.axonserver</groupId>
+            <artifactId>axonserver-filestore</artifactId> <!--TODO split filestore in API an implementation and import only API-->
+        </dependency>
+        <dependency>
+            <groupId>io.projectreactor</groupId>
+            <artifactId>reactor-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId> <!--TODO split the JPA implementation of the transformation store in another module-->
+        </dependency>
+        <dependency>
+            <groupId>com.google.code.findbugs</groupId>
+            <artifactId>jsr305</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.axoniq.axonserver</groupId>
+            <artifactId>axonserver-commons</artifactId>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- Generated classes for .proto files -->
+            <plugin>
+                <groupId>org.xolstice.maven.plugins</groupId>
+                <artifactId>protobuf-maven-plugin</artifactId>
+                <version>0.6.1</version>
+                <configuration>
+                    <protocArtifact>com.google.protobuf:protoc:3.6.1:exe:${os.detected.classifier}</protocArtifact>
+                    <pluginId>actions-java</pluginId>
+                    <pluginArtifact>io.grpc:protoc-gen-grpc-java:1.17.1:exe:${os.detected.classifier}</pluginArtifact>
+                    <clearOutputDirectory>false</clearOutputDirectory>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>generate-classes-for-internal-protobuf-api</id>
+                        <goals>
+                            <goal>compile</goal>
+                            <goal>compile-custom</goal> <!--TODO is this needed?-->
+                        </goals>
+                        <configuration>
+                            <additionalProtoPathElements>
+                                <additionalProtoPathElement>${project.basedir}/src/main/proto
+                                </additionalProtoPathElement>
+                            </additionalProtoPathElements>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <!--
+                    Need to ensure that CRLF of the Flyway scripts are consistent, independent of the build platform.
+                    Initial versions are delivered in DOS format, so we should stick to that.
+                -->
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>3.1.0</version>
+                <executions>
+                    <execution>
+                        <id>ant-test</id>
+                        <phase>compile</phase>
+                        <configuration>
+                            <target>
+                                <echo message="${project.build.outputDirectory}/db/migration" />
+                                <fixcrlf srcdir="${project.build.outputDirectory}/db/migration" eol="dos" fixlast="false" />
+                            </target>
+                        </configuration>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

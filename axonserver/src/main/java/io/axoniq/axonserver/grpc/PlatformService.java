@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -148,7 +148,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
         SendingStreamObserver<PlatformOutboundInstruction> sendingStreamObserver =
                 new SendingStreamObserver<>(responseObserver);
 
-        return new ReceivingStreamObserver<PlatformInboundInstruction>(logger) {
+        return new ReceivingStreamObserver<>(logger) {
             private final AtomicReference<ClientComponent> clientComponent = new AtomicReference<>();
 
             @Override
@@ -208,6 +208,11 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                 deregisterClient(clientComponent.get(), "Platform connection completed by client");
             }
         };
+    }
+
+    @EventListener
+    public void on(TopologyEvents.RequestClientReconnect reconnect) {
+        requestReconnect(reconnect.clientId(), "Requested by user");
     }
 
     public boolean requestReconnect(ClientComponent clientName, String reason) {

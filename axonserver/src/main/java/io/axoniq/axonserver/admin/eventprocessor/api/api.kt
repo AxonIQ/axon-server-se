@@ -176,6 +176,11 @@ interface EventProcessor {
      * Returns the instances that run the event processor, one for each client registered on AxonServer
      */
     fun instances(): Iterable<EventProcessorInstance>
+
+    /**
+     * Returns the current load balancing strategy name for the event processor
+     */
+    fun loadBalancingStrategyName(): String?
 }
 
 interface EventProcessorInstance {

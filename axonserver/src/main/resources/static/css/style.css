@@ -147,9 +147,7 @@ header{
 		display: block;
 		width: 300px;
 		height: 18px;
-		background: url('../img/axon-server.png') no-repeat left center;
-		background-size: contain;
-
+		background-size: contain !important;
 	}
 article {
 	margin: 0 40px 0 104px;
@@ -191,7 +189,34 @@ footer .info {
     color: darkgray;
 }
 
-	footer .important {
+
+	a.info {
+		color: brown;
+		text-decoration: underline;
+	}
+
+	a .info:link {
+		color: brown;
+		text-decoration: underline;
+	}
+
+	a .info:visited {
+		color: brown;
+		text-decoration: underline;
+	}
+
+	a .info:hover {
+		color: darkred;
+		text-decoration: underline;
+	}
+
+	a .info:active {
+		color: brown;
+		text-decoration: underline;
+	}
+
+
+footer .important {
 		margin: 9px 3px;
 		line-height: 20px;
 		font-weight: 300;
@@ -309,6 +334,11 @@ input[type="search"] {
 		background: #b1ff93;
 	}
 
+	.msg.white{
+		border-color: black;
+		background: white;
+	}
+
 .help {
 	margin: 15px 0;
 	padding: 10px 18px;
@@ -404,12 +434,147 @@ input[type="search"] {
 	width: 200px !important;
 }
 
+.metakey {
+	background-color: antiquewhite;
+	width: 200px !important;
+	margin: 0px 5px;
+	padding: 0px 5px;
+	font-size: smaller;
+}
+
+.metavalue {
+	background-color: gainsboro;
+	width: 200px !important;
+	margin: 0px 5px;
+	padding: 0px 5px;
+	font-size: smaller;
+}
+
+.tier-holder {
+	padding: 10px !important;
+	border-style: solid;
+	border-width: thin;
+	border-color: lightgrey;
+	margin-bottom: 15px;
+}
+
+.storageBox {
+	text-align: center;
+	position: relative;
+	display: block;
+	width: 150px !important;
+	font-size: smaller;
+	padding: 0px 5px;
+	background-size: auto auto;
+	background-color: rgba(255, 255, 255, 1);
+	background-image: repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(238, 238, 238, 1) 2px, rgba(238, 238, 238, 1) 4px );
+	pointer-events: none;
+}
+
+.storageBlackHoleBox {
+	text-align: center;
+	display: block;
+	width: 150px !important;
+	font-size: smaller;
+	padding: 0px 5px;
+	background-size: auto auto;
+	background-color: rgba(244, 205, 202, 1);
+	background-image: repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(255, 255, 255, 1) 2px, rgba(255, 255, 255, 1) 4px );
+	pointer-events: none;
+}
+.retentionBox {
+	text-align: center;
+	display: block;
+	width: 100px !important;
+	left: 25px;
+	padding: 0px 5px;
+	font-size: smaller;
+	background-size: auto auto;
+	background-color: rgba(255, 255, 255, 1);
+	background-image: repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(253, 233, 195, 1) 2px, rgba(253, 233, 195, 1) 4px );
+	pointer-events: none;
+}
+
+.bottom-arrow {
+	text-align: center;
+	display: block;
+	width: 100px !important;
+	left: 25px;
+	top: -5px;
+	padding: 0;
+	font-size: small;
+	height: 16px;
+	pointer-events: none;
+}
+
+.bottom-arrow:first-child {
+	visibility: hidden;
+}
+
+.bottom-arrow:last-child {
+	visibility: hidden;
+}
+
+.tier-holder tbody tr:last-child .add-tier {
+	display: block !important;
+}
+
+.add-tier {
+}
+
 .contextColumn {
 	width: 160px !important;
 }
 
+.contextNameColumn {
+	width: 20% !important;
+}
+
 .nodesColumn {
 	width: 60%;
+}
+
+.contextMetaDataColumn {
+	width: 30%;
+}
+
+.storageColumn {
+	width: 15%;
+}
+
+.tier-tabs-holder {
+	position: relative;
+	display: contents;
+	border: none;
+}
+
+.tier-tab {
+	width: 120px !important;
+	border-top-style: solid;
+	border-top-width: thin;
+	border-top-color: lightgrey;
+	color: black !important;
+	border-left-style: solid;
+	border-left-width: thin;
+	border-left-color: lightgrey;
+	border-right-style: solid;
+	border-right-width: thin;
+	margin-bottom: 10px;
+	margin-right: 10px;
+	border-right-color: lightgrey;
+	padding-left: 5px !important;
+	cursor: pointer;
+}
+
+.tier-tab-active {
+	border-top-width: medium !important;
+	font-weight: bolder !important;
+	color: black !important;
+}
+
+.tier-tab-disabled {
+	opacity: 0.4;
+	cursor: not-allowed !important;
 }
 
 .roleColumn {
@@ -704,11 +869,58 @@ select {
 	float: none !important;
 	width: 200px;
 }
+
+.tierName {
+	display: inline-block !important;
+	float: left !important;
+	width: 200px;
+	margin-top: 3px;
+}
+
 .contextName {
 	display: inline-block !important;
 	float: none !important;
 	width: 100%;
 }
+
+.label-holder {
+	display: inline-grid !important;
+	max-width: fit-content;
+	margin: 0px 10px;
+	overflow: visible !important;
+}
+
+.label-holder span {
+	margin-bottom: 5px;
+}
+
+.multi-tier {
+	background-color: slategrey;
+	padding: 1px 5px;
+	margin: 0px 5px;
+	color: antiquewhite;
+	font-size: 11px;
+	cursor: help;
+	position: relative;
+	bottom: 1px;
+}
+
+.ephemeral {
+	background-color: indianred;
+	padding: 1px 5px;
+	margin: 0px 5px;
+	color: antiquewhite;
+	font-size: 11px;
+	cursor: help;
+	position: relative;
+	bottom: 1px;
+}
+
+.ephemeral-text {
+	white-space: nowrap;
+	-webkit-mask-image: linear-gradient(to right, rgba(0,0,0,1) 10%, rgb(0 0 0 / 15%));
+}
+
 .roleName {
 	display: inline-block !important;
 	float: none !important;
@@ -870,4 +1082,16 @@ select {
 
 .modal-leave-active {
 	opacity: 0;
+}
+
+span[data-tooltip]:hover:after {
+	content: attr(data-tooltip);
+	color: white;
+	background-color: rgba(0, 0, 0, 0.75);
+	position: absolute;
+	top: 50%;
+	left: 110%;
+	padding: 3px 5px;
+	width: 200px;
+	white-space: break-spaces;
 }
