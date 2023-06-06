@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -168,6 +168,16 @@ public class CommandPluginHandlerTest {
         });
         Map<String, Serializable> metadata = new HashMap<>();
         metadata.put(Command.PRINCIPAL, new Authentication() {
+            @Override
+            public boolean hasAnyRole(@NotNull String context) {
+                return true;
+            }
+
+            @Override
+            public boolean isLocallyManaged() {
+                return true;
+            }
+
             @NotNull
             @Override
             public String username() {

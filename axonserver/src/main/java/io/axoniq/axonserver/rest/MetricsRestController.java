@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -70,7 +70,9 @@ import java.util.stream.Collectors;
 
 
         Set<String> contexts = topology.visibleContexts(false, new PrincipalAuthentication(principal));
-        return commandHandlerRegistry.all(contexts).map(this::getMetrics);
+        return commandHandlerRegistry.all()
+                                     .filter(h -> contexts.contains(h.context()))
+                                     .map(this::getMetrics);
     }
 
     private CommandMetricsRegistry.CommandMetric getMetrics(CommandHandler commandHandler) {

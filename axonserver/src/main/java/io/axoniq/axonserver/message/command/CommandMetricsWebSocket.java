@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -58,8 +58,12 @@ public class CommandMetricsWebSocket {
         }
         commandHandlerRegistry.all()
                               .map(this::asCommandMetric)
-                              .filter(m -> contexts.contains(m))
-                              .doOnNext(commandMetric -> webSocket.convertAndSend(DESTINATION, commandMetric))
+                              .doOnNext(commandMetric -> subscriptions.forEach((destinations, contexts) -> {
+                                  if (contexts.contains(commandMetric.getContext())) {
+                                      webSocket.convertAndSend(DESTINATION, commandMetric);
+                                  }
+                              }))
+
                               .subscribe();
     }
 
@@ -90,15 +94,4 @@ public class CommandMetricsWebSocket {
                                                     commandHandler.context(),
                                                     componentName);
     }
-
-    private Stream<CommandMetricsRegistry.CommandMetric> getMetrics(CommandHandler commandHandler,
-                                                                    Set<CommandRegistrationCache.RegistrationEntry> registrations) {
-        return registrations.stream()
-                            .map(registration -> commandMetricsRegistry
-                                    .commandMetric(registration.getCommand(),
-                                                   commandHandler.getClientId(),
-                                                   commandHandler.getClientStreamIdentification().getContext(),
-                                                   commandHandler.getComponentName()));
-    }
-
 }
