@@ -60,7 +60,7 @@ public class CommandMetricsWebSocket {
                               .map(this::asCommandMetric)
                               .doOnNext(commandMetric -> subscriptions.forEach((destinations, contexts) -> {
                                   if (contexts.contains(commandMetric.getContext())) {
-                                      webSocket.convertAndSend(DESTINATION, commandMetric);
+                                      webSocket.convertAndSend(destinations, commandMetric);
                                   }
                               }))
 
