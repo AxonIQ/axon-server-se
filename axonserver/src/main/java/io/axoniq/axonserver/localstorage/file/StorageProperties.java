@@ -113,7 +113,7 @@ public class StorageProperties implements Cloneable {
     /**
      * When using memory mapped files for indexes, let mapdb forcefully close the memory mapped files on close
      */
-    private Boolean forceCleanMmapIndex;
+    private Boolean forceCleanMmapIndex = true;
 
     /**
      * Forcefully clean memory mapped files
