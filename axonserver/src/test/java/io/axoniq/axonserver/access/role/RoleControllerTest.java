@@ -9,7 +9,7 @@
 
 package io.axoniq.axonserver.access.role;
 
-import io.axoniq.axonserver.AxonServer;
+import io.axoniq.axonserver.StandardAxonServer;
 import io.axoniq.axonserver.access.jpa.Role;
 import io.axoniq.axonserver.access.roles.RoleController;
 import io.axoniq.axonserver.access.roles.RoleRepository;
@@ -41,7 +41,7 @@ import static org.hamcrest.Matchers.equalTo;
 @DataJpaTest
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 @ComponentScan(basePackages = "io.axoniq.axonserver.access", lazyInit = true)
-@ContextConfiguration(classes = AxonServer.class)
+@ContextConfiguration(classes = StandardAxonServer.class)
 public class RoleControllerTest {
 
     private RoleController roleController;

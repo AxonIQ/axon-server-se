@@ -18,7 +18,7 @@
         <appender-ref ref="STDOUT"/>
     </logger>
 
-    <logger name="io.axoniq.axonserver.AxonServer" level="info" additivity="false">
+    <logger name="io.axoniq.axonserver.StandardAxonServer" level="info" additivity="false">
         <appender-ref ref="STDOUT"/>
     </logger>
     <logger name="io.axoniq.axonserver.grpc.Gateway" level="info" additivity="false">

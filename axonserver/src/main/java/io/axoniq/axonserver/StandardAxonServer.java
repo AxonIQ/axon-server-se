@@ -33,12 +33,12 @@ import javax.annotation.PreDestroy;
 @EnableAsync
 @EnableScheduling
 @OpenAPIDefinition
-public class AxonServer {
-    private final Logger logger = LoggerFactory.getLogger(AxonServer.class);
+public class StandardAxonServer {
+    private final Logger logger = LoggerFactory.getLogger(StandardAxonServer.class);
 
     private final VersionInfoProvider versionInfoProvider;
 
-    public AxonServer(VersionInfoProvider versionInfoProvider) {
+    public StandardAxonServer(VersionInfoProvider versionInfoProvider) {
         this.versionInfoProvider = versionInfoProvider;
     }
 
@@ -54,7 +54,7 @@ public class AxonServer {
 
     public static void main(String[] args) {
         System.setProperty("spring.config.name", "axonserver");
-        SpringApplication.run(AxonServer.class, args);
+        SpringApplication.run(StandardAxonServer.class, args);
     }
 
     @PreDestroy
