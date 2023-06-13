@@ -10,6 +10,8 @@
 package io.axoniq.axonserver.localstorage.file;
 
 import org.springframework.boot.convert.ApplicationConversionService;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.io.File;
 import java.time.Duration;
@@ -30,6 +32,8 @@ import javax.annotation.Nonnull;
  * @since 2023.0.0
  */
 public interface StorageTier {
+
+    String LOCK_ID = "MULTI-TIER";
 
     /**
      * Get the set of segments in storage.
@@ -118,6 +122,10 @@ public interface StorageTier {
      * @return a stream of segment numbers
      */
     Stream<Long> allSegments();
+
+    Mono<Void> renameTransformedSegmentIfNeeded(FileVersion fileVersion, File transformedDataFile);
+
+    Flux<FileVersion> fileVersions(String suffix);
 
 
     /**

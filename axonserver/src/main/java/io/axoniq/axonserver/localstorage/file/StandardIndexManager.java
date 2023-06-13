@@ -339,18 +339,36 @@ public class StandardIndexManager implements IndexManager {
     }
 
     @Override
-    public Mono<Void> activateVersion(long segment, int segmentVersion) {
-        FileVersion fileVersion = new FileVersion(segment, segmentVersion);
+    public Mono<Void> activateVersion(FileVersion fileVersion) {
+        return Mono.defer(() -> {
+            File transformedIndex = storageProperties.get().transformedIndex(storagePath, fileVersion);
+            return activateVersion(fileVersion, transformedIndex);
+        });
+    }
+
+    public Mono<Void> activateVersion(FileVersion fileVersion, File transformedIndex) {
+        if (indexesDescending.containsKey(fileVersion.segment())) {
+            return doActivateVersion(fileVersion, transformedIndex);
+        }
+
+        IndexManager nextIndexManager = next.get();
+        if (nextIndexManager != null) {
+            return nextIndexManager.activateVersion(fileVersion, transformedIndex);
+        }
+        return Mono.empty();
+    }
+
+    private Mono<Void> doActivateVersion(FileVersion fileVersion, File transformedIndex) {
         return Mono.fromSupplier(() -> storageProperties.get().index(storagePath, fileVersion))
                    .filter(indexFile -> !indexFile.exists())
-                   .flatMap(indexFile -> Mono.fromSupplier(() -> storageProperties.get().transformedIndex(storagePath,
-                                                                                                          fileVersion))
+                   .flatMap(indexFile -> Mono.fromSupplier(() -> transformedIndex)
                                              .filter(File::exists)
                                              .switchIfEmpty(Mono.error(new RuntimeException())) //TODO custom exception
-                                             .flatMap(tempIndex -> FileUtils.rename(tempIndex, indexFile)))
+                                             .flatMap(tempIndex -> FileUtils.rename(transformedIndex, indexFile)))
 
-                   .doOnSuccess(v -> indexesDescending.put(segment, segmentVersion));
+                   .doOnSuccess(v -> indexesDescending.put(fileVersion.segment(), fileVersion.segmentVersion()));
     }
+
 
     @Override
     public void createNewVersion(long segment, int version, Map<String, List<IndexEntry>> indexEntriesMap) {
@@ -578,14 +596,21 @@ public class StandardIndexManager implements IndexManager {
      * Removes the index and bloom filter for the segment
      *
      * @param segment the segment number
+     *                TODO: Change to remove all versions of the segment
      */
-    public boolean remove(long segment) {
+    public boolean removeAllVersions(long segment) {
         StorageProperties properties = storageProperties.get();
         if (activeIndexes.remove(segment) == null) {
             Integer version = indexesDescending.remove(segment);
             if (version != null) {
+                for (int i = 0; i < version; i++) {
+                    FileVersion oldVersion = new FileVersion(segment, i);
+                    if (properties.index(storagePath, oldVersion).exists()) {
+                        remove(oldVersion);
+                    }
+                }
                 FileVersion fileVersion = new FileVersion(segment, version);
-                StandardIndex index = indexMap.remove(fileVersion); //TODO
+                StandardIndex index = indexMap.remove(fileVersion);
                 if (index != null) {
                     index.close();
                 }
@@ -595,10 +620,9 @@ public class StandardIndexManager implements IndexManager {
         return FileUtils.delete(properties.index(storagePath, segment)) &&
                 FileUtils.delete(properties.bloomFilter(storagePath, segment));
     }
-
     @Override
     public boolean remove(FileVersion fileVersion) {
-        StandardIndex index = indexMap.remove(fileVersion); //TODO
+        StandardIndex index = indexMap.remove(fileVersion);
         if (index != null) {
             index.close();
         }
@@ -693,11 +717,14 @@ public class StandardIndexManager implements IndexManager {
         activeIndexes.clear();
         bloomFilterPerSegment.clear();
         indexMap.forEach((segment, index) -> index.close());
-        indexMap.clear(); //TODO
-        indexesDescending.clear();
+        indexMap.clear();
         if (cleanupTask != null && !cleanupTask.isDone()) {
             cleanupTask.cancel(true);
         }
+        if (delete) {
+            indexesDescending.keySet().forEach(this::removeAllVersions);
+        }
+        indexesDescending.clear();
         IndexManager nextIndexManager = next.get();
         if (nextIndexManager != null) {
             nextIndexManager.cleanup(delete);

@@ -2,6 +2,8 @@ package io.axoniq.axonserver.eventstore.transformation.jpa;
 
 import io.axoniq.axonserver.eventstore.transformation.apply.TransformationApplyingState;
 import io.axoniq.axonserver.eventstore.transformation.apply.TransformationProgressStore;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
@@ -9,6 +11,7 @@ import java.util.Optional;
 
 public class JpaLocalTransformationProgressStore implements TransformationProgressStore {
 
+    private final static Logger logger = LoggerFactory.getLogger(JpaLocalTransformationProgressStore.class);
     private final LocalEventStoreTransformationRepository repository;
 
     public JpaLocalTransformationProgressStore(LocalEventStoreTransformationRepository repository) {
@@ -46,6 +49,9 @@ public class JpaLocalTransformationProgressStore implements TransformationProgre
                                                                                             state.lastAppliedSequence(),
                                                                                             true))
                                          .doOnNext(repository::save)
+                                         .doOnSubscribe(s -> logger.debug(
+                                                 "Transformation {} marked as applied on JPA repository",
+                                                 transformationId))
                                          .then();
     }
 

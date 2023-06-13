@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 
+
 public class TransformationApplyAction implements ActionSupplier {
 
     private static final Logger logger = LoggerFactory.getLogger(TransformationApplyAction.class);
@@ -33,18 +34,22 @@ public class TransformationApplyAction implements ActionSupplier {
         return transformations.applyingTransformations()
                               .doOnNext(transformation -> logger.info("Applying transformation: {}",
                                                                       transformation.id()))
-                              .flatMap(transformation -> applier.apply(new ApplierTransformation(transformation))
-                                                                .doOnError(t -> logger.error(
-                                                                        "An error happened while applying the transformation: {}.",
-                                                                        transformation.id(),
-                                                                        t))
-                                                                .doOnSuccess(notUsed -> logger.info(
-                                                                        "Applied transformation: {}",
-                                                                        transformation.id()))
-                                                                .then(markTransformationApplied.markApplied(
-                                                                        transformation.context(),
-                                                                        transformation.id())))
+                              .flatMap(this::apply)
                               .then(cleanTransformationApplied.clean());
+    }
+
+    private Mono<Void> apply(Transformation transformation) {
+            return applier.apply(new ApplierTransformation(transformation))
+                          .doOnError(t -> logger.error(
+                                  "An error happened while applying the transformation: {}.",
+                                  transformation.id(),
+                                  t))
+                          .doOnSuccess(notUsed -> logger.info(
+                                  "Applied transformation: {}",
+                                  transformation.id()))
+                          .then(markTransformationApplied.markApplied(
+                                  transformation.context(),
+                                  transformation.id()));
     }
 
 

@@ -16,8 +16,8 @@ class NoopSegmentTransformer implements SegmentTransformer{
     }
 
     @Override
-    public Mono<Void> completeSegment() {
-        return Mono.empty();
+    public Mono<Long> completeSegment() {
+        return Mono.just(0L);
     }
 
     @Override

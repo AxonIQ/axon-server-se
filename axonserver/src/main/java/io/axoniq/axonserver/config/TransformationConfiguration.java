@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -59,8 +59,10 @@ import io.axoniq.axonserver.eventstore.transformation.spi.TransformationsInProgr
 import io.axoniq.axonserver.filestorage.impl.StorageProperties;
 import io.axoniq.axonserver.localstorage.AutoCloseableEventProvider;
 import io.axoniq.axonserver.localstorage.ContextEventProviderSupplier;
+import io.axoniq.axonserver.localstorage.EventStoreLockProvider;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.axoniq.axonserver.localstorage.transformation.EventStoreTransformer;
+import io.axoniq.axonserver.localstorage.transformation.LockingEventStoreTransformer;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -154,12 +156,19 @@ public class TransformationConfiguration {
         return new JpaLocalTransformationProgressStore(repository);
     }
 
+    @Bean @Primary
+    public EventStoreTransformer lockingEventStoreTransformer(EventStoreTransformer delegate,
+                                                              EventStoreLockProvider eventStoreLockProvider){
+        return new LockingEventStoreTransformer(eventStoreLockProvider,
+                                                delegate);
+    }
+
 
     @Bean
     public TransformationApplyExecutor localTransformationApplier(
             TransformationEntryStoreProvider transformationEntryStoreSupplier,
             TransformationProgressStore localTransformationProgressStore,
-            EventStoreTransformer eventStoreTransformer) {
+            @Qualifier("lockingEventStoreTransformer") EventStoreTransformer eventStoreTransformer) {
         return new DefaultTransformationApplyExecutor(transformationEntryStoreSupplier,
                                                       localTransformationProgressStore,
                                                       eventStoreTransformer::transformEvents);
@@ -202,7 +211,7 @@ public class TransformationConfiguration {
 
     @Bean
     public EventStoreCompactionExecutor transformationCompactionExecutor(
-            EventStoreTransformer eventStoreTransformer) {
+            @Qualifier("lockingEventStoreTransformer") EventStoreTransformer eventStoreTransformer) {
         return new DefaultEventStoreCompactionExecutor(eventStoreTransformer::compact);
     }
 

@@ -373,10 +373,10 @@ public class FileEventStorageEngine implements EventStorageEngine {
                                                                     indexManager,
                                                                     this::transactionsForTransformation,
                                                                     storagePath)),
-                              resources -> transformedEvents.concatMap(event -> resources.transform(event)
-                                                                                         .thenReturn(1L)),
-                              currentSegmentTransformer -> currentSegmentTransformer.completeCurrentSegment()
-                                                                                    .then(activateTransformation()),
+                              resources -> transformedEvents.concatMap(resources::transform)
+                                                            .concatWith(resources.completeCurrentSegment())
+                                                            .filter(count -> count > 0),
+                              currentSegmentTransformer -> activateTransformation(),
                               TransformationResources::rollback,
                               TransformationResources::cancel);
     }
@@ -393,8 +393,7 @@ public class FileEventStorageEngine implements EventStorageEngine {
     }
 
     private Flux<FileVersion> fileVersions(String suffix) {
-        return Flux.fromArray(FileUtils.getFilesWithSuffix(new File(storagePath), suffix))
-                   .map(FileUtils::process);
+        return head.fileVersions(suffix);
     }
 
     private Mono<Void> activateSegment(FileVersion fileVersion) {
@@ -405,12 +404,7 @@ public class FileEventStorageEngine implements EventStorageEngine {
     }
 
     private Mono<Void> renameTransformedSegmentIfNeeded(FileVersion fileVersion) {
-        return Mono.fromSupplier(() -> storagePropertiesSupplier.get().dataFile(storagePath, fileVersion))
-                   .filter(dataFile -> !dataFile.exists())
-                   .flatMap(dataFile -> Mono.fromSupplier(() -> transformedDataFile(fileVersion))
-                                            .filter(File::exists)
-                                            .switchIfEmpty(Mono.error(new RuntimeException("File does not exist.")))
-                                            .flatMap(tempFile -> FileUtils.rename(tempFile, dataFile)));
+        return head.renameTransformedSegmentIfNeeded(fileVersion, transformedDataFile(fileVersion));
     }
 
     private File transformedDataFile(FileVersion segment) {
@@ -420,8 +414,10 @@ public class FileEventStorageEngine implements EventStorageEngine {
     @Override
     public Mono<Void> deleteOldVersions() {
         return fileVersions(storagePropertiesSupplier.get().getEventsSuffix())
+                .doOnNext(fileVersion -> logger.debug("{} : check delete version {}", context, fileVersion))
                 .filter(fileVersion -> head.currentSegmentVersion(fileVersion.segment())
                         != fileVersion.segmentVersion())
+                .doOnNext(fileVersion -> logger.debug("{} : version to delete {}", context, fileVersion))
                 .flatMapSequential(this::delete)
                 .then();
     }

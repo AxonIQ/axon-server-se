@@ -22,6 +22,7 @@ import io.axoniq.axonserver.localstorage.transformation.WrappedEvent;
 import io.axoniq.axonserver.metric.MeterFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.publisher.Flux;
 
 import java.io.File;
 import java.io.IOException;
@@ -603,5 +604,10 @@ public class WritableFileStorageTier extends AbstractFileStorageTier {
     @Override
     public void activateSegmentVersion(long segment, int segmentVersion) {
         applyOnNext(n -> n.activateSegmentVersion(segment, segmentVersion));
+    }
+
+    @Override
+    public Flux<FileVersion> fileVersions(String suffix) {
+        return invokeOnNext(n -> n.fileVersions(suffix), Flux.empty());
     }
 }

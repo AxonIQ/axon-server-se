@@ -70,12 +70,12 @@ public interface IndexManager {
     boolean validIndex(FileVersion segment);
 
     /**
-     * Removes index entries for a specific segment.
+     * Removes all versions of index files for the segment
      *
      * @param segment the segment number
      * @return true if all index related files for the segment have been removed
      */
-    boolean remove(long segment);
+    boolean removeAllVersions(long segment);
 
     /**
      * Returns index files for segment
@@ -161,15 +161,9 @@ public interface IndexManager {
 
     boolean remove(FileVersion fileVersion);
 
-    default Mono<Void> activateVersion(FileVersion fileVersion) {
-        return activateVersion(fileVersion.segment(), fileVersion.segmentVersion());
-    }
+    Mono<Void> activateVersion(FileVersion fileVersion);
 
-    /**
-     * Rename the temporary index if it exists into the active segmentVersion and active it.
-     *
-     */
-    Mono<Void> activateVersion(long segment, int segmentVersion);
+    Mono<Void> activateVersion(FileVersion fileVersion, File transformedIndex);
 
     /**
      * todo comment

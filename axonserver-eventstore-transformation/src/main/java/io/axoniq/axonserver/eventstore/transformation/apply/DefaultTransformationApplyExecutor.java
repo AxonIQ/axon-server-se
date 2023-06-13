@@ -62,6 +62,7 @@ public class DefaultTransformationApplyExecutor implements TransformationApplyEx
                    .then(transformer.transformEvents(transformation.context(),
                                                      transformation.version(),
                                                      transformedEvents)
+                                    .doOnError(throwable -> logger.warn("Transform events failed.", throwable))
                                     .concatMap(progress -> localStateStore.incrementLastSequence(transformation.id(),
                                                                                                  progress))
                                     .then(localStateStore.markAsApplied(transformation.id()))
@@ -71,7 +72,9 @@ public class DefaultTransformationApplyExecutor implements TransformationApplyEx
                                               transformation.context()))
                    .doOnSuccess(v -> logger.info("Transformation {} applied successfully to local store.",
                                                  transformation.id()))
-                   .doOnError(t -> logger.warn("Failed to apply to local store the transformation {}", transformation));
+                   .doOnError(t -> logger.warn("Failed to apply to local store the transformation {}",
+                                               transformation,
+                                               t));
     }
 
     private EventWithToken eventWithToken(TransformationAction transformationAction) {

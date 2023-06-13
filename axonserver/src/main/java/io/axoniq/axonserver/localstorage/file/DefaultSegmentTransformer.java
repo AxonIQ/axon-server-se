@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -39,7 +40,9 @@ class DefaultSegmentTransformer implements SegmentTransformer {
     private final Supplier<TransactionIterator> transactionIteratorSupplier;
     private final String storagePath;
     private final List<Event> transformedTransaction = new CopyOnWriteArrayList<>();
+    private final AtomicLong count = new AtomicLong();
     private static final SerializedObject EMPTY_PAYLOAD = SerializedObject.newBuilder().setType("empty").build();
+
 
     DefaultSegmentTransformer(StorageProperties storageProperties,
                               long segment,
@@ -77,11 +80,11 @@ class DefaultSegmentTransformer implements SegmentTransformer {
 
     @Override
     public Mono<Void> transformEvent(EventWithToken transformedEvent) {
-        return process(() -> Optional.of(transformedEvent));
+        return process(() -> Optional.of(transformedEvent)).doOnSuccess(v -> count.incrementAndGet());
     }
 
     @Override
-    public Mono<Void> completeSegment() {
+    public Mono<Long> completeSegment() {
         return process(Optional::empty).then(
                 Mono.create(sink -> {
                     try {
@@ -90,7 +93,7 @@ class DefaultSegmentTransformer implements SegmentTransformer {
                         segmentWriter.close();
                         indexManager.createNewVersion(segment, newVersion, segmentWriter.indexEntries());
                         closeTransactionIterator();
-                        sink.success();
+                        sink.success(count.longValue());
                     } catch (Exception e) {
                         sink.error(e);
                     }
