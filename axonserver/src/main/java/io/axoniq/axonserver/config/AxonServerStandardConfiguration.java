@@ -86,8 +86,8 @@ import org.springframework.context.event.SimpleApplicationEventMulticaster;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.PlatformTransactionManager;
-import reactor.core.scheduler.Schedulers;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import java.time.Clock;
 import java.util.ArrayList;
@@ -258,7 +258,7 @@ public class AxonServerStandardConfiguration {
             MeterRegistry meterRegistry) {
         return new QueuedCommandDispatcher(Schedulers.boundedElastic(),
                                            commandHandler -> (String) commandHandler.metadata()
-                                                                                    .metadataValue(CommandHandler.CLIENT_ID)
+                                                                                    .metadataValue(CommandHandler.CLIENT_STREAM_ID)
                                                                                     .orElseThrow(() -> new MessagingPlatformException(
                                                                                             ErrorCode.OTHER,
                                                                                             "Missing client id in command handler")),

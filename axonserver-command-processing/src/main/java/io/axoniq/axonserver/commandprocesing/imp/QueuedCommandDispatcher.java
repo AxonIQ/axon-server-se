@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -198,9 +198,10 @@ public class QueuedCommandDispatcher implements CommandDispatcher, CommandHandle
                 Sinks.One<CommandResult> sink = Sinks.one();
                 resultMap.put(commandRequest.id(), sink);
 
-                processor.emitNext(commandRequest, (signalType, emitResult) ->
-                        emitResult.equals(Sinks.EmitResult.FAIL_NON_SERIALIZED));
-
+                synchronized (processor) {
+                    processor.emitNext(commandRequest, (signalType, emitResult) ->
+                            emitResult.equals(Sinks.EmitResult.FAIL_NON_SERIALIZED));
+                }
                 return sink.asMono();
             });
         }

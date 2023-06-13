@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -36,7 +36,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 class CommandHandlerStream {
 
-    private final String streamId = UUID.randomUUID().toString();
+    private final String streamId;
     private final String context;
     private final String clientId;
     private final StreamObserver<CommandProviderInbound> streamToHandler;
@@ -58,6 +58,7 @@ class CommandHandlerStream {
         this.commandDispatcher = commandDispatcher;
         this.commandRequestProcessor = commandRequestProcessor;
         this.clientTagsCache = clientTagsCache;
+        this.streamId = clientId + "." + UUID.randomUUID();
     }
 
     public Mono<Void> subscribe(CommandSubscription subscribe) {
@@ -85,7 +86,7 @@ class CommandHandlerStream {
     }
 
     public void flowControl(FlowControl flowControl) {
-        commandDispatcher.request(clientId, flowControl.getPermits());
+        commandDispatcher.request(streamId, flowControl.getPermits());
     }
 
     public void commandResponse(CommandResponse commandResponse) {
