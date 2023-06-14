@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -41,7 +41,7 @@ import static io.axoniq.axonserver.topology.Topology.DEFAULT_CONTEXT;
  * @since 4.6.0
  */
 @RestController
-@ConditionalOnProperty(value = "axoniq.axonserver.preview.event-transformation")
+@ConditionalOnProperty(value = "axoniq.axonserver.event-transformation.enabled", matchIfMissing = true)
 public class EventStoreTransformationRestController {
 
     private final EventStoreTransformationService eventStoreTransformationService;
