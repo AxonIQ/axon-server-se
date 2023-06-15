@@ -788,16 +788,20 @@ public class StandardIndexManager implements IndexManager {
                 }
                 indexOpenMeter.mark();
                 logger.debug("{}: open {}", segment, properties.index(storagePath, segment));
+                boolean readOnly = true;
                 DBMaker.Maker maker = DBMaker.fileDB(properties.index(storagePath, segment))
-                                             .readOnly()
                                              .fileLockDisable();
                 if (properties.isUseMmapIndex() && segment.segment() > useMmapAfterIndex.get()) {
                     maker.fileMmapEnable();
                     if (properties.isForceCleanMmapIndex()) {
                         maker.cleanerHackEnable();
+                        readOnly = false;
                     }
                 } else {
                     maker.fileChannelEnable();
+                }
+                if (readOnly) {
+                    maker.readOnly();
                 }
                 this.db = maker.make();
                 this.positions = db.hashMap(AGGREGATE_MAP, Serializer.STRING, StandardIndexEntriesSerializer.get())
