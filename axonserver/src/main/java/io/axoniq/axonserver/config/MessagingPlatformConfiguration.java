@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -106,6 +106,9 @@ public class MessagingPlatformConfiguration {
     private SslConfiguration ssl = new SslConfiguration();
     @NestedConfigurationProperty
     private AccessControlConfiguration accesscontrol = new AccessControlConfiguration();
+
+    @NestedConfigurationProperty
+    private EventTransformationConfiguration eventTransformation = new EventTransformationConfiguration();
 
     /**
      * Rate for synchronization of metrics information between nodes
@@ -554,6 +557,14 @@ public class MessagingPlatformConfiguration {
 
     public Map<String, Boolean> getPreview() {
         return preview;
+    }
+
+    public EventTransformationConfiguration getEventTransformation() {
+        return eventTransformation;
+    }
+
+    public void setEventTransformation(EventTransformationConfiguration eventTransformation) {
+        this.eventTransformation = eventTransformation;
     }
 
     public boolean isExperimentalFeatureEnabled(final String name) {

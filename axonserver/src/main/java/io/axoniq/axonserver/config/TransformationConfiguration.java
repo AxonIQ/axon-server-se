@@ -82,7 +82,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Configuration
-@ConditionalOnProperty(value = "axoniq.axonserver.preview.event-transformation")
+@ConditionalOnProperty(value = "axoniq.axonserver.event-transformation.enabled", matchIfMissing = true)
 public class TransformationConfiguration {
 
     // TODO: 1/30/23 extract this class
