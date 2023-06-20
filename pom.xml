@@ -5,7 +5,7 @@
     <groupId>io.axoniq.axonserver</groupId>
     <artifactId>axonserver-se</artifactId>
     <packaging>pom</packaging>
-    <version>2023.1.0</version>
+    <version>2023.1.1-SNAPSHOT</version>
 
     <name>AxonIQ Axon Server SE</name>
     <inceptionYear>2019</inceptionYear>
