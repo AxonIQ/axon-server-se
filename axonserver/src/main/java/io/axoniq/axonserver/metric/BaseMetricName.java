@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -21,6 +21,7 @@ public enum BaseMetricName implements MetricName {
      * Metric for number of commands handled by a client (tags: source client/handler client/context/command)
      */
     AXON_COMMAND("axon.commands", "Number of commands handled by the Axon Server node"),
+    AXON_COMMAND_ERROR("axon.commands.errors", "Number of errors for commands received by the Axon Server node"),
     /**
      * Metric for the rate of commands handled (tags: context)
      */
@@ -44,6 +45,9 @@ public enum BaseMetricName implements MetricName {
     /**
      * Metric for the token of the last event in the event store (tags: context)
      */
+    AXON_ACTIVE_AGGREGATE_READS("axon.aggregate.reads.active", "Number of active aggregate reads"),
+    AXON_ACTIVE_EVENT_WRITES("axon.event.writes.active", "Number of active event writes"),
+    AXON_ACTIVE_EVENT_STREAMS("axon.event.streams.active", "Number of active event streams"),
     AXON_EVENT_LAST_TOKEN("axon.event.lastToken", "Last token in the event store"),
     /**
      * Metric for the token of the last snapshot in the event store (tags: context)

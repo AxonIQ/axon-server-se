@@ -1,0 +1,378 @@
+<!--
+  ~  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+  ~  under one or more contributor license agreements.
+  ~
+  ~  Licensed under the AxonIQ Open Source License Agreement v1.0;
+  ~  you may not use this file except in compliance with the license.
+  ~
+  -->
+<script>
+    ChartJS.register(
+            CategoryScale,
+            LinearScale,
+            PointElement,
+            LineElement,
+            Title,
+            Tooltip,
+            Legend
+    )
+
+    globals.pageView = new Vue(
+            {
+                el: '#metrics',
+                data: {
+                    webSocketInfo: globals.webSocketInfo,
+                    admin: globals.admin,
+                    activeContext: '--all--',
+                    contexts: [],
+                    commands: {"mean": 0, "max": 0, percentileValues: []},
+                    queries: {"mean": 0, "max": 0, percentileValues: []},
+                    appendEvents: {"mean": 0, "max": 0, percentileValues: []},
+                    commandSaturation: null,
+                    querySaturation: null,
+                    eventSaturation: null,
+                    readEvents: {"mean": 0, "max": 0, percentileValues: []},
+                    errorCounters: null,
+                    status: null
+                },
+                mounted() {
+                    axios.get("v1/public/visiblecontexts?includeAdmin=false").then(response => {
+                        this.contexts = response.data;
+                    });
+                    this.reloadStatus();
+                    this.timer = setInterval(this.reloadStatus, 5000);
+                },
+                beforeDestroy() {
+                    clearInterval(this.timer);
+                    if (this.subscription) {
+                        this.subscription.unsubscribe();
+                    }
+                }, methods: {
+                    reloadStatus: function () {
+                        axios.get("v1/public/latency/queries").then(response => {
+                            this.queries = response.data;
+                        });
+                        axios.get("v1/public/latency/commands").then(response => {
+                            this.commands = response.data;
+                        });
+                        axios.get("v1/public/saturation/queries").then(response => {
+                            this.querySaturation = response.data;
+                        });
+                        axios.get("v1/public/saturation/commands").then(response => {
+                            this.commandSaturation = response.data;
+                        });
+                        axios.get("v1/public/latency/appendEvents").then(response => {
+                            this.appendEvents = response.data;
+                        });
+                        axios.get("v1/public/saturation/events").then(response => {
+                            this.eventSaturation = response.data;
+                        });
+                        axios.get("v1/public/latency/readEvents").then(response => {
+                            this.readEvents = response.data;
+                        });
+                        axios.get("v1/public/errors").then(response => {
+                            this.errorCounters = response.data;
+                        });
+                        axios.get("v1/public/status").then(response => {
+                            this.status = response.data;
+                        });
+                    },
+                }
+            });
+
+</script>
+<div id="metrics">
+    <div class="contextSelector">
+        <span style="margin-left: 15px;">
+
+        Active context:
+        <select v-model="activeContext">
+            <option>--all--</option>
+            <option v-for="n in contexts">{{ n }}</option>
+        </select>
+        </span>
+    </div>
+    <br/>
+
+    <h2>Latency</h2>
+
+    <div class="column-wrapper">
+        <div class="column configuration titleButton">
+            <section>
+                <h3>Command</h3>
+
+                <ul>
+                    <li>
+                        <span>Mean</span>
+                        <span class="number">{{ commands.mean | formatLatency }}</span>
+                    </li>
+                    <li>
+                        <span>Max</span>
+                        <span class="number">{{ commands.max | formatLatency }}</span>
+                    </li>
+
+                    <li v-for="pv in commands.percentileValues">
+                        <span>{{ pv.percentile }} percentile</span>
+                        <span class="number">{{ pv.value | formatLatency }}</span>
+                    </li>
+                </ul>
+
+            </section>
+        </div>
+        <div class="column status">
+            <section>
+                <h3>Query</h3>
+                <ul>
+                    <li>
+                        <span>Mean</span>
+                        <span class="number">{{ queries.mean | formatLatency }}</span>
+                    </li>
+                    <li>
+                        <span>Max</span>
+                        <span class="number">{{ queries.max | formatLatency }}</span>
+                    </li>
+
+                    <li v-for="pv in queries.percentileValues">
+                        <span>{{ pv.percentile }} percentile</span>
+                        <span class="number">{{ pv.value | formatLatency }}</span>
+                    </li>
+                </ul>
+
+            </section>
+        </div>
+        <div class="column status">
+            <section>
+                <h3>Event Store</h3>
+                <h4>Append Events</h4>
+                <ul>
+                    <li>
+                        <span>Mean</span>
+                        <span class="number">{{ appendEvents.mean | formatLatency }}</span>
+                    </li>
+                    <li>
+                        <span>Max</span>
+                        <span class="number">{{ appendEvents.max | formatLatency }}</span>
+                    </li>
+
+                    <li v-for="pv in appendEvents.percentileValues">
+                        <span>{{ pv.percentile }} percentile</span>
+                        <span class="number">{{ pv.value | formatLatency }}</span>
+                    </li>
+                </ul>
+                <h4>Read Events</h4>
+                <ul>
+                    <li>
+                        <span>Mean</span>
+                        <span class="number">{{ readEvents.mean | formatLatency }}</span>
+                    </li>
+                    <li>
+                        <span>Max</span>
+                        <span class="number">{{ readEvents.max | formatLatency }}</span>
+                    </li>
+
+                    <li v-for="pv in readEvents.percentileValues">
+                        <span>{{ pv.percentile }} percentile</span>
+                        <span class="number">{{ pv.value | formatLatency }}</span>
+                    </li>
+                </ul>
+            </section>
+        </div>
+    </div>
+
+    <h2>Traffic</h2>
+
+    <div class="column-wrapper">
+        <div class="column configuration">
+            <section>
+                <h3>Command</h3>
+
+                <ul v-if="status">
+                    <li>
+                        <span>Total received </span>
+                        <span class="number">{{ status.commandRate.count }}</span>
+                    </li>
+                    <li>
+                        <span>Received / second (last minute)</span>
+                        <span class="number">{{ status.commandRate.oneMinuteRate | formatLatency }}</span>
+                    </li>
+                    <li>
+                        <span>Received / second (last 5 minutes)</span>
+                        <span class="number">{{ status.commandRate.fiveMinuteRate | formatLatency }}</span>
+                    </li>
+                    <li>
+                        <span>Received / second (last 15 minutes)</span>
+                        <span class="number">{{ status.commandRate.fifteenMinuteRate | formatLatency }}</span>
+                    </li>
+                </ul>
+            </section>
+
+        </div>
+
+        <div class="column status">
+            <section>
+                <h3>Query</h3>
+
+                <ul v-if="status">
+                    <li>
+                        <span>Total received </span>
+                        <span class="number">{{ status.queryRate.count }}</span>
+                    </li>
+                    <li>
+                        <span>Received / second (last minute)</span>
+                        <span class="number">{{ status.queryRate.oneMinuteRate | formatLatency }}</span>
+                    </li>
+                    <li>
+                        <span>Received / second (last 5 minutes)</span>
+                        <span class="number">{{ status.queryRate.fiveMinuteRate | formatLatency }}</span>
+                    </li>
+                    <li>
+                        <span>Received / second (last 15 minutes)</span>
+                        <span class="number">{{ status.queryRate.fifteenMinuteRate | formatLatency }}</span>
+                    </li>
+                </ul>
+            </section>
+
+        </div>
+        <div class="column status">
+            <section>
+                <h3>Append Event</h3>
+
+                <ul v-if="status">
+                    <li>
+                        <span>Total received </span>
+                        <span class="number">{{ status.eventRate.count }}</span>
+                    </li>
+                    <li>
+                        <span>Received / second (last minute)</span>
+                        <span class="number">{{ status.eventRate.oneMinuteRate | formatLatency }}</span>
+                    </li>
+                    <li>
+                        <span>Received / second (last 5 minutes)</span>
+                        <span class="number">{{ status.eventRate.fiveMinuteRate | formatLatency }}</span>
+                    </li>
+                    <li>
+                        <span>Received / second (last 15 minutes)</span>
+                        <span class="number">{{ status.eventRate.fifteenMinuteRate | formatLatency }}</span>
+                    </li>
+                </ul>
+                <h3>Append Snapshot</h3>
+
+                <ul v-if="status">
+                    <li>
+                        <span>Total received </span>
+                        <span class="number">{{ status.snapshotRate.count }}</span>
+                    </li>
+                    <li>
+                        <span>Received / second (last minute)</span>
+                        <span class="number">{{ status.snapshotRate.oneMinuteRate | formatLatency }}</span>
+                    </li>
+                    <li>
+                        <span>Received / second (last 5 minutes)</span>
+                        <span class="number">{{ status.snapshotRate.fiveMinuteRate | formatLatency }}</span>
+                    </li>
+                    <li>
+                        <span>Received / second (last 15 minutes)</span>
+                        <span class="number">{{ status.snapshotRate.fifteenMinuteRate | formatLatency }}</span>
+                    </li>
+                </ul>
+            </section>
+        </div>
+    </div>
+
+    <h2>Errors</h2>
+    <div class="column-wrapper">
+        <div class="column configuration">
+            <section>
+                <h3>Command</h3>
+                <ul v-if="errorCounters">
+                    <li>
+                        <span>Total errors</span>
+                        <span class="number">{{ errorCounters.commandErrors }}</span>
+                    </li>
+                </ul>
+            </section>
+        </div>
+        <div class="column status">
+            <section>
+                <h3>Query</h3>
+                <ul v-if="errorCounters">
+                    <li>
+                        <span>Total errors</span>
+                        <span class="number">{{ errorCounters.queryErrors }}</span>
+                    </li>
+                </ul>
+            </section>
+        </div>
+        <div class="column status">
+            <section>
+                <h3>Event Store</h3>
+                <ul v-if="errorCounters">
+                    <li>
+                        <span>Total append errors</span>
+                        <span class="number">{{ errorCounters.appendErrors }}</span>
+                    </li>
+                    <li>
+                        <span>Total read errors</span>
+                        <span class="number">{{ errorCounters.readErrors }}</span>
+                    </li>
+                </ul>
+            </section>
+        </div>
+    </div>
+
+    <h2>Saturation</h2>
+    <div class="column-wrapper">
+        <div class="column configuration">
+            <section>
+                <h3>Command</h3>
+
+                <ul v-if="commandSaturation">
+                    <li>
+                        <span>Active commands</span>
+                        <span class="number">{{ commandSaturation.active }}</span>
+                    </li>
+                    <li>
+                        <span>Queued commands</span>
+                        <span class="number">{{ commandSaturation.waiting }}</span>
+                    </li>
+                </ul>
+            </section>
+        </div>
+        <div class="column status">
+            <section>
+                <h3>Queries</h3>
+
+                <ul v-if="querySaturation">
+                    <li>
+                        <span>Active queries</span>
+                        <span class="number">{{ querySaturation.active }}</span>
+                    </li>
+                    <li>
+                        <span>Queued queries</span>
+                        <span class="number">{{ querySaturation.waiting }}</span>
+                    </li>
+                </ul>
+            </section>
+        </div>
+        <div class="column status">
+            <section>
+                <h3>Events</h3>
+
+                <ul v-if="eventSaturation">
+                    <li>
+                        <span>Active aggregate reads</span>
+                        <span class="number">{{ eventSaturation.aggregateReads }}</span>
+                    </li>
+                    <li>
+                        <span>Active writes</span>
+                        <span class="number">{{ eventSaturation.eventWrites }}</span>
+                    </li>
+                    <li>
+                        <span>Active streams</span>
+                        <span class="number">{{ eventSaturation.eventStreams }}</span>
+                    </li>
+                </ul>
+            </section>
+        </div>
+    </div>
+</div>
