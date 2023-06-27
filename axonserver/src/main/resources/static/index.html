@@ -139,6 +139,14 @@
             }
         });
 
+        Vue.filter('formatLatency', function (latency) {
+            if (latency) {
+                return Number(latency).toFixed(2);
+            } else {
+                return Number(0).toFixed(2);
+            }
+        });
+
         Vue.prototype.hasFeature = globals.hasFeature;
         Vue.prototype.isEnterprise = globals.isEnterprise;
 
@@ -373,6 +381,7 @@
     <a href="#query" class="menu-query" v-if="initialized"><i class="fas fa-search fa-2x"></i>Search</a>
     <a href="#commands" class="menu-commands" v-if="initialized"><i class="fas fa-exclamation-circle fa-2x"></i>Commands</a>
     <a href="#queries" class="menu-queries" v-if="initialized"><i class="fas fa-question-circle fa-2x"></i>Queries</a>
+    <a href="#metrics" class="menu-queries" v-if="initialized"><i class="fas fa-question-circle fa-2x"></i>Metrics</a>
     <a href="#applications" class="menu-applications" v-if="initialized && showConfiguration() && isEE()"><i
             class="fas fa-window-restore fa-2x"></i>Apps</a>
     <a href="#users" class="menu-users" v-if="initialized && showConfiguration()"><i class="fas fa-users fa-2x"></i> Users</a>

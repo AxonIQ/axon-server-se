@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -31,7 +31,6 @@ import org.springframework.context.event.EventListener;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
-import javax.annotation.Nonnull;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -39,6 +38,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import javax.annotation.Nonnull;
 
 /**
  * Responsible for managing command subscriptions and processing commands.
@@ -94,6 +94,7 @@ public class CommandDispatcher {
         long start = System.currentTimeMillis();
         DefaultExecutionContext executionContext = new DefaultExecutionContext(context, authentication);
         Consumer<SerializedCommandResponse> interceptedResponseObserver = r -> intercept(executionContext,
+                                                                                         request.getCommand(),
                                                                                          r,
                                                                                          responseObserver);
         try {
@@ -133,21 +134,28 @@ public class CommandDispatcher {
     }
 
     private void intercept(DefaultExecutionContext executionContext,
+                           String request,
                            SerializedCommandResponse response,
                            Consumer<SerializedCommandResponse> responseObserver) {
         try {
-            responseObserver.accept(commandInterceptors.commandResponse(response, executionContext));
+            SerializedCommandResponse commandResponse = commandInterceptors.commandResponse(response, executionContext);
+            responseObserver.accept(commandResponse);
+            if (commandResponse.wrapped().hasErrorMessage()) {
+                metricRegistry.errorMetric(response.wrapped().getErrorCode(), executionContext.contextName(), request);
+            }
         } catch (MessagingPlatformException ex) {
             logger.warn("{}: Exception in response interceptor", executionContext.contextName(), ex);
             responseObserver.accept(errorCommandResponse(response.getRequestIdentifier(),
                                                          ex.getErrorCode(),
                                                          ex.getMessage()));
+            metricRegistry.errorMetric(ex.getErrorCode().getCode(), executionContext.contextName(), request);
             executionContext.compensate(ex);
         } catch (Exception other) {
             logger.warn("{}: Exception in response interceptor", executionContext.contextName(), other);
             responseObserver.accept(errorCommandResponse(response.getRequestIdentifier(),
                                                          ErrorCode.OTHER,
                                                          other.getMessage()));
+            metricRegistry.errorMetric(ErrorCode.OTHER.getCode(), executionContext.contextName(), request);
             executionContext.compensate(other);
         }
     }
