@@ -1,6 +1,6 @@
 /*
- *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- *  under one or more contributor license agreements.
+ * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -43,7 +43,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
@@ -74,10 +73,6 @@ public class EventDispatcher {
     private final int aggregateEventsPrefetch;
     private final long listEventsTimeoutMillis;
 
-    private final Map<String, AtomicInteger> activeReadsPerContext = new ConcurrentHashMap<>();
-    private final Map<String, AtomicInteger> activeWritesPerContext = new ConcurrentHashMap<>();
-    private final Map<String, AtomicInteger> activeStreamsPerContext = new ConcurrentHashMap<>();
-
     public EventDispatcher(EventStoreLocator eventStoreLocator,
                            MeterFactory meterFactory,
                            @Value("${axoniq.axonserver.event.aggregate.retry.attempts:3}") int maxRetryAttempts,
@@ -104,12 +99,7 @@ public class EventDispatcher {
                     eventFlux.doOnNext(event -> eventsCounter(context,
                                                               eventsCounter,
                                                               BaseMetricName.AXON_EVENTS).mark());
-            return eventStore.appendEvents(context, countingFlux, authentication)
-                             .doFirst(() -> increaseActiveWrites(context))
-                             .doOnTerminate(() -> decreaseActiveWrites(context))
-                             .name("axonserver.append.events")
-                             .tag("context", context)
-                             .metrics();
+            return eventStore.appendEvents(context, countingFlux, authentication);
         });
     }
 
@@ -198,15 +188,12 @@ public class EventDispatcher {
                                                })
                                                .doOnError(t -> logger.error("Error during reading aggregate events. ",
                                                                             t))
-                                               .doOnTerminate(() -> decreaseActiveReads(context))
-                                               .doFirst(() -> increaseActiveReads(context))
                                                .doOnNext(m -> logger.trace("event {} for aggregate {}",
                                                                            m,
                                                                            request.getAggregateId()))
                                                .contextWrite(c -> c.put(LAST_SEQ_KEY,
                                                                         new AtomicLong(
-                                                                                request.getInitialSequence()
-                                                                                        - 1)))
+                                                                                request.getInitialSequence() - 1)))
                                                .name("event_stream")
                                                .tag("context", context)
                                                .tag("stream", "aggregate_events")
@@ -214,51 +201,6 @@ public class EventDispatcher {
                                                .metrics();
                                 })
                                 .onErrorResume(Flux::error);
-    }
-
-    private void increaseActiveReads(String context) {
-        activeReadsPerContext.computeIfAbsent(context, c -> {
-            AtomicInteger atomicInteger = new AtomicInteger();
-            meterFactory.gauge(BaseMetricName.AXON_ACTIVE_AGGREGATE_READS,
-                               Tags.of(MeterFactory.CONTEXT, context),
-                               atomicInteger,
-                               u -> (double) atomicInteger.get());
-            return atomicInteger;
-        }).incrementAndGet();
-    }
-
-    private void decreaseActiveReads(String context) {
-        activeReadsPerContext.getOrDefault(context, new AtomicInteger()).decrementAndGet();
-    }
-
-    private void increaseActiveWrites(String context) {
-        activeWritesPerContext.computeIfAbsent(context, c -> {
-            AtomicInteger atomicInteger = new AtomicInteger();
-            meterFactory.gauge(BaseMetricName.AXON_ACTIVE_EVENT_WRITES,
-                               Tags.of(MeterFactory.CONTEXT, context),
-                               atomicInteger,
-                               u -> (double) atomicInteger.get());
-            return atomicInteger;
-        }).incrementAndGet();
-    }
-
-    private void decreaseActiveWrites(String context) {
-        activeWritesPerContext.getOrDefault(context, new AtomicInteger()).decrementAndGet();
-    }
-
-    private void increaseActiveStreams(String context) {
-        activeStreamsPerContext.computeIfAbsent(context, c -> {
-            AtomicInteger atomicInteger = new AtomicInteger();
-            meterFactory.gauge(BaseMetricName.AXON_ACTIVE_EVENT_STREAMS,
-                               Tags.of(MeterFactory.CONTEXT, context),
-                               atomicInteger,
-                               u -> (double) atomicInteger.get());
-            return atomicInteger;
-        }).incrementAndGet();
-    }
-
-    private void decreaseActiveStreams(String context) {
-        activeStreamsPerContext.getOrDefault(context, new AtomicInteger()).decrementAndGet();
     }
 
     public Flux<SerializedEventWithToken> events(String context, Authentication principal,
@@ -269,7 +211,6 @@ public class EventDispatcher {
                 EventTrackerInfo trackerInfo = new EventTrackerInfo(request.getClientId(),
                                                                     context,
                                                                     request.getTrackingToken() - 1);
-                increaseActiveStreams(context);
                 ClientStreamIdentification clientStreamIdentification =
                         new ClientStreamIdentification(trackerInfo.context, trackerInfo.client);
                 trackingEventProcessors.computeIfAbsent(clientStreamIdentification, key -> new CopyOnWriteArrayList<>())
@@ -294,13 +235,12 @@ public class EventDispatcher {
 
     private void removeTrackerInfo(@Nonnull EventTrackerInfo trackerInfo) {
         logger.info("Removed tracker info {}", trackerInfo);
-        decreaseActiveStreams(trackerInfo.context);
         trackingEventProcessors.computeIfPresent(new ClientStreamIdentification(trackerInfo.context,
                                                                                 trackerInfo.client),
                                                  (c, streams) -> {
                                                      logger.debug("{}: {} streams",
-                                                                  trackerInfo.client,
-                                                                  streams.size());
+                                                                 trackerInfo.client,
+                                                                 streams.size());
                                                      streams.remove(trackerInfo);
                                                      return streams.isEmpty() ? null : streams;
                                                  });

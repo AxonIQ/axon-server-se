@@ -1,6 +1,6 @@
 /*
- *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- *  under one or more contributor license agreements.
+ * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -54,8 +54,8 @@ public class CommandMetricsRegistry {
 
     @EventListener
     public void on(TopologyEvents.ApplicationDisconnected event) {
-//        meterFactory.remove(BaseMetricName.AXON_COMMAND, MeterFactory.SOURCE, event.getClientId());
-//        meterFactory.remove(BaseMetricName.AXON_COMMAND, MeterFactory.TARGET, event.getClientId());
+        meterFactory.remove(BaseMetricName.AXON_COMMAND, MeterFactory.SOURCE, event.getClientId());
+        meterFactory.remove(BaseMetricName.AXON_COMMAND, MeterFactory.TARGET, event.getClientId());
     }
 
 
@@ -165,13 +165,6 @@ public class CommandMetricsRegistry {
      */
     public MeterFactory.RateMeter rateMeter(String context, BaseMetricName meterName) {
         return meterFactory.rateMeter(meterName, Tags.of(MeterFactory.CONTEXT, context));
-    }
-
-    public void errorMetric(String errorCode, String contextName, String request) {
-        meterFactory.counter(BaseMetricName.AXON_COMMAND_ERROR, Tags.of(MeterFactory.CONTEXT, contextName,
-                                                                        MeterFactory.REQUEST, request,
-                                                                        MeterFactory.ERROR_CODE, errorCode))
-                    .increment();
     }
 
     public static class CommandMetric {
