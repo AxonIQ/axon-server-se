@@ -83,6 +83,8 @@ public class CommandMetricsRegistry {
                     long duration) {
         try {
             timer(command, sourceClientId, targetClientId, context).record(duration, TimeUnit.MILLISECONDS);
+            meterFactory.timer(BaseMetricName.AXON_COMMAND_OVERALL, Tags.empty())
+                        .record(duration, TimeUnit.MILLISECONDS);
         } catch (Exception ex) {
             logger.debug("Failed to create timer", ex);
         }

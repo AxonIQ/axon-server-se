@@ -21,6 +21,7 @@ public enum BaseMetricName implements MetricName {
      * Metric for number of commands handled by a client (tags: source client/handler client/context/command)
      */
     AXON_COMMAND("axon.commands", "Number of commands handled by the Axon Server node"),
+    AXON_COMMAND_OVERALL("local.commands", "Number of commands handled by the Axon Server node"),
     AXON_COMMAND_ERROR("axon.commands.errors", "Number of errors for commands received by the Axon Server node"),
     /**
      * Metric for the rate of commands handled (tags: context)

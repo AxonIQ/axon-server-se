@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -38,7 +38,8 @@ public class MetricsConfiguration {
         MeterFilter defaultFilter = new MeterFilter() {
             @Override
             public DistributionStatisticConfig configure(Meter.Id id, @Nonnull DistributionStatisticConfig config) {
-                if (id.getName().startsWith("axon") || id.getName().startsWith("local")) {
+                if (id.getName().startsWith("axon") || id.getName().startsWith("local") || id.getName().startsWith(
+                        "event_stream")) {
                     return DistributionStatisticConfig.builder()
                                                       .percentiles(PERCENTILE_MEDIAN,
                                                                    PERCENTILE_NINETYFIVE,

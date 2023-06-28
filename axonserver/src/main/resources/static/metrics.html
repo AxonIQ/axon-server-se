@@ -7,16 +7,6 @@
   ~
   -->
 <script>
-    ChartJS.register(
-            CategoryScale,
-            LinearScale,
-            PointElement,
-            LineElement,
-            Title,
-            Tooltip,
-            Legend
-    )
-
     globals.pageView = new Vue(
             {
                 el: '#metrics',
@@ -33,6 +23,8 @@
                     eventSaturation: null,
                     readEvents: {"mean": 0, "max": 0, percentileValues: []},
                     errorCounters: null,
+                    details: null,
+                    detailsType: null,
                     status: null
                 },
                 mounted() {
@@ -49,11 +41,17 @@
                     }
                 }, methods: {
                     reloadStatus: function () {
-                        axios.get("v1/public/latency/queries").then(response => {
+                        axios.get("v1/public/latency/queries" + this.contextParameter()).then(response => {
                             this.queries = response.data;
+                            if (this.detailsType === "queries") {
+                                this.details = this.queries.percentileValues;
+                            }
                         });
-                        axios.get("v1/public/latency/commands").then(response => {
+                        axios.get("v1/public/latency/commands" + this.contextParameter()).then(response => {
                             this.commands = response.data;
+                            if (this.detailsType === "commands") {
+                                this.details = this.commands.percentileValues;
+                            }
                         });
                         axios.get("v1/public/saturation/queries").then(response => {
                             this.querySaturation = response.data;
@@ -61,22 +59,70 @@
                         axios.get("v1/public/saturation/commands").then(response => {
                             this.commandSaturation = response.data;
                         });
-                        axios.get("v1/public/latency/appendEvents").then(response => {
+                        axios.get("v1/public/latency/appendEvents" + this.contextParameter()).then(response => {
                             this.appendEvents = response.data;
+                            if (this.detailsType === "appendEvents") {
+                                this.details = this.appendEvents.percentileValues;
+                            }
+
                         });
                         axios.get("v1/public/saturation/events").then(response => {
                             this.eventSaturation = response.data;
                         });
-                        axios.get("v1/public/latency/readEvents").then(response => {
+                        axios.get("v1/public/latency/readEvents" + this.contextParameter()).then(response => {
                             this.readEvents = response.data;
+                            if (this.detailsType === "readEvents") {
+                                this.details = this.readEvents.percentileValues;
+                            }
+
                         });
                         axios.get("v1/public/errors").then(response => {
                             this.errorCounters = response.data;
                         });
-                        axios.get("v1/public/status").then(response => {
+                        axios.get("v1/public/traffic" + this.contextParameter()).then(response => {
                             this.status = response.data;
                         });
                     },
+                    contextParameter() {
+                        if (this.activeContext === '--all--') {
+                            return "";
+                        } else {
+                            return "?targetContext=" + this.activeContext;
+                        }
+                    },
+                    showCommandDetails() {
+                        this.details = this.commands.percentileValues;
+                        this.detailsType = "commands"
+                        this.showModal('request-metrics-details');
+                    },
+                    showQueryDetails() {
+                        this.details = this.queries.percentileValues;
+                        this.detailsType = "queries"
+                        this.showModal('request-metrics-details');
+                    },
+                    showModal: function (name) {
+                        this.$modal.show(name);
+                    },
+                    hideModal: function (name) {
+                        this.$modal.hide(name);
+                    },
+                    showAppendEventsDetails() {
+                        this.details = this.appendEvents.percentileValues;
+                        this.detailsType = "appendEvents"
+                        this.showModal('context-metrics-details');
+                    },
+                    showReadEventsDetails() {
+                        this.details = this.readEvents.percentileValues;
+                        this.detailsType = "readEvents"
+                        this.showModal('context-metrics-details');
+                    },
+                    rtrim(text) {
+                        if (text && text.length > 35) {
+                            return "..." + text.substring(text.length - 35, text.length);
+                        } else {
+                            return text;
+                        }
+                    }
                 }
             });
 
@@ -110,12 +156,11 @@
                         <span>Max</span>
                         <span class="number">{{ commands.max | formatLatency }}</span>
                     </li>
-
-                    <li v-for="pv in commands.percentileValues">
-                        <span>{{ pv.percentile }} percentile</span>
-                        <span class="number">{{ pv.value | formatLatency }}</span>
-                    </li>
                 </ul>
+                <button class="button"
+                        @click.prevent="showCommandDetails()">
+                    Details
+                </button>
 
             </section>
         </div>
@@ -132,11 +177,11 @@
                         <span class="number">{{ queries.max | formatLatency }}</span>
                     </li>
 
-                    <li v-for="pv in queries.percentileValues">
-                        <span>{{ pv.percentile }} percentile</span>
-                        <span class="number">{{ pv.value | formatLatency }}</span>
-                    </li>
                 </ul>
+                <button class="button"
+                        @click.prevent="showQueryDetails()">
+                    Details
+                </button>
 
             </section>
         </div>
@@ -153,12 +198,11 @@
                         <span>Max</span>
                         <span class="number">{{ appendEvents.max | formatLatency }}</span>
                     </li>
-
-                    <li v-for="pv in appendEvents.percentileValues">
-                        <span>{{ pv.percentile }} percentile</span>
-                        <span class="number">{{ pv.value | formatLatency }}</span>
-                    </li>
                 </ul>
+                <button class="button"
+                        @click.prevent="showAppendEventsDetails()">
+                    Details
+                </button>
                 <h4>Read Events</h4>
                 <ul>
                     <li>
@@ -170,11 +214,11 @@
                         <span class="number">{{ readEvents.max | formatLatency }}</span>
                     </li>
 
-                    <li v-for="pv in readEvents.percentileValues">
-                        <span>{{ pv.percentile }} percentile</span>
-                        <span class="number">{{ pv.value | formatLatency }}</span>
-                    </li>
                 </ul>
+                <button class="button"
+                        @click.prevent="showReadEventsDetails()">
+                    Details
+                </button>
             </section>
         </div>
     </div>
@@ -375,4 +419,77 @@
             </section>
         </div>
     </div>
+
+    <modal name="request-metrics-details" width="1000" height="550">
+        <div style="width: 100%; height: 500px; overflow: auto">
+            <h2>{{ detailsType }}</h2>
+            <table v-if="details">
+                <thead>
+                <tr>
+                    <th></th>
+                    <th style="width: 30%"></th>
+                    <th></th>
+                    <th style="width: 80px"></th>
+                    <th colspan="3" style="width: 300px; text-align: center">Percentiles</th>
+                </tr>
+
+                <tr>
+                    <th>Context</th>
+                    <th>Request</th>
+                    <!--                            <th>Source</th>-->
+                    <th>Target</th>
+                    <th>Count</th>
+                    <th style="width: 80px; text-align: right">50%</th>
+                    <th style="width: 80px; text-align: right">95%</th>
+                    <th style="width: 80px; text-align: right">99%</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr v-for="c in details">
+                    <td>{{ c.tags.context }}</td>
+                    <td>{{ rtrim(c.tags.request) }}</td>
+                    <!--                            <td>{{ c.tags.source }}</td>-->
+                    <td>{{ c.tags.target }}</td>
+                    <td>{{ c.latency.count }}</td>
+                    <td style="text-align: right">{{ c.latency.percentileValues[0].value | formatLatency }}</td>
+                    <td style="text-align: right">{{ c.latency.percentileValues[1].value | formatLatency }}</td>
+                    <td style="text-align: right">{{ c.latency.percentileValues[2].value | formatLatency }}</td>
+                </tbody>
+            </table>
+        </div>
+        <button @click.prevent="hideModal('request-metrics-details')" class="button">Ok</button>
+
+    </modal>
+    <modal name="context-metrics-details" width="800" height="550">
+        <div style="width: 100%; height: 500px; overflow: auto">
+            <h2>{{ detailsType }}</h2>
+            <table v-if="details">
+                <thead>
+                <tr>
+                    <th></th>
+                    <th style="width: 100px"></th>
+                    <th colspan="3" style="width: 300px; text-align: center">Percentiles</th>
+                </tr>
+                <tr>
+                    <th>Context</th>
+                    <th>Count</th>
+                    <th style="width: 100px; text-align: right">50%</th>
+                    <th style="width: 100px; text-align: right">95%</th>
+                    <th style="width: 100px; text-align: right">99%</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr v-for="c in details">
+                    <td>{{ c.tags.context }}</td>
+                    <td>{{ c.latency.count }}</td>
+                    <td style="text-align: right">{{ c.latency.percentileValues[0].value | formatLatency }}</td>
+                    <td style="text-align: right">{{ c.latency.percentileValues[1].value | formatLatency }}</td>
+                    <td style="text-align: right">{{ c.latency.percentileValues[2].value | formatLatency }}</td>
+                </tbody>
+            </table>
+        </div>
+        <button @click.prevent="hideModal('context-metrics-details')" class="button">Ok</button>
+
+    </modal>
+
 </div>
