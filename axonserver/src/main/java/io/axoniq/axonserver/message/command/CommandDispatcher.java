@@ -200,16 +200,19 @@ public class CommandDispatcher {
                                                                            commandHandler
                                                                                    .getClientStreamIdentification(),
                                                                            commandHandler.getComponentName());
-            if(commandCache.putIfAbsent(command.getMessageIdentifier(), commandInformation)!=null){
+            if (commandCache.putIfAbsent(command.getMessageIdentifier(), commandInformation) != null) {
                 responseObserver.accept(errorCommandResponse(command.getMessageIdentifier(),
                                                              ErrorCode.COMMAND_DUPLICATED,
-                                                             String.format("command id %s duplicated",command.getMessageIdentifier())));
+                                                             String.format("command id %s duplicated",
+                                                                           command.getMessageIdentifier())));
                 return;
             }
             WrappedCommand wrappedCommand = new WrappedCommand(commandHandler.getClientStreamIdentification(),
                                                                commandHandler.getClientId(),
                                                                command);
-            commandQueues.put(commandHandler.queueName(), wrappedCommand, wrappedCommand.priority());
+
+            commandHandler.send(wrappedCommand);
+//            commandQueues.put(commandHandler.queueName(), wrappedCommand, wrappedCommand.priority());
         } catch (InsufficientBufferCapacityException insufficientBufferCapacityException) {
             responseObserver.accept(errorCommandResponse(command.getMessageIdentifier(),
                                                          ErrorCode.TOO_MANY_REQUESTS,

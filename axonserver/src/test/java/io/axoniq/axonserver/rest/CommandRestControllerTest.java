@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -12,6 +12,7 @@ package io.axoniq.axonserver.rest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.axoniq.axonserver.component.command.ComponentCommand;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
+import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.command.CommandRegistrationCache;
 import io.axoniq.axonserver.message.command.DirectCommandHandler;
@@ -47,8 +48,9 @@ public class CommandRestControllerTest {
         commandRegistationCache.add("DoIt",
                                     new DirectCommandHandler(new FakeStreamObserver<>(),
                                                              new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
-                                                                                      "client"),
-                                                            "client",
+                                                                                            "client"),
+                                                             new FlowControlQueues<>(),
+                                                             "client",
                                                              "component"));
         testSubject = new CommandRestController(commandDispatcher, commandRegistationCache);
     }
