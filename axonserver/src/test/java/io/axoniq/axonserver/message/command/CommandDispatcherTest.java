@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -42,8 +42,13 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static org.junit.Assert.*;
-import static org.mockito.Mockito.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.when;
 
 /**
  * @author Marc Gathier
@@ -67,12 +72,12 @@ public class CommandDispatcherTest {
     }
 
     @Test
-    public void unregisterCommandHandler()  {
+    public void unregisterCommandHandler() {
         commandDispatcher.on(new CommandHandlerDisconnected(null, "clientId", "client", false));
     }
 
     @Test
-    public void dispatch()  {
+    public void dispatch() {
         FakeStreamObserver<SerializedCommandResponse> responseObserver = new FakeStreamObserver<>();
         Command request = Command.newBuilder()
                                  .addProcessingInstructions(ProcessingInstructionHelper.routingKey("1234"))
@@ -82,7 +87,10 @@ public class CommandDispatcherTest {
         FakeStreamObserver<SerializedCommandProviderInbound> commandProviderInbound = new FakeStreamObserver<>();
         ClientStreamIdentification client = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "client");
         DirectCommandHandler result = new DirectCommandHandler(commandProviderInbound,
-                                                               client, "client", "component");
+                                                               client,
+                                                               commandDispatcher.getCommandQueues(),
+                                                               "client",
+                                                               "component");
         when(registrations.getHandlerForCommand(eq(Topology.DEFAULT_CONTEXT), any(), any())).thenReturn(result);
 
         commandDispatcher.dispatch(Topology.DEFAULT_CONTEXT,
@@ -136,7 +144,10 @@ public class CommandDispatcherTest {
         FakeStreamObserver<SerializedCommandProviderInbound> commandProviderInbound = new FakeStreamObserver<>();
         ClientStreamIdentification client = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "client");
         DirectCommandHandler result = new DirectCommandHandler(commandProviderInbound,
-                                                               client, "client", "component");
+                                                               client,
+                                                               commandDispatcher.getCommandQueues(),
+                                                               "client",
+                                                               "component");
         when(registrations.getHandlerForCommand(any(), any(), any())).thenReturn(result);
         commandDispatcher.dispatch(Topology.DEFAULT_CONTEXT,
                                    GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL,
@@ -178,10 +189,12 @@ public class CommandDispatcherTest {
                                  .setName("Command")
                                  .setMessageIdentifier("12")
                                  .build();
-        ClientStreamIdentification clientIdentification = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "client");
+        ClientStreamIdentification clientIdentification = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
+                                                                                         "client");
         FakeStreamObserver<SerializedCommandProviderInbound> commandProviderInbound = new FakeStreamObserver<>();
         DirectCommandHandler result = new DirectCommandHandler(commandProviderInbound,
                                                                clientIdentification,
+                                                               commandDispatcher.getCommandQueues(),
                                                                "client",
                                                                "component");
         when(registrations.findByClientAndCommand(eq(clientIdentification), any())).thenReturn(result);
@@ -199,7 +212,7 @@ public class CommandDispatcherTest {
     }
 
     @Test
-    public void dispatchProxiedClientNotFound()  {
+    public void dispatchProxiedClientNotFound() {
         FakeStreamObserver<SerializedCommandResponse> responseObserver = new FakeStreamObserver<>();
         Command request = Command.newBuilder()
                                  .addProcessingInstructions(ProcessingInstructionHelper.routingKey("1234"))
@@ -293,7 +306,10 @@ public class CommandDispatcherTest {
         FakeStreamObserver<SerializedCommandProviderInbound> commandProviderInbound = new FakeStreamObserver<>();
         ClientStreamIdentification client = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "client");
         DirectCommandHandler result = new DirectCommandHandler(commandProviderInbound,
-                                                               client, "client", "component");
+                                                               client,
+                                                               commandDispatcher.getCommandQueues(),
+                                                               "client",
+                                                               "component");
         when(registrations.getHandlerForCommand(eq(Topology.DEFAULT_CONTEXT), any(), any())).thenReturn(result);
         commandDispatcher = new CommandDispatcher(registrations, commandCache, metricsRegistry, meterFactory,
                                                   new CommandInterceptors() {
@@ -335,18 +351,30 @@ public class CommandDispatcherTest {
         commandCache = new CommandCache(10000, Clock.systemUTC(), 100000);
 
         CompletableFuture<SerializedCommandResponse> originalFutureResponse = new CompletableFuture<>();
-        CommandInformation commandInformation = new CommandInformation(duplicatedId,"","",
+        CommandInformation commandInformation = new CommandInformation(duplicatedId,
+                                                                       "",
+                                                                       "",
                                                                        originalFutureResponse::complete,
-                                                                       new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,"client"),"component");
+                                                                       new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
+                                                                                                      "client"),
+                                                                       "component");
 
-        commandCache.putIfAbsent(duplicatedId,commandInformation);
+        commandCache.putIfAbsent(duplicatedId, commandInformation);
 
-        commandDispatcher = new CommandDispatcher(registrations, commandCache, metricsRegistry, meterFactory,new NoOpCommandInterceptors(), 10_000);
+        commandDispatcher = new CommandDispatcher(registrations,
+                                                  commandCache,
+                                                  metricsRegistry,
+                                                  meterFactory,
+                                                  new NoOpCommandInterceptors(),
+                                                  10_000);
 
         FakeStreamObserver<SerializedCommandProviderInbound> commandProviderInbound = new FakeStreamObserver<>();
         ClientStreamIdentification client = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "client");
         DirectCommandHandler result = new DirectCommandHandler(commandProviderInbound,
-                                                               client, "client", "component");
+                                                               client,
+                                                               commandDispatcher.getCommandQueues(),
+                                                               "client",
+                                                               "component");
         when(registrations.getHandlerForCommand(eq(Topology.DEFAULT_CONTEXT), any(), any())).thenReturn(result);
 
         CompletableFuture<SerializedCommandResponse> futureResponse = new CompletableFuture<>();

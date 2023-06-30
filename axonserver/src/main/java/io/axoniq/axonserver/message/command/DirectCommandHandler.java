@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -13,6 +13,7 @@ import io.axoniq.axonserver.grpc.InstructionAck;
 import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.grpc.SerializedCommandProviderInbound;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
+import io.axoniq.axonserver.message.FlowControlQueues;
 import io.grpc.stub.StreamObserver;
 
 /**
@@ -20,10 +21,15 @@ import io.grpc.stub.StreamObserver;
  */
 public class DirectCommandHandler extends CommandHandler<SerializedCommandProviderInbound> {
 
+    private final FlowControlQueues<WrappedCommand> flowControlQueues;
+
     public DirectCommandHandler(StreamObserver<SerializedCommandProviderInbound> responseObserver,
-                                ClientStreamIdentification clientStreamIdentification, String clientId,
+                                ClientStreamIdentification clientStreamIdentification,
+                                FlowControlQueues<WrappedCommand> flowControlQueues,
+                                String clientId,
                                 String componentName) {
         super(responseObserver, clientStreamIdentification, clientId, componentName);
+        this.flowControlQueues = flowControlQueues;
     }
 
     @Override
@@ -41,4 +47,8 @@ public class DirectCommandHandler extends CommandHandler<SerializedCommandProvid
                                                         .build());
     }
 
+    @Override
+    public void send(WrappedCommand wrappedCommand) {
+        flowControlQueues.put(queueName(), wrappedCommand, wrappedCommand.priority());
+    }
 }

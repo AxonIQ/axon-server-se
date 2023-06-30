@@ -1,3 +1,12 @@
+/*
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver.message.command;
 
 import io.axoniq.axonserver.applicationevents.SubscriptionEvents.SubscribeCommand;
@@ -7,7 +16,7 @@ import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.grpc.command.CommandSubscription;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.test.FakeStreamObserver;
-import org.junit.*;
+import org.junit.Test;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -113,6 +122,11 @@ public class CommandRegistrationCacheLoadFactorTest {
 
         @Override
         public void confirm(String messageId) {
+
+        }
+
+        @Override
+        public void send(WrappedCommand wrappedCommand) {
 
         }
     }
