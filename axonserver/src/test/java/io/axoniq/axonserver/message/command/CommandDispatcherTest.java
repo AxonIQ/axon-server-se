@@ -100,7 +100,7 @@ public class CommandDispatcherTest {
                                        responseObserver.onNext(response);
                                        responseObserver.onCompleted();
                                    });
-        assertEquals(1, commandDispatcher.getCommandQueues().getSegments().get(client.toString()).size());
+        assertEquals(1, commandDispatcher.getCommandQueues().getSegments().get(client).size());
         assertEquals(0, responseObserver.values().size());
         Mockito.verify(commandCache, times(1)).putIfAbsent(eq("12"), any());
     }
