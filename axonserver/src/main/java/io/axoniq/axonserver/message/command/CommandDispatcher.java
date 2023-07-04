@@ -175,7 +175,7 @@ public class CommandDispatcher {
     private void handleDisconnection(ClientStreamIdentification client, boolean proxied) {
         cleanupRegistrations(client);
         if (!proxied) {
-            getCommandQueues().move(client.toString(), this::redispatch);
+            getCommandQueues().move(client, this::redispatch);
         }
         handlePendingCommands(client);
     }
@@ -246,7 +246,7 @@ public class CommandDispatcher {
         return commandQueues;
     }
 
-    private String redispatch(WrappedCommand command) {
+    private ClientStreamIdentification redispatch(WrappedCommand command) {
         SerializedCommand request = command.command();
         CommandInformation commandInformation = commandCache.remove(request.getMessageIdentifier());
         if (commandInformation == null) {
@@ -272,7 +272,7 @@ public class CommandDispatcher {
                                                                                         .getResponseConsumer(),
                                                                                 client.getClientStreamIdentification(),
                                                                                 client.getComponentName()));
-        return client.queueName();
+        return client.getClientStreamIdentification();
     }
 
     private void handlePendingCommands(ClientStreamIdentification client) {

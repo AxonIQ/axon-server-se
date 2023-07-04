@@ -88,14 +88,13 @@ public class CommandServiceTest {
         Thread.sleep(150);
         assertEquals(1, commandQueue.getSegments().size());
 
-        String key = commandQueue.getSegments().entrySet().iterator().next().getKey();
-        String clientStreamId = key.substring(0, key.lastIndexOf("."));
+        ClientStreamIdentification clientIdentification = commandQueue.getSegments().entrySet().iterator().next()
+                                                                      .getKey();
 
-        ClientStreamIdentification clientIdentification = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
-                                                                             clientStreamId);
-        commandQueue.put(clientIdentification.toString(), new WrappedCommand(clientIdentification,
-                                                                             clientIdentification.getClientStreamId(),new SerializedCommand(Command.newBuilder()
-                                                                                                          .build())));
+        commandQueue.put(clientIdentification, new WrappedCommand(clientIdentification,
+                                                                  clientIdentification.getClientStreamId(),
+                                                                  new SerializedCommand(Command.newBuilder()
+                                                                                               .build())));
         Thread.sleep(50);
         assertEquals(1, fakeStreamObserver.values().size());
     }

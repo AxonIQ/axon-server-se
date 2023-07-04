@@ -204,8 +204,8 @@ public class CommandDispatcherTest {
                                                                 "client",
                                                                 request.getMessageIdentifier()),
                                           responseObserver::onNext);
-        assertEquals(1, commandDispatcher.getCommandQueues().getSegments().get(clientIdentification.toString()).size());
-        assertEquals("12", commandDispatcher.getCommandQueues().take(clientIdentification.toString()).command()
+        assertEquals(1, commandDispatcher.getCommandQueues().getSegments().get(clientIdentification).size());
+        assertEquals("12", commandDispatcher.getCommandQueues().take(clientIdentification).command()
                                             .getMessageIdentifier());
         assertEquals(0, responseObserver.values().size());
         Mockito.verify(commandCache, times(1)).putIfAbsent(eq("12"), any());

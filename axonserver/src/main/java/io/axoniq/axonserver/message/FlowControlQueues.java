@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -28,6 +28,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 
+import static io.axoniq.axonserver.metric.MeterFactory.CONTEXT;
+
 /**
  * @author Marc Gathier
  */
@@ -42,8 +44,8 @@ public class FlowControlQueues<T> {
     private final MetricName metricName;
     private final ErrorCode errorCode;
 
-    private final Map<String, BlockingQueue<DestinationNode>> segments = new ConcurrentHashMap<>();
-    private final Map<String, Gauge> gauges = new ConcurrentHashMap<>();
+    private final Map<ClientStreamIdentification, BlockingQueue<DestinationNode>> segments = new ConcurrentHashMap<>();
+    private final Map<ClientStreamIdentification, Gauge> gauges = new ConcurrentHashMap<>();
 
     public FlowControlQueues(Comparator<T> comparator, int softLimit, MetricName metricName,
                              MeterFactory meterFactory, ErrorCode errorCode) {
@@ -63,14 +65,14 @@ public class FlowControlQueues<T> {
         this(null);
     }
 
-    public T take(String filterValue) throws InterruptedException {
+    public T take(ClientStreamIdentification filterValue) throws InterruptedException {
         BlockingQueue<DestinationNode> destinationSegment = segments.computeIfAbsent(filterValue,
                                                                                      this::newQueueWithMetrics);
         DestinationNode message = destinationSegment.poll(1, TimeUnit.SECONDS);
         return message == null ? null : message.value;
     }
 
-    public void put(String filterValue, T value) {
+    public void put(ClientStreamIdentification filterValue, T value) {
         put(filterValue, value, 0);
     }
 
@@ -83,7 +85,7 @@ public class FlowControlQueues<T> {
      * @param priority    the priority of the item in the queue
      * @return the function to remove the item from the queue
      */
-    public Cancellable put(String filterValue, T value, long priority) {
+    public Cancellable put(ClientStreamIdentification filterValue, T value, long priority) {
         if (value == null) {
             throw new NullPointerException();
         }
@@ -122,7 +124,8 @@ public class FlowControlQueues<T> {
         };
     }
 
-    public void move(String oldDestinationValue, Function<T, String> newDestinationAssignment) {
+    public void move(ClientStreamIdentification oldDestinationValue,
+                     Function<T, ClientStreamIdentification> newDestinationAssignment) {
         logger.debug("Remove: {}", oldDestinationValue);
         BlockingQueue<DestinationNode> oldDestination = segments.remove(oldDestinationValue);
         Gauge gauge = gauges.remove(oldDestinationValue);
@@ -134,7 +137,7 @@ public class FlowControlQueues<T> {
         }
 
         oldDestination.forEach(filterNode -> {
-            String destination = newDestinationAssignment.apply(filterNode.value);
+            ClientStreamIdentification destination = newDestinationAssignment.apply(filterNode.value);
             if (destination != null) {
                 try {
                     segments.computeIfAbsent(destination, this::newQueueWithMetrics).put(filterNode);
@@ -148,11 +151,14 @@ public class FlowControlQueues<T> {
         });
     }
 
-    private PriorityBlockingQueue<DestinationNode> newQueueWithMetrics(String destination) {
+    private PriorityBlockingQueue<DestinationNode> newQueueWithMetrics(ClientStreamIdentification destination) {
         PriorityBlockingQueue<DestinationNode> queue = new PriorityBlockingQueue<>();
         if (meterFactory != null && metricName != null) {
             Gauge gauge = meterFactory.gauge(metricName,
-                                             Tags.of("destination", destination),
+                                             Tags.of("destination",
+                                                     destination.getClientStreamId(),
+                                                     CONTEXT,
+                                                     destination.getContext()),
                                              queue,
                                              BlockingQueue::size);
             gauges.put(destination, gauge);
@@ -160,7 +166,7 @@ public class FlowControlQueues<T> {
         return queue;
     }
 
-    public Map<String, BlockingQueue<DestinationNode>> getSegments() {
+    public Map<ClientStreamIdentification, BlockingQueue<DestinationNode>> getSegments() {
         return segments;
     }
 

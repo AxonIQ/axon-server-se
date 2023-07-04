@@ -183,6 +183,13 @@ public class QueryMetricsRegistry {
                 MeterFactory.TARGET, clientId)).takeSnapshot();
     }
 
+    public void errorMetric(String errorCode, String contextName, String request) {
+        meterFactory.counter(BaseMetricName.AXON_QUERY_ERROR, Tags.of(MeterFactory.CONTEXT, contextName,
+                                                                      MeterFactory.REQUEST, request,
+                                                                      MeterFactory.ERROR_CODE, errorCode))
+                    .increment();
+    }
+
 
     public static class QueryMetric {
 

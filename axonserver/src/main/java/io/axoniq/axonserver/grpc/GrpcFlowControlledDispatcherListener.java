@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.grpc;
 
+import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.util.StreamObserverUtils;
 import io.grpc.stub.StreamObserver;
@@ -37,11 +38,11 @@ public abstract class GrpcFlowControlledDispatcherListener<I, T> {
     protected final StreamObserver<I> inboundStream;
     private final AtomicLong permitsLeft = new AtomicLong(0);
     private final FlowControlQueues<T> queues;
-    protected final String queueName;
+    protected final ClientStreamIdentification queueName;
     private final Future<?>[] futures;
     private volatile boolean running = true;
 
-    public GrpcFlowControlledDispatcherListener(FlowControlQueues<T> queues, String queueName,
+    public GrpcFlowControlledDispatcherListener(FlowControlQueues<T> queues, ClientStreamIdentification queueName,
                                                 StreamObserver<I> inboundStream, int threads) {
         this.queues = queues;
         this.queueName = queueName;
@@ -121,7 +122,7 @@ public abstract class GrpcFlowControlledDispatcherListener<I, T> {
     protected abstract Logger getLogger();
 
     public String queue() {
-        return queueName;
+        return queueName.toString();
     }
 
     public int waiting() {

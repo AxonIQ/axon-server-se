@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -29,10 +29,11 @@ import io.axoniq.axonserver.test.FakeStreamObserver;
 import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.util.FailingStreamObserver;
 import io.micrometer.core.instrument.Metrics;
-import org.junit.*;
-import org.junit.runner.*;
-import org.mockito.*;
-import org.mockito.junit.*;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.Mock;
+import org.mockito.junit.MockitoJUnitRunner;
 
 import java.util.Collections;
 import java.util.HashSet;
@@ -48,8 +49,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static java.util.Arrays.asList;
-import static org.junit.Assert.*;
-import static org.mockito.Mockito.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * @author Marc Gathier
@@ -385,13 +392,17 @@ public class QueryDispatcherTest {
 
         testSubject.query(new SerializedQuery(Topology.DEFAULT_CONTEXT, request),
                           GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL,
-                          q -> { },
-                          d -> { });
+                          q -> {
+                          },
+                          d -> {
+                          });
 
         testSubject.cancel(requestId);
 
         FlowControlQueues<QueryInstruction> queue = testSubject.getQueryQueue();
-        QueryInstruction instruction = queue.take("client.default");
+        ClientStreamIdentification clientStreamIdentification = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
+                                                                                               "client");
+        QueryInstruction instruction = queue.take(clientStreamIdentification);
         assertNull(instruction);
     }
 
@@ -417,11 +428,13 @@ public class QueryDispatcherTest {
                           d -> { });
 
         testSubject.flowControl(requestId, 100);
+        ClientStreamIdentification clientStreamIdentification = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
+                                                                                               "client");
 
         FlowControlQueues<QueryInstruction> queue = testSubject.getQueryQueue();
-        QueryInstruction instruction = queue.take("client.default");
+        QueryInstruction instruction = queue.take(clientStreamIdentification);
         assertTrue(instruction.query().isPresent());
-        instruction = queue.take("client.default");
+        instruction = queue.take(clientStreamIdentification);
         assertTrue(instruction.flowControl().isPresent());
         assertEquals(requestId, instruction.requestId());
         assertEquals(100, instruction.flowControl().get().flowControl());
@@ -560,11 +573,14 @@ public class QueryDispatcherTest {
         AtomicReference<String> completion = new AtomicReference<>();
         queryDispatcher.query(new SerializedQuery(Topology.DEFAULT_CONTEXT, request),
                               GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL,
-                              r -> {},
+                              r -> {
+                              },
                               completion::set);
         queryDispatcher.cancel(requestId);
         assertTrue(queryCache.isEmpty());
-        assertNull(queryDispatcher.getQueryQueue().take("client.default"));
+        ClientStreamIdentification clientStreamIdentification = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
+                                                                                               "client");
+        assertNull(queryDispatcher.getQueryQueue().take(clientStreamIdentification));
         assertNotNull(completion.get());
     }
 }

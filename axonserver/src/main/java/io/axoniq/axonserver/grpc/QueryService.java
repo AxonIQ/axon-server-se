@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -46,13 +46,13 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
-import javax.annotation.PreDestroy;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
+import javax.annotation.PreDestroy;
 
 /**
  * GRPC service to handle query bus requests from Axon Application
@@ -230,7 +230,7 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
             private void flowControl(FlowControl flowControl) {
                 initClientReference(flowControl.getClientId());
                 if (listener.compareAndSet(null, new GrpcQueryDispatcherListener(queryDispatcher,
-                                                                                 clientRef.get().toString(),
+                                                                                 clientRef.get(),
                                                                                  wrappedQueryProviderInboundObserver,
                                                                                  processingThreads))) {
                     dispatcherListeners.put(clientRef.get(), listener.get());

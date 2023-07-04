@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -9,16 +9,19 @@
 
 package io.axoniq.axonserver.grpc;
 
+import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.test.FakeStreamObserver;
-import org.junit.*;
+import io.axoniq.axonserver.topology.Topology;
+import org.junit.Before;
+import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 /**
  * @author Marc Gathier
@@ -33,9 +36,11 @@ public class GrpcFlowControlledDispatcherListenerTest {
     public void setUp() throws Exception {
         FlowControlQueues<String> queues = new FlowControlQueues<>();
         testSubject = new GrpcFlowControlledDispatcherListener<>(queues,
-                                                                               "queue1",
-                                                                               new FakeStreamObserver<>(),
-                                                                               1) {
+                                                                 new ClientStreamIdentification(
+                                                                         Topology.DEFAULT_CONTEXT,
+                                                                         "queue1"),
+                                                                 new FakeStreamObserver<>(),
+                                                                 1) {
             @Override
             protected boolean send(String message) {
                 return false;
@@ -56,19 +61,21 @@ public class GrpcFlowControlledDispatcherListenerTest {
     @Test
     public void testExceptionOccurredSendingNextInstruction() throws InterruptedException {
         FlowControlQueues<String> queues = new FlowControlQueues<>();
-        queues.put("MyQueueName", "One");
-        queues.put("MyQueueName", "Two");
-        queues.put("MyQueueName", "Three");
-        queues.put("MyQueueName", "specialOne");
-        queues.put("MyQueueName", "Four");
-        queues.put("MyQueueName", "specialOne");
-        queues.put("MyQueueName", "Five");
-        queues.put("MyQueueName", "specialOne");
-        queues.put("MyQueueName", "Six");
-        queues.put("MyQueueName", "Final");
+        ClientStreamIdentification myQueueName = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
+                                                                                "MyQueueName");
+        queues.put(myQueueName, "One");
+        queues.put(myQueueName, "Two");
+        queues.put(myQueueName, "Three");
+        queues.put(myQueueName, "specialOne");
+        queues.put(myQueueName, "Four");
+        queues.put(myQueueName, "specialOne");
+        queues.put(myQueueName, "Five");
+        queues.put(myQueueName, "specialOne");
+        queues.put(myQueueName, "Six");
+        queues.put(myQueueName, "Final");
         CountDownLatch countDownLatch = new CountDownLatch(6);
         GrpcFlowControlledDispatcherListener<String, String> listener =
-                new GrpcFlowControlledDispatcherListener<>(queues, "MyQueueName", new FakeStreamObserver<>(), 2) {
+                new GrpcFlowControlledDispatcherListener<>(queues, myQueueName, new FakeStreamObserver<>(), 2) {
 
                     @Override
                     protected boolean send(String message) {

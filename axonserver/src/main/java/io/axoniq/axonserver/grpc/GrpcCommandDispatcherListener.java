@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.grpc;
 
+import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.message.command.WrappedCommand;
 import io.grpc.stub.StreamObserver;
@@ -23,7 +24,10 @@ import org.slf4j.LoggerFactory;
 public class GrpcCommandDispatcherListener extends GrpcFlowControlledDispatcherListener<SerializedCommandProviderInbound, WrappedCommand> {
     private static final Logger logger = LoggerFactory.getLogger(GrpcCommandDispatcherListener.class);
 
-    public GrpcCommandDispatcherListener(FlowControlQueues<WrappedCommand> commandQueues, String queueName, StreamObserver<SerializedCommandProviderInbound> commandProviderInboundStreamObserver, int threads) {
+    public GrpcCommandDispatcherListener(FlowControlQueues<WrappedCommand> commandQueues,
+                                         ClientStreamIdentification queueName,
+                                         StreamObserver<SerializedCommandProviderInbound> commandProviderInboundStreamObserver,
+                                         int threads) {
         super(commandQueues, queueName, commandProviderInboundStreamObserver, threads);
     }
 

@@ -49,6 +49,6 @@ public class DirectCommandHandler extends CommandHandler<SerializedCommandProvid
 
     @Override
     public void send(WrappedCommand wrappedCommand) {
-        flowControlQueues.put(queueName(), wrappedCommand, wrappedCommand.priority());
+        flowControlQueues.put(clientStreamIdentification, wrappedCommand, wrappedCommand.priority());
     }
 }

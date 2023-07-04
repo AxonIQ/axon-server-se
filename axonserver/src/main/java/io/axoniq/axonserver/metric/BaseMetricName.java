@@ -39,6 +39,7 @@ public enum BaseMetricName implements MetricName {
      * Metric for the rate of queries handled (tags: context)
      */
     AXON_QUERY_RATE("axon.query", "Number of queries"),
+    AXON_QUERY_ERROR("axon.query.errors", "Number of errors for queries received by the Axon Server node"),
     /**
      * Metric for the number of currently active queries
      */
@@ -46,10 +47,12 @@ public enum BaseMetricName implements MetricName {
     /**
      * Metric for the token of the last event in the event store (tags: context)
      */
+    AXON_EVENT_LAST_TOKEN("axon.event.lastToken", "Last token in the event store"),
     AXON_ACTIVE_AGGREGATE_READS("axon.aggregate.reads.active", "Number of active aggregate reads"),
     AXON_ACTIVE_EVENT_WRITES("axon.event.writes.active", "Number of active event writes"),
     AXON_ACTIVE_EVENT_STREAMS("axon.event.streams.active", "Number of active event streams"),
-    AXON_EVENT_LAST_TOKEN("axon.event.lastToken", "Last token in the event store"),
+    AXON_AGGREGATE_READS("local.aggregate.reads", "Rate counter for the number of aggregate reads"),
+    AXON_SNAPSHOT_READS("local.snapshot.reads", "Rate counter for the number of snapshot reads"),
     /**
      * Metric for the token of the last snapshot in the event store (tags: context)
      */

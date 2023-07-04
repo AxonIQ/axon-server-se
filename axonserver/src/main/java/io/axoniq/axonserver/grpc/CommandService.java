@@ -206,7 +206,7 @@ public class CommandService implements AxonServerClientService {
                 initClientReference(flowControl.getClientId());
                 if (listenerRef.compareAndSet(null,
                                               new GrpcCommandDispatcherListener(commandDispatcher.getCommandQueues(),
-                                                                                clientRef.get().toString(),
+                                                                                clientRef.get(),
                                                                                 wrappedResponseObserver,
                                                                                 processingThreads))) {
                     dispatcherListeners.put(clientRef.get(), listenerRef.get());

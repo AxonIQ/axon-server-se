@@ -21,6 +21,8 @@
                     commandSaturation: null,
                     querySaturation: null,
                     eventSaturation: null,
+                    readSnapshots: {"mean": 0, "max": 0, percentileValues: []},
+                    appendSnapshots: {"mean": 0, "max": 0, percentileValues: []},
                     readEvents: {"mean": 0, "max": 0, percentileValues: []},
                     errorCounters: null,
                     details: null,
@@ -53,10 +55,10 @@
                                 this.details = this.commands.percentileValues;
                             }
                         });
-                        axios.get("v1/public/saturation/queries").then(response => {
+                        axios.get("v1/public/saturation/queries" + this.contextParameter()).then(response => {
                             this.querySaturation = response.data;
                         });
-                        axios.get("v1/public/saturation/commands").then(response => {
+                        axios.get("v1/public/saturation/commands" + this.contextParameter()).then(response => {
                             this.commandSaturation = response.data;
                         });
                         axios.get("v1/public/latency/appendEvents" + this.contextParameter()).then(response => {
@@ -66,7 +68,21 @@
                             }
 
                         });
-                        axios.get("v1/public/saturation/events").then(response => {
+                        axios.get("v1/public/latency/appendSnapshot" + this.contextParameter()).then(response => {
+                            this.appendSnapshots = response.data;
+                            if (this.detailsType === "appendSnapshots") {
+                                this.details = this.appendSnapshots.percentileValues;
+                            }
+
+                        });
+                        axios.get("v1/public/latency/readSnapshots" + this.contextParameter()).then(response => {
+                            this.readSnapshots = response.data;
+                            if (this.detailsType === "readSnapshots") {
+                                this.details = this.readSnapshots.percentileValues;
+                            }
+
+                        });
+                        axios.get("v1/public/saturation/events" + this.contextParameter()).then(response => {
                             this.eventSaturation = response.data;
                         });
                         axios.get("v1/public/latency/readEvents" + this.contextParameter()).then(response => {
@@ -76,7 +92,7 @@
                             }
 
                         });
-                        axios.get("v1/public/errors").then(response => {
+                        axios.get("v1/public/errors" + this.contextParameter()).then(response => {
                             this.errorCounters = response.data;
                         });
                         axios.get("v1/public/traffic" + this.contextParameter()).then(response => {
@@ -116,6 +132,16 @@
                         this.detailsType = "readEvents"
                         this.showModal('context-metrics-details');
                     },
+                    showAppendSnapshotsDetails() {
+                        this.details = this.appendSnapshots.percentileValues;
+                        this.detailsType = "appendSnapshots"
+                        this.showModal('context-metrics-details');
+                    },
+                    showReadSnapshotsDetails() {
+                        this.details = this.readSnapshots.percentileValues;
+                        this.detailsType = "readSnapshots"
+                        this.showModal('context-metrics-details');
+                    },
                     rtrim(text) {
                         if (text && text.length > 35) {
                             return "..." + text.substring(text.length - 35, text.length);
@@ -132,7 +158,7 @@
         <span style="margin-left: 15px;">
 
         Active context:
-        <select v-model="activeContext">
+        <select v-model="activeContext" @change="reloadStatus">
             <option>--all--</option>
             <option v-for="n in contexts">{{ n }}</option>
         </select>
@@ -161,11 +187,6 @@
                         @click.prevent="showCommandDetails()">
                     Details
                 </button>
-
-            </section>
-        </div>
-        <div class="column status">
-            <section>
                 <h3>Query</h3>
                 <ul>
                     <li>
@@ -187,7 +208,7 @@
         </div>
         <div class="column status">
             <section>
-                <h3>Event Store</h3>
+                <h3>Events</h3>
                 <h4>Append Events</h4>
                 <ul>
                     <li>
@@ -221,6 +242,43 @@
                 </button>
             </section>
         </div>
+        <div class="column status">
+            <section>
+                <h3>Snapshots</h3>
+                <h4>Append Snapshots</h4>
+                <ul>
+                    <li>
+                        <span>Mean</span>
+                        <span class="number">{{ appendSnapshots.mean | formatLatency }}</span>
+                    </li>
+                    <li>
+                        <span>Max</span>
+                        <span class="number">{{ appendSnapshots.max | formatLatency }}</span>
+                    </li>
+
+                </ul>
+                <button class="button"
+                        @click.prevent="showAppendSnapshotsDetails()">
+                    Details
+                </button>
+                <h4>Read Snapshots</h4>
+                <ul>
+                    <li>
+                        <span>Mean</span>
+                        <span class="number">{{ readSnapshots.mean | formatLatency }}</span>
+                    </li>
+                    <li>
+                        <span>Max</span>
+                        <span class="number">{{ readSnapshots.max | formatLatency }}</span>
+                    </li>
+
+                </ul>
+                <button class="button"
+                        @click.prevent="showReadSnapshotsDetails()">
+                    Details
+                </button>
+            </section>
+        </div>
     </div>
 
     <h2>Traffic</h2>
@@ -239,21 +297,15 @@
                         <span>Received / second (last minute)</span>
                         <span class="number">{{ status.commandRate.oneMinuteRate | formatLatency }}</span>
                     </li>
-                    <li>
+                    <li v-if="trafficDetails">
                         <span>Received / second (last 5 minutes)</span>
                         <span class="number">{{ status.commandRate.fiveMinuteRate | formatLatency }}</span>
                     </li>
-                    <li>
+                    <li v-if="trafficDetails">
                         <span>Received / second (last 15 minutes)</span>
                         <span class="number">{{ status.commandRate.fifteenMinuteRate | formatLatency }}</span>
                     </li>
                 </ul>
-            </section>
-
-        </div>
-
-        <div class="column status">
-            <section>
                 <h3>Query</h3>
 
                 <ul v-if="status">
@@ -265,11 +317,11 @@
                         <span>Received / second (last minute)</span>
                         <span class="number">{{ status.queryRate.oneMinuteRate | formatLatency }}</span>
                     </li>
-                    <li>
+                    <li v-if="trafficDetails">
                         <span>Received / second (last 5 minutes)</span>
                         <span class="number">{{ status.queryRate.fiveMinuteRate | formatLatency }}</span>
                     </li>
-                    <li>
+                    <li v-if="trafficDetails">
                         <span>Received / second (last 15 minutes)</span>
                         <span class="number">{{ status.queryRate.fifteenMinuteRate | formatLatency }}</span>
                     </li>
@@ -277,9 +329,11 @@
             </section>
 
         </div>
+
         <div class="column status">
             <section>
-                <h3>Append Event</h3>
+                <h3>Events</h3>
+                <h4>Append events</h4>
 
                 <ul v-if="status">
                     <li>
@@ -290,16 +344,42 @@
                         <span>Received / second (last minute)</span>
                         <span class="number">{{ status.eventRate.oneMinuteRate | formatLatency }}</span>
                     </li>
-                    <li>
+                    <li v-if="trafficDetails">
                         <span>Received / second (last 5 minutes)</span>
                         <span class="number">{{ status.eventRate.fiveMinuteRate | formatLatency }}</span>
                     </li>
-                    <li>
+                    <li v-if="trafficDetails">
                         <span>Received / second (last 15 minutes)</span>
                         <span class="number">{{ status.eventRate.fifteenMinuteRate | formatLatency }}</span>
                     </li>
                 </ul>
-                <h3>Append Snapshot</h3>
+                <h4>Read Aggregate</h4>
+
+                <ul v-if="status">
+                    <li>
+                        <span>Total received </span>
+                        <span class="number">{{ status.readAggregateRate.count }}</span>
+                    </li>
+                    <li>
+                        <span>Received / second (last minute)</span>
+                        <span class="number">{{ status.readAggregateRate.oneMinuteRate | formatLatency }}</span>
+                    </li>
+                    <li v-if="trafficDetails">
+                        <span>Received / second (last 5 minutes)</span>
+                        <span class="number">{{ status.readAggregateRate.fiveMinuteRate | formatLatency }}</span>
+                    </li>
+                    <li v-if="trafficDetails">
+                        <span>Received / second (last 15 minutes)</span>
+                        <span class="number">{{ status.readAggregateRate.fifteenMinuteRate | formatLatency }}</span>
+                    </li>
+                </ul>
+            </section>
+
+        </div>
+        <div class="column status">
+            <section>
+                <h3>Snapshots</h3>
+                <h4>Append Snapshot</h4>
 
                 <ul v-if="status">
                     <li>
@@ -310,13 +390,32 @@
                         <span>Received / second (last minute)</span>
                         <span class="number">{{ status.snapshotRate.oneMinuteRate | formatLatency }}</span>
                     </li>
-                    <li>
+                    <li v-if="trafficDetails">
                         <span>Received / second (last 5 minutes)</span>
                         <span class="number">{{ status.snapshotRate.fiveMinuteRate | formatLatency }}</span>
                     </li>
-                    <li>
+                    <li v-if="trafficDetails">
                         <span>Received / second (last 15 minutes)</span>
                         <span class="number">{{ status.snapshotRate.fifteenMinuteRate | formatLatency }}</span>
+                    </li>
+                </ul>
+                <h4>Read Snapshot</h4>
+                <ul v-if="status">
+                    <li>
+                        <span>Total received </span>
+                        <span class="number">{{ status.readSnapshotRate.count }}</span>
+                    </li>
+                    <li>
+                        <span>Received / second (last minute)</span>
+                        <span class="number">{{ status.readSnapshotRate.oneMinuteRate | formatLatency }}</span>
+                    </li>
+                    <li v-if="trafficDetails">
+                        <span>Received / second (last 5 minutes)</span>
+                        <span class="number">{{ status.readSnapshotRate.fiveMinuteRate | formatLatency }}</span>
+                    </li>
+                    <li v-if="trafficDetails">
+                        <span>Received / second (last 15 minutes)</span>
+                        <span class="number">{{ status.readSnapshotRate.fifteenMinuteRate | formatLatency }}</span>
                     </li>
                 </ul>
             </section>

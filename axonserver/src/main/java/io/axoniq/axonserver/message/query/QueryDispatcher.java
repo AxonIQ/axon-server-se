@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -199,7 +199,10 @@ public class QueryDispatcher {
         DefaultExecutionContext executionContext = new DefaultExecutionContext(serializedQuery.context(),
                                                                                principal);
 
-        Consumer<QueryResponse> interceptedCallback = r -> intercept(executionContext, r, callback);
+        Consumer<QueryResponse> interceptedCallback = r -> intercept(executionContext,
+                                                                     serializedQuery.query().getQuery(),
+                                                                     r,
+                                                                     callback);
         try {
             SerializedQuery serializedQuery2 = queryInterceptors.queryRequest(serializedQuery, executionContext);
 
@@ -291,10 +294,14 @@ public class QueryDispatcher {
         }
     }
 
-    private void intercept(DefaultExecutionContext executionContext, QueryResponse response,
+    private void intercept(DefaultExecutionContext executionContext, String request, QueryResponse response,
                            Consumer<QueryResponse> callback) {
         try {
-            callback.accept(queryInterceptors.queryResponse(response, executionContext));
+            QueryResponse interceptedResponse = queryInterceptors.queryResponse(response, executionContext);
+            callback.accept(interceptedResponse);
+            if (interceptedResponse.hasErrorMessage()) {
+                queryMetricsRegistry.errorMetric(response.getErrorCode(), executionContext.contextName(), request);
+            }
         } catch (Exception ex) {
             logger.warn("{}: Exception in response interceptor", executionContext.contextName(), ex);
             callback.accept(QueryResponse.newBuilder()
@@ -304,6 +311,9 @@ public class QueryDispatcher {
                                          .setErrorMessage(ErrorMessageFactory
                                                                   .build(ex.getMessage()))
                                          .build());
+            queryMetricsRegistry.errorMetric(ErrorCode.fromException(ex).getCode(),
+                                             executionContext.contextName(),
+                                             request);
             executionContext.compensate(ex);
         }
     }
