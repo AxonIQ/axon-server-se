@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -9,12 +9,13 @@
 
 package io.axoniq.axonserver.grpc.axonhub;
 
+import com.google.protobuf.ByteString;
 import io.axoniq.axonserver.grpc.AxonServerClientService;
 import io.axoniq.axonserver.grpc.CommandService;
 import io.axoniq.axonserver.grpc.SerializedCommandProviderInbound;
 import io.axoniq.axonserver.grpc.SerializedCommandResponse;
 import io.axoniq.axonserver.grpc.command.CommandProviderOutbound;
-import io.axoniq.axonserver.message.ByteArrayMarshaller;
+import io.axoniq.axonserver.message.ByteStringMarshaller;
 import io.grpc.MethodDescriptor;
 import io.grpc.ServerServiceDefinition;
 import io.grpc.protobuf.ProtoUtils;
@@ -31,6 +32,7 @@ import static io.grpc.stub.ServerCalls.asyncUnaryCall;
  */
 @Component
 public class AxonHubCommandService implements AxonServerClientService {
+
     private static final String SERVICE_NAME = "io.axoniq.axonhub.grpc.CommandService";
     private static final MethodDescriptor<CommandProviderOutbound, SerializedCommandProviderInbound> METHOD_OPEN_STREAM =
             MethodDescriptor.newBuilder(ProtoUtils.marshaller(CommandProviderOutbound.getDefaultInstance()),
@@ -40,8 +42,8 @@ public class AxonHubCommandService implements AxonServerClientService {
                             .setType(MethodDescriptor.MethodType.BIDI_STREAMING)
                             .build();
 
-    private static final MethodDescriptor<byte[], SerializedCommandResponse> METHOD_DISPATCH =
-            MethodDescriptor.newBuilder(ByteArrayMarshaller.instance(),
+    private static final MethodDescriptor<ByteString, SerializedCommandResponse> METHOD_DISPATCH =
+            MethodDescriptor.newBuilder(ByteStringMarshaller.instance(),
                                         ProtoUtils.marshaller(SerializedCommandResponse.getDefaultInstance()))
                             .setFullMethodName(generateFullMethodName(SERVICE_NAME, "Dispatch"))
                             .setType(MethodDescriptor.MethodType.UNARY)

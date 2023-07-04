@@ -200,7 +200,7 @@ public class CommandDispatcherTest {
         when(registrations.findByClientAndCommand(eq(clientIdentification), any())).thenReturn(result);
 
         commandDispatcher.dispatchProxied(Topology.DEFAULT_CONTEXT,
-                                          new SerializedCommand(request.toByteArray(),
+                                          new SerializedCommand(request.toByteString(),
                                                                 "client",
                                                                 request.getMessageIdentifier()),
                                           responseObserver::onNext);
