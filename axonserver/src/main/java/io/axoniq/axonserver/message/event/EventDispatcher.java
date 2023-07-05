@@ -381,7 +381,7 @@ public class EventDispatcher {
                                                                                          request))
                                 .doOnTerminate(() -> eventsCounter(context,
                                                                    readSnapshotCounter,
-                                                                   BaseMetricName.AXON_SNAPSHOTS).mark())
+                                                                   BaseMetricName.AXON_SNAPSHOT_READS).mark())
                                 .name("local.aggregate.snapshots")
                                 .tag(CONTEXT, context)
                                 .metrics();
