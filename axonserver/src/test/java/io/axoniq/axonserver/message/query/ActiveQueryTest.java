@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -14,14 +14,19 @@ import io.axoniq.axonserver.grpc.SerializedQuery;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
 import io.axoniq.axonserver.grpc.query.QueryResponse;
 import org.assertj.core.util.Sets;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 
 class ActiveQueryTest {
@@ -93,10 +98,10 @@ class ActiveQueryTest {
         assertNotNull(completed[0]);
     }
 
-    private Set<QueryHandler<?>> mockedQueryHandlers() {
-        QueryHandler<?> handler1 = mock(QueryHandler.class);
+    private Set<QueryHandler> mockedQueryHandlers() {
+        QueryHandler handler1 = mock(QueryHandler.class);
         when(handler1.getClientStreamId()).thenReturn("client1");
-        QueryHandler<?> handler2 = mock(QueryHandler.class);
+        QueryHandler handler2 = mock(QueryHandler.class);
         when(handler2.getClientStreamId()).thenReturn("client2");
         return Sets.newLinkedHashSet(handler1, handler2);
     }

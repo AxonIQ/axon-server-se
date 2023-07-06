@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -46,13 +46,13 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
-import javax.annotation.PreDestroy;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
+import javax.annotation.PreDestroy;
 
 /**
  * GRPC service to handle query bus requests from Axon Application
@@ -117,11 +117,11 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
         SendingStreamObserver<QueryProviderInbound> wrappedQueryProviderInboundObserver = new SendingStreamObserver<>(
                 inboundStreamObserver);
 
-        return new ReceivingStreamObserver<QueryProviderOutbound>(logger) {
+        return new ReceivingStreamObserver<>(logger) {
             private final AtomicReference<String> clientIdRef = new AtomicReference<>();
             private final AtomicReference<GrpcQueryDispatcherListener> listener = new AtomicReference<>();
             private final AtomicReference<ClientStreamIdentification> clientRef = new AtomicReference<>();
-            private final AtomicReference<QueryHandler<QueryProviderInbound>> queryHandler = new AtomicReference<>();
+            private final AtomicReference<QueryHandler> queryHandler = new AtomicReference<>();
 
             @Override
             protected void consume(QueryProviderOutbound queryProviderOutbound) {
@@ -249,7 +249,9 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
             private void checkInitClient(String clientId, String componentName) {
                 initClientReference(clientId);
                 queryHandler.compareAndSet(null,
-                                           new DirectQueryHandler(wrappedQueryProviderInboundObserver, clientRef.get(),
+                                           new DirectQueryHandler(wrappedQueryProviderInboundObserver,
+                                                                  queryDispatcher.getQueryQueue(),
+                                                                  clientRef.get(),
                                                                   componentName, clientId));
             }
 

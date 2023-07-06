@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -141,7 +141,7 @@ public class QueryRegistrationCache {
      * @param request the query request
      * @return a set of {@link QueryHandler}s.
      */
-    public Set<QueryHandler<?>> find(String context, QueryRequest request) {
+    public Set<QueryHandler> find(String context, QueryRequest request) {
         QueryDefinition queryDefinition = new QueryDefinition(context, request.getQuery());
         QueryInformation queryInformation = registrationsPerQuery.get(queryDefinition);
         if (queryInformation == null) {
@@ -175,7 +175,7 @@ public class QueryRegistrationCache {
         return (registrationsPerQuery.containsKey(def)) ? registrationsPerQuery.get(def).handlers.values() : emptySet();
     }
 
-    private QueryHandler<?> pickOne(QueryDefinition queryDefinition, String componentName,
+    private QueryHandler pickOne(QueryDefinition queryDefinition, String componentName,
                                  NavigableSet<ClientStreamIdentification> queryHandlers,
                                  Set<ClientStreamIdentification> filteredCandidates) {
         if (queryHandlers.isEmpty()) {
@@ -184,23 +184,24 @@ public class QueryRegistrationCache {
         ClientStreamIdentification client = queryHandlerSelector.select(queryDefinition,
                                                                         componentName,
                                                                         new TreeSet<>(intersect(queryHandlers,
-                                                                                                     filteredCandidates)));
+                                                                                                filteredCandidates)));
         if (client == null) {
             return null;
         }
         return registrationsPerQuery.get(queryDefinition).getHandler(client);
     }
 
-    private Set<ClientStreamIdentification>  intersect(Set<ClientStreamIdentification> first, Set<ClientStreamIdentification> second) {
+    private Set<ClientStreamIdentification> intersect(Set<ClientStreamIdentification> first,
+                                                      Set<ClientStreamIdentification> second) {
         Set<ClientStreamIdentification> result = new HashSet<>(first);
         result.removeIf(item -> !second.contains(item));
         return result;
     }
 
-    public Map<QueryDefinition, Map<String, Set<QueryHandler<?>>>> getAll() {
-        Map<QueryDefinition, Map<String, Set<QueryHandler<?>>>> all = new HashMap<>();
+    public Map<QueryDefinition, Map<String, Set<QueryHandler>>> getAll() {
+        Map<QueryDefinition, Map<String, Set<QueryHandler>>> all = new HashMap<>();
         registrationsPerQuery.forEach((query, queryInformation) -> {
-            Map<String, Set<QueryHandler<?>>> componentsMap = new HashMap<>();
+            Map<String, Set<QueryHandler>> componentsMap = new HashMap<>();
             all.put(query, componentsMap);
             queryInformation.handlers.values().forEach(h ->
                                                                componentsMap.computeIfAbsent(h.getComponentName(),
@@ -225,7 +226,7 @@ public class QueryRegistrationCache {
         return find(queryDefinition, clientStreamId);
     }
 
-    public QueryHandler<?> find(QueryDefinition queryDefinition, String clientStreamId) {
+    public QueryHandler find(QueryDefinition queryDefinition, String clientStreamId) {
         ClientStreamIdentification clientStreamIdentification =
                 new ClientStreamIdentification(queryDefinition.getContext(), clientStreamId);
         QueryInformation queryInformation = registrationsPerQuery.get(queryDefinition);

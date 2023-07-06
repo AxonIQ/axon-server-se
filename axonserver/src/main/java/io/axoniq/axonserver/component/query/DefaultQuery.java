@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -24,11 +24,11 @@ public class DefaultQuery implements Query{
 
     private final QueryDefinition definition;
 
-    private final Map<String, Set<QueryHandler<?>>> handlers;
+    private final Map<String, Set<QueryHandler>> handlers;
     private final Set<String> responseTypes;
 
     public DefaultQuery(QueryDefinition definition,
-                        Map<String, Set<QueryHandler<?>>> handlers, Set<String> responseTypes) {
+                        Map<String, Set<QueryHandler>> handlers, Set<String> responseTypes) {
         this.definition = definition;
         this.handlers = handlers;
         this.responseTypes = responseTypes;
