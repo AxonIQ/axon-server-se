@@ -488,11 +488,14 @@ public class StandardIndexManager implements IndexManager {
                 return Optional.empty();
             }
             if (segment <= maxTokenHint) {
-                IndexEntries indexEntries = activeIndexes.get(segment).get(aggregateId);
-                if (indexEntries != null) {
-                    return Optional.of(indexEntries.lastSequenceNumber());
+                Map<String, IndexEntries> stringIndexEntriesMap = activeIndexes.get(segment);
+                if (stringIndexEntriesMap != null) {
+                    IndexEntries indexEntries = stringIndexEntriesMap.get(aggregateId);
+                    if (indexEntries != null) {
+                        return Optional.of(indexEntries.lastSequenceNumber());
+                    }
+                    checked++;
                 }
-                checked++;
             }
         }
         for (Map.Entry<Long, Integer> segment : indexesDescending.entrySet()) {
@@ -596,7 +599,7 @@ public class StandardIndexManager implements IndexManager {
      * Removes the index and bloom filter for the segment
      *
      * @param segment the segment number
-     *                TODO: Change to remove all versions of the segment
+     *                               TODO: Change to remove all versions of the segment
      */
     public boolean removeAllVersions(long segment) {
         StorageProperties properties = storageProperties.get();
@@ -620,6 +623,7 @@ public class StandardIndexManager implements IndexManager {
         return FileUtils.delete(properties.index(storagePath, segment)) &&
                 FileUtils.delete(properties.bloomFilter(storagePath, segment));
     }
+
     @Override
     public boolean remove(FileVersion fileVersion) {
         StandardIndex index = indexMap.remove(fileVersion);
