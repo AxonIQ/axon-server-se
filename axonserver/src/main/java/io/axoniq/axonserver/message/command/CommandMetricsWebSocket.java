@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -9,6 +9,8 @@
 
 package io.axoniq.axonserver.message.command;
 
+import io.axoniq.axonserver.commandprocessing.spi.CommandHandler;
+import io.axoniq.axonserver.commandprocessing.spi.CommandHandlerRegistry;
 import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.transport.rest.PrincipalAuthentication;
 import org.springframework.context.event.EventListener;
@@ -22,7 +24,6 @@ import org.springframework.web.socket.messaging.SessionUnsubscribeEvent;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Stream;
 
 /**
  * Created by Sara Pellegrini on 18/04/2018. sara.pellegrini@gmail.com
@@ -34,17 +35,17 @@ public class CommandMetricsWebSocket {
     private final Map<String, Set<String>> subscriptions = new ConcurrentHashMap<>();
     private final CommandMetricsRegistry commandMetricsRegistry;
 
-    private final CommandRegistrationCache commandRegistrationCache;
+    private final CommandHandlerRegistry commandHandlerRegistry;
 
     private final Topology topology;
     private final SimpMessagingTemplate webSocket;
 
     public CommandMetricsWebSocket(CommandMetricsRegistry commandMetricsRegistry,
-                                   CommandRegistrationCache commandRegistrationCache,
+                                   CommandHandlerRegistry commandHandlerRegistry,
                                    Topology topology,
                                    SimpMessagingTemplate webSocket) {
         this.commandMetricsRegistry = commandMetricsRegistry;
-        this.commandRegistrationCache = commandRegistrationCache;
+        this.commandHandlerRegistry = commandHandlerRegistry;
         this.topology = topology;
         this.webSocket = webSocket;
     }
@@ -55,17 +56,15 @@ public class CommandMetricsWebSocket {
         if (subscriptions.isEmpty()) {
             return;
         }
-        commandRegistrationCache.getAll().forEach(
-                (commandHandler, registrations) -> getMetrics(commandHandler, registrations)
-                        .forEach(
-                                commandMetric -> {
-                                    subscriptions.forEach((destinations, contexts) -> {
-                                        if (contexts.contains(commandMetric.getContext())) {
-                                            webSocket.convertAndSend(destinations, commandMetric);
-                                        }
-                                    });
-                                }
-                        ));
+        commandHandlerRegistry.all()
+                              .map(this::asCommandMetric)
+                              .doOnNext(commandMetric -> subscriptions.forEach((destinations, contexts) -> {
+                                  if (contexts.contains(commandMetric.getContext())) {
+                                      webSocket.convertAndSend(destinations, commandMetric);
+                                  }
+                              }))
+
+                              .subscribe();
     }
 
     @EventListener
@@ -85,13 +84,14 @@ public class CommandMetricsWebSocket {
         }
     }
 
-    private Stream<CommandMetricsRegistry.CommandMetric> getMetrics(CommandHandler commandHandler,
-                                                                    Set<CommandRegistrationCache.RegistrationEntry> registrations) {
-        return registrations.stream()
-                            .map(registration -> commandMetricsRegistry
-                                    .commandMetric(registration.getCommand(),
-                                                   commandHandler.getClientId(),
-                                                   commandHandler.getClientStreamIdentification().getContext(),
-                                                   commandHandler.getComponentName()));
+    private CommandMetricsRegistry.CommandMetric asCommandMetric(CommandHandler commandHandler) {
+        String clientId = commandHandler.metadata()
+                                        .metadataValue(CommandHandler.CLIENT_ID, "UNKNOWN");
+        String componentName = commandHandler.metadata()
+                                             .metadataValue(CommandHandler.COMPONENT_NAME, "UNKNOWN");
+        return commandMetricsRegistry.commandMetric(commandHandler.commandName(),
+                                                    clientId,
+                                                    commandHandler.context(),
+                                                    componentName);
     }
 }

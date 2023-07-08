@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -11,12 +11,15 @@ package io.axoniq.axonserver.rest;
 
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.config.SystemInfoProvider;
-import io.axoniq.axonserver.grpc.SerializedCommand;
+import io.axoniq.axonserver.commandprocesing.imp.InMemoryCommandHandlerRegistry;
+import io.axoniq.axonserver.commandprocessing.spi.Command;
+import io.axoniq.axonserver.commandprocessing.spi.CommandHandlerRegistry;
+import io.axoniq.axonserver.commandprocessing.spi.CommandHandlerSubscription;
+import io.axoniq.axonserver.commandprocessing.spi.CommandResult;
+import io.axoniq.axonserver.commandprocessing.spi.Metadata;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
-import io.axoniq.axonserver.message.command.CommandHandler;
 import io.axoniq.axonserver.message.command.CommandMetricsRegistry;
-import io.axoniq.axonserver.message.command.CommandRegistrationCache;
 import io.axoniq.axonserver.message.query.QueryDefinition;
 import io.axoniq.axonserver.message.query.QueryHandler;
 import io.axoniq.axonserver.message.query.QueryMetricsRegistry;
@@ -30,9 +33,14 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Before;
 import org.junit.Test;
+import reactor.core.publisher.Mono;
 
+import java.io.Serializable;
 import java.security.Principal;
+import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.mock;
@@ -52,26 +60,64 @@ public class MetricsRestControllerTest {
 
     @Before
     public void setUp() {
-        CommandRegistrationCache commandRegistrationCache = new CommandRegistrationCache();
+        CommandHandlerRegistry commandHandlerRegistry = new InMemoryCommandHandlerRegistry(Collections.emptyList());
         testclient = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "testclient");
-        commandRegistrationCache.add("Sample", new CommandHandler<Object>(null,
-                                                                          testclient, "Target",
-                                                                          "testcomponent") {
+        commandHandlerRegistry.register(new CommandHandlerSubscription() {
             @Override
-            public void dispatch(SerializedCommand request) {
+            public io.axoniq.axonserver.commandprocessing.spi.CommandHandler commandHandler() {
+                return new io.axoniq.axonserver.commandprocessing.spi.CommandHandler() {
+                    private final String id = UUID.randomUUID().toString();
 
+                    @Override
+                    public String id() {
+                        return id;
+                    }
+
+                    @Override
+                    public String description() {
+                        return null;
+                    }
+
+                    @Override
+                    public String commandName() {
+                        return "Sample";
+                    }
+
+                    @Override
+                    public String context() {
+                        return "default";
+                    }
+
+                    @Override
+                    public Metadata metadata() {
+                        return new Metadata() {
+                            @Override
+                            public Iterable<String> metadataKeys() {
+                                return null;
+                            }
+
+                            @Override
+                            public <R extends Serializable> Optional<R> metadataValue(String metadataKey) {
+                                if (io.axoniq.axonserver.commandprocessing.spi.CommandHandler.COMPONENT_NAME.equals(
+                                        metadataKey)) {
+                                    return Optional.of((R) "testcomponent");
+                                }
+                                if (io.axoniq.axonserver.commandprocessing.spi.CommandHandler.CLIENT_ID.equals(
+                                        metadataKey)) {
+                                    return Optional.of((R) "Target");
+                                }
+                                return Optional.empty();
+                            }
+                        };
+                    }
+                };
             }
 
             @Override
-            public void confirm(String messageId) {
-
+            public Mono<CommandResult> dispatch(Command command) {
+                return null;
             }
-
-            @Override
-            public int compareTo(@NotNull CommandHandler o) {
-                return 0;
-            }
-        });
+        }).block();
         commandMetricsRegistry = new CommandMetricsRegistry(new MeterFactory(new SimpleMeterRegistry(),
                                                                              new DefaultMetricCollector()));
 
@@ -89,7 +135,7 @@ public class MetricsRestControllerTest {
         when(principal.getName()).thenReturn("Testuser");
         queryMetricsRegistry = new QueryMetricsRegistry(new MeterFactory(new SimpleMeterRegistry(),
                                                                          new DefaultMetricCollector()));
-        testSubject = new MetricsRestController(commandRegistrationCache, commandMetricsRegistry,
+        testSubject = new MetricsRestController(commandHandlerRegistry, commandMetricsRegistry,
                                                 queryRegistrationCache, queryMetricsRegistry,
                                                 new DefaultTopology(new MessagingPlatformConfiguration(new SystemInfoProvider() {
                                                 })));
@@ -97,13 +143,14 @@ public class MetricsRestControllerTest {
 
     @Test
     public void getCommandMetrics() {
-        List<CommandMetricsRegistry.CommandMetric> commands = testSubject.getCommandMetrics(principal);
+        List<CommandMetricsRegistry.CommandMetric> commands = testSubject.getCommandMetrics(principal).collectList()
+                                                                         .block();
         assertEquals(1, commands.size());
         assertEquals("Target", commands.get(0).getClientId());
         assertEquals(testclient.getContext(), commands.get(0).getContext());
         assertEquals(0, commands.get(0).getCount());
         commandMetricsRegistry.add("Sample", "Source", "Target", testclient.getContext(), 1);
-        commands = testSubject.getCommandMetrics(principal);
+        commands = testSubject.getCommandMetrics(principal).collectList().block();
         assertEquals(1, commands.size());
         assertEquals("Target", commands.get(0).getClientId());
         assertEquals(testclient.getContext(), commands.get(0).getContext());

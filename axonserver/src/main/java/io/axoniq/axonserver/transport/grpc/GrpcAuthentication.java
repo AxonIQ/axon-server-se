@@ -45,7 +45,8 @@ public class GrpcAuthentication implements Authentication {
         return authentication.getAuthorities()
                              .stream()
                              .anyMatch(grantedAuthority ->
-                                               grantedAuthority.getAuthority().equals(roleAtContext) ||
+                                               grantedAuthority.getAuthority()
+                                                                           .equals(roleAtContext) ||
                                                        grantedAuthority.getAuthority().equals(roleAtAny));
     }
 
@@ -67,6 +68,10 @@ public class GrpcAuthentication implements Authentication {
                              .anyMatch(grantedAuthority ->
                                                grantedAuthority.getAuthority().endsWith(atContext) ||
                                                        grantedAuthority.getAuthority().endsWith("@*"));
+    }
+
+    public org.springframework.security.core.Authentication wrapped() {
+        return authentication;
     }
 }
 

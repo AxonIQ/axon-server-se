@@ -16,8 +16,7 @@ package io.axoniq.axonserver.api
  * @author Sara Pellegrini
  * @since 4.6
  */
-interface Authentication {
-
+interface Authentication : java.io.Serializable {
     /**
      * Returns the username of the authenticated user
      */

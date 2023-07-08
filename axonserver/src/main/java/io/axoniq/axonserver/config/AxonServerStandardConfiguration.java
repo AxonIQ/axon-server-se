@@ -15,13 +15,26 @@ import io.axoniq.axonserver.access.roles.RoleController;
 import io.axoniq.axonserver.admin.user.api.UserAdminService;
 import io.axoniq.axonserver.admin.user.requestprocessor.LocalUserAdminService;
 import io.axoniq.axonserver.admin.user.requestprocessor.UserController;
+import io.axoniq.axonserver.commandprocesing.imp.CommandDispatcher;
+import io.axoniq.axonserver.commandprocesing.imp.ConsistentHashHandlerStrategy;
+import io.axoniq.axonserver.commandprocesing.imp.DefaultCommandRequestProcessor;
+import io.axoniq.axonserver.commandprocesing.imp.HandlerSelectorStrategy;
+import io.axoniq.axonserver.commandprocesing.imp.InMemoryCommandHandlerRegistry;
+import io.axoniq.axonserver.commandprocesing.imp.MetaDataBasedHandlerSelectorStrategy;
+import io.axoniq.axonserver.commandprocesing.imp.QueuedCommandDispatcher;
+import io.axoniq.axonserver.commandprocessing.spi.Command;
+import io.axoniq.axonserver.commandprocessing.spi.CommandHandler;
+import io.axoniq.axonserver.commandprocessing.spi.CommandHandlerRegistry;
+import io.axoniq.axonserver.commandprocessing.spi.CommandRequestProcessor;
+import io.axoniq.axonserver.commandprocessing.spi.interceptor.CommandHandlerSubscribedInterceptor;
+import io.axoniq.axonserver.commandprocessing.spi.interceptor.CommandHandlerUnsubscribedInterceptor;
 import io.axoniq.axonserver.eventstore.transformation.spi.TransformationsInProgressForContext;
 import io.axoniq.axonserver.exception.CriticalEventException;
+import io.axoniq.axonserver.exception.ErrorCode;
+import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.AxonServerClientService;
 import io.axoniq.axonserver.grpc.DefaultInstructionAckSource;
 import io.axoniq.axonserver.grpc.InstructionAckSource;
-import io.axoniq.axonserver.grpc.SerializedCommandProviderInbound;
-import io.axoniq.axonserver.grpc.command.CommandProviderInbound;
 import io.axoniq.axonserver.grpc.control.PlatformOutboundInstruction;
 import io.axoniq.axonserver.grpc.event.EventSchedulerGrpc;
 import io.axoniq.axonserver.grpc.query.QueryProviderInbound;
@@ -35,6 +48,7 @@ import io.axoniq.axonserver.localstorage.transaction.DefaultStorageTransactionMa
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManagerFactory;
 import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerFactory;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
+import io.axoniq.axonserver.message.command.CommandSubscriptionCache;
 import io.axoniq.axonserver.message.event.EventSchedulerService;
 import io.axoniq.axonserver.message.query.QueryHandlerSelector;
 import io.axoniq.axonserver.message.query.RoundRobinQueryHandlerSelector;
@@ -53,10 +67,12 @@ import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.util.DaemonThreadFactory;
 import io.axoniq.axonserver.version.DefaultVersionInfoProvider;
 import io.axoniq.axonserver.version.VersionInfoProvider;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.BeanCreationNotAllowedException;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.actuate.system.DiskSpaceHealthIndicator;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.flyway.FlywayMigrationStrategy;
@@ -71,10 +87,13 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.PlatformTransactionManager;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import java.time.Clock;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
 import javax.annotation.Nonnull;
@@ -210,6 +229,72 @@ public class AxonServerStandardConfiguration {
     }
 
     @Bean
+    public ConsistentHashHandlerStrategy consistentHashHandler() {
+        return new ConsistentHashHandlerStrategy(commandHandler -> commandHandler.metadata()
+                                                                                 .metadataValue(CommandHandler.LOAD_FACTOR,
+                                                                                                100),
+                                                 commandHandler -> commandHandler.metadata()
+                                                                                 .metadataValue(CommandHandler.CLIENT_STREAM_ID,
+                                                                                                commandHandler.id()),
+
+                                                 command -> command.metadata()
+                                                                   .metadataValue(Command.ROUTING_KEY, command.id()));
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(CommandHandlerRegistry.class)
+    public CommandHandlerRegistry commandHandlerRegistry(ConsistentHashHandlerStrategy consistentHashHandler) {
+        List<HandlerSelectorStrategy> handlerSelectorStrategyList = new ArrayList<>();
+        handlerSelectorStrategyList.add(new MetaDataBasedHandlerSelectorStrategy());
+        handlerSelectorStrategyList.add(consistentHashHandler);
+        return new InMemoryCommandHandlerRegistry(handlerSelectorStrategyList);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(CommandDispatcher.class)
+    public CommandDispatcher queuedCommandDispatcher(
+            @Value("${axoniq.axonserver.command-queue-capacity-per-client:10000}") int queueCapacity,
+            @Value("${axoniq.axonserver.default-command-timeout:300000}") long defaultCommandTimeout,
+            MeterRegistry meterRegistry) {
+        return new QueuedCommandDispatcher(Schedulers.boundedElastic(),
+                                           commandHandler -> (String) commandHandler.metadata()
+                                                                                    .metadataValue(CommandHandler.CLIENT_STREAM_ID)
+                                                                                    .orElseThrow(() -> new MessagingPlatformException(
+                                                                                            ErrorCode.OTHER,
+                                                                                            "Missing client id in command handler")),
+                                           command -> command.metadata().metadataValue(Command.PRIORITY, 0L),
+                                           command -> command.metadata().metadataValue(Command.TIMEOUT,
+                                                                                       System.currentTimeMillis()
+                                                                                               + defaultCommandTimeout),
+                                           queueCapacity,
+                                           meterRegistry
+        );
+    }
+
+    @Bean
+    public CommandSubscriptionCache commandSubscriptionCache(CommandRequestProcessor commandRequestProcessor) {
+        return new CommandSubscriptionCache(commandRequestProcessor);
+    }
+
+
+    @Bean
+    @ConditionalOnMissingBean(CommandRequestProcessor.class)
+    public CommandRequestProcessor commandRequestProcessor(CommandHandlerRegistry commandHandlerRegistry,
+                                                           ConsistentHashHandlerStrategy consistentHashHandler,
+                                                           CommandDispatcher queuedCommandDispatcher) {
+
+        DefaultCommandRequestProcessor defaultCommandRequestProcessor = new DefaultCommandRequestProcessor(
+                commandHandlerRegistry, queuedCommandDispatcher);
+        defaultCommandRequestProcessor.registerInterceptor(CommandHandlerSubscribedInterceptor.class,
+                                                           consistentHashHandler);
+        defaultCommandRequestProcessor.registerInterceptor(CommandHandlerUnsubscribedInterceptor.class,
+                                                           consistentHashHandler);
+        defaultCommandRequestProcessor.registerInterceptor(CommandHandlerUnsubscribedInterceptor.class,
+                                                           queuedCommandDispatcher);
+        return defaultCommandRequestProcessor;
+    }
+
+    @Bean
     public Clock clock() {
         return Clock.systemUTC();
     }
@@ -220,15 +305,6 @@ public class AxonServerStandardConfiguration {
         return new DefaultInstructionAckSource<>(ack -> PlatformOutboundInstruction.newBuilder()
                                                                                    .setAck(ack)
                                                                                    .build());
-    }
-
-    @Bean
-    @Qualifier("commandInstructionAckSource")
-    public InstructionAckSource<SerializedCommandProviderInbound> commandInstructionAckSource() {
-        return new DefaultInstructionAckSource<>(ack -> new SerializedCommandProviderInbound(CommandProviderInbound
-                                                                                                     .newBuilder()
-                                                                                                     .setAck(ack)
-                                                                                                     .build()));
     }
 
     @Bean

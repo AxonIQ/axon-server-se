@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2020 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -11,16 +11,16 @@ package io.axoniq.axonserver.interceptor;
 
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.plugin.ExecutionContext;
-import io.axoniq.axonserver.plugin.RequestRejectedException;
-import io.axoniq.axonserver.plugin.ServiceWithInfo;
-import io.axoniq.axonserver.plugin.interceptor.CommandRequestInterceptor;
-import io.axoniq.axonserver.plugin.interceptor.CommandResponseInterceptor;
 import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.grpc.SerializedCommandResponse;
 import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.grpc.command.CommandResponse;
 import io.axoniq.axonserver.metric.MeterFactory;
+import io.axoniq.axonserver.plugin.ExecutionContext;
+import io.axoniq.axonserver.plugin.RequestRejectedException;
+import io.axoniq.axonserver.plugin.ServiceWithInfo;
+import io.axoniq.axonserver.plugin.interceptor.CommandRequestInterceptor;
+import io.axoniq.axonserver.plugin.interceptor.CommandResponseInterceptor;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -110,5 +110,15 @@ public class DefaultCommandInterceptors implements CommandInterceptors {
                 });
 
         return new SerializedCommandResponse(intercepted);
+    }
+
+    @Override
+    public boolean noRequestInterceptors(String context) {
+        return pluginContextFilter.getServicesWithInfoForContext(CommandRequestInterceptor.class, context).isEmpty();
+    }
+
+    @Override
+    public boolean noResponseInterceptors(String context) {
+        return pluginContextFilter.getServicesWithInfoForContext(CommandResponseInterceptor.class, context).isEmpty();
     }
 }

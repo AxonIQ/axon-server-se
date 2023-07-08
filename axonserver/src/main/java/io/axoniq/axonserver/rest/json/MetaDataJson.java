@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.rest.json;
 
+import io.axoniq.axonserver.commandprocessing.spi.Metadata;
 import io.axoniq.axonserver.grpc.MetaDataValue;
 import io.axoniq.axonserver.util.SerializedObjectMapper;
 
@@ -48,17 +49,21 @@ public class MetaDataJson extends HashMap<String,Object> {
                     break;
             }
         });
+    }
 
+    public MetaDataJson(Metadata metadata) {
+        super();
+        metadata.metadataKeys().forEach(key -> metadata.metadataValue(key).ifPresent(value -> put(key, value)));
     }
 
     public Map<String, MetaDataValue> asMetaDataValueMap() {
         Map<String, MetaDataValue> map = new HashMap<>();
         this.forEach((key, value) -> {
-            if( value instanceof String) {
-                map.put(key, MetaDataValue.newBuilder().setTextValue((String)value).build());
-            } else if( value instanceof Double || value instanceof Float) {
+            if (value instanceof String) {
+                map.put(key, MetaDataValue.newBuilder().setTextValue((String) value).build());
+            } else if (value instanceof Double || value instanceof Float) {
                 map.put(key, MetaDataValue.newBuilder().setDoubleValue(((Number) value).doubleValue()).build());
-            } else if( value instanceof Number) {
+            } else if (value instanceof Number) {
                 map.put(key, MetaDataValue.newBuilder().setNumberValue(((Number) value).longValue()).build());
             } else if( value instanceof Boolean) {
                 map.put(key, MetaDataValue.newBuilder().setBooleanValue((Boolean) value).build());

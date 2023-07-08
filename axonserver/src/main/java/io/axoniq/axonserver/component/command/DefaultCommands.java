@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -9,39 +9,54 @@
 
 package io.axoniq.axonserver.component.command;
 
-import io.axoniq.axonserver.message.command.CommandHandler;
-import io.axoniq.axonserver.message.command.CommandRegistrationCache;
-import io.axoniq.axonserver.message.command.CommandRegistrationCache.RegistrationEntry;
+import io.axoniq.axonserver.commandprocessing.spi.CommandHandler;
+import io.axoniq.axonserver.message.command.CommandSubscriptionCache;
+import io.axoniq.axonserver.serializer.Media;
 
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
-import java.util.Map;
 import java.util.Set;
 
 /**
- * Created by Sara Pellegrini on 19/03/2018.
- * sara.pellegrini@gmail.com
+ * Created by Sara Pellegrini on 19/03/2018. sara.pellegrini@gmail.com
  */
 public class DefaultCommands implements Iterable<ComponentCommand> {
-    
-    private final CommandRegistrationCache registrationCache;
 
-    public DefaultCommands(CommandRegistrationCache registrationCache) {
+    private final CommandSubscriptionCache registrationCache;
+    private final String component;
+
+    public DefaultCommands(CommandSubscriptionCache registrationCache, String component) {
         this.registrationCache = registrationCache;
+        this.component = component;
     }
 
     @Override
     public Iterator<ComponentCommand> iterator() {
-        Map<CommandHandler, Set<RegistrationEntry>> all = registrationCache.getAll();
+        Set<io.axoniq.axonserver.commandprocessing.spi.CommandHandler> all = registrationCache.get(component);
 
-        Map<RegistrationEntry, Set<CommandHandler>> commands = new HashMap<>();
-        all.forEach((handler, registrations) -> registrations.forEach(registration -> {
-                Set<CommandHandler> handlers = commands.computeIfAbsent(registration,
-                                                                        c -> new HashSet<>());
-                handlers.add(handler);
-        }));
+        return all.stream().map(e -> (ComponentCommand) new MyComponentCommand(e)).iterator();
+    }
 
-        return commands.entrySet().stream().map(e -> (ComponentCommand) new DefaultCommand(e.getKey(), e.getValue())).iterator();
+    private class MyComponentCommand implements ComponentCommand {
+
+        private final io.axoniq.axonserver.commandprocessing.spi.CommandHandler e;
+
+        public MyComponentCommand(CommandHandler e) {
+            this.e = e;
+        }
+
+        @Override
+        public void printOn(Media media) {
+            media.with("name", e.commandName());
+        }
+
+        @Override
+        public Boolean belongsToComponent(String component) {
+            return component.equals(DefaultCommands.this.component);
+        }
+
+        @Override
+        public boolean belongsToContext(String context) {
+            return e.context().equals(context);
+        }
     }
 }

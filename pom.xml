@@ -28,9 +28,11 @@
         <module>axonserver-cli</module>
         <module>axonserver-query-parser</module>
         <module>axonserver-test-utils</module>
+        <module>axonserver-command-processing-spi</module>
+        <module>axonserver-command-processing</module>
+        <module>axonserver-commons</module>
         <module>axonserver-filestore</module>
         <module>axonserver-eventstore-transformation</module>
-        <module>axonserver-commons</module>
     </modules>
 
     <properties>
@@ -58,6 +60,11 @@
 
     <dependencyManagement>
         <dependencies>
+            <dependency>
+                <groupId>io.axoniq.axonserver</groupId>
+                <artifactId>axonserver-command-processing-spi</artifactId>
+                <version>${project.version}</version>
+            </dependency>
             <dependency>
                 <groupId>io.axoniq</groupId>
                 <artifactId>grpc-manual-flow-control</artifactId>

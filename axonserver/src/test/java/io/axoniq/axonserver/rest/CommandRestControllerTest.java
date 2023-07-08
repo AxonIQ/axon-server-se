@@ -9,27 +9,31 @@
 
 package io.axoniq.axonserver.rest;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import io.axoniq.axonserver.commandprocesing.imp.DefaultCommandRequestProcessor;
+import io.axoniq.axonserver.commandprocesing.imp.InMemoryCommandHandlerRegistry;
+import io.axoniq.axonserver.commandprocessing.spi.Command;
+import io.axoniq.axonserver.commandprocessing.spi.CommandHandler;
+import io.axoniq.axonserver.commandprocessing.spi.CommandHandlerSubscription;
+import io.axoniq.axonserver.commandprocessing.spi.CommandResult;
+import io.axoniq.axonserver.commandprocessing.spi.Metadata;
 import io.axoniq.axonserver.component.command.ComponentCommand;
-import io.axoniq.axonserver.message.ClientStreamIdentification;
-import io.axoniq.axonserver.message.command.CommandDispatcher;
-import io.axoniq.axonserver.message.command.CommandRegistrationCache;
-import io.axoniq.axonserver.message.command.DirectCommandHandler;
+import io.axoniq.axonserver.message.command.CommandSubscriptionCache;
 import io.axoniq.axonserver.serializer.GsonMedia;
-import io.axoniq.axonserver.test.FakeStreamObserver;
 import io.axoniq.axonserver.topology.Topology;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import reactor.core.publisher.Mono;
 
+import java.io.Serializable;
+import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -38,26 +42,63 @@ import static org.junit.Assert.assertTrue;
 @RunWith(MockitoJUnitRunner.class)
 public class CommandRestControllerTest {
     private CommandRestController testSubject;
-    @Mock
-    private CommandDispatcher commandDispatcher;
 
     @Before
     public void setUp() {
-        CommandRegistrationCache commandRegistationCache = new CommandRegistrationCache();
-        commandRegistationCache.add("DoIt",
-                                    new DirectCommandHandler(new FakeStreamObserver<>(),
-                                                             new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
-                                                                                      "client"),
-                                                            "client",
-                                                             "component"));
-        testSubject = new CommandRestController(commandDispatcher, commandRegistationCache);
-    }
+        DefaultCommandRequestProcessor commandRequestProcessor = new DefaultCommandRequestProcessor(new InMemoryCommandHandlerRegistry());
+        CommandSubscriptionCache commandSubscriptionCache = new CommandSubscriptionCache(commandRequestProcessor);
+        Map<String, Serializable> metaDataMap = new HashMap<>();
+        metaDataMap.put(CommandHandler.COMPONENT_NAME, "component");
+        metaDataMap.put(CommandHandler.CLIENT_ID, "client");
 
-    @Test
-    public void get() throws Exception {
-        List<CommandRestController.JsonClientMapping> commands = testSubject.get(null);
-        ObjectMapper mapper = new ObjectMapper();
-        assertNotEquals("[]", mapper.writeValueAsString(commands));
+        commandRequestProcessor.register(new CommandHandlerSubscription() {
+            @Override
+            public CommandHandler commandHandler() {
+                return new CommandHandler() {
+                    @Override
+                    public String id() {
+                        return "id";
+                    }
+
+                    @Override
+                    public String description() {
+                        return null;
+                    }
+
+                    @Override
+                    public String commandName() {
+                        return "DoIt";
+                    }
+
+                    @Override
+                    public String context() {
+                        return Topology.DEFAULT_CONTEXT;
+                    }
+
+                    @Override
+                    public Metadata metadata() {
+                        return new Metadata() {
+                            @Override
+                            public Iterable<String> metadataKeys() {
+                                return metaDataMap.keySet();
+                            }
+
+                            @Override
+                            public <R extends Serializable> Optional<R> metadataValue(String metadataKey) {
+                                return (Optional<R>) Optional.ofNullable(metaDataMap.get(metadataKey));
+                            }
+                        };
+                    }
+                };
+            }
+
+            @Override
+            public Mono<CommandResult> dispatch(Command command) {
+                return Mono.error(new RuntimeException("Not implemented"));
+            }
+        }).block();
+        testSubject = new CommandRestController(commandRequestProcessor,
+                                                commandSubscriptionCache);
     }
 
     @Test

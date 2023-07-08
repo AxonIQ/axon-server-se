@@ -9,11 +9,8 @@
 
 package io.axoniq.axonserver.applicationevents;
 
-import io.axoniq.axonserver.grpc.command.CommandSubscription;
 import io.axoniq.axonserver.grpc.query.QuerySubscription;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
-import io.axoniq.axonserver.message.command.CommandHandler;
-import io.axoniq.axonserver.message.command.DirectCommandHandler;
 import io.axoniq.axonserver.message.query.DirectQueryHandler;
 import io.axoniq.axonserver.message.query.QueryHandler;
 
@@ -44,31 +41,6 @@ public class SubscriptionEvents {
 
         public boolean isProxied() {
             return isProxied;
-        }
-    }
-
-    public static class UnsubscribeCommand extends SubscriptionBaseEvent {
-
-        /**
-         * The unique identifier of the command long living stream used by the client to send the unsubscription.
-         */
-        private final String clientStreamId;
-
-        private final CommandSubscription request;
-
-        public UnsubscribeCommand(String context, String clientStreamId, CommandSubscription request,
-                                  boolean isProxied) {
-            super(context, isProxied);
-            this.clientStreamId = clientStreamId;
-            this.request = request;
-        }
-
-        public CommandSubscription getRequest() {
-            return request;
-        }
-
-        public ClientStreamIdentification clientIdentification() {
-            return new ClientStreamIdentification(getContext(), clientStreamId);
         }
     }
 
@@ -128,35 +100,4 @@ public class SubscriptionEvents {
         }
     }
 
-    public static class SubscribeCommand extends SubscriptionBaseEvent {
-
-        /**
-         * The unique identifier of the command long living stream used by the client to send the subscription.
-         */
-        private final String clientStreamId;
-        private final CommandSubscription request;
-        private final CommandHandler handler;
-
-        public SubscribeCommand(String context,
-                                String clientStreamId,
-                                CommandSubscription request,
-                                CommandHandler handler) {
-            super(context, !(handler instanceof DirectCommandHandler));
-            this.clientStreamId = clientStreamId;
-            this.request = request;
-            this.handler = handler;
-        }
-
-        public CommandSubscription getRequest() {
-            return request;
-        }
-
-        public CommandHandler getHandler() {
-            return handler;
-        }
-
-        public ClientStreamIdentification clientStreamIdentification() {
-            return new ClientStreamIdentification(getContext(), clientStreamId);
-        }
-    }
 }
