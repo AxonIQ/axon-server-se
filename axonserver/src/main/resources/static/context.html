@@ -668,7 +668,10 @@
             <th class="storageColumn">Snapshot storage</th>
          </template>
          <template #row="context">
-             <td>{{ context.context }}
+             <td>
+                 {{ context.context }}
+                 <span v-if="context.state" title="Creating"><i
+                         class="fas fa-exclamation-circle"></i></span>
                 <div class="label-holder">
                     <span v-if="isEphemeral(context)" class="ephemeral"
                           data-tooltip="Ephemeral context stores events for a limited amount of time, after which they are permanently deleted."><span
