@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -13,6 +13,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.axoniq.axonserver.component.query.Query;
 import io.axoniq.axonserver.grpc.query.QuerySubscription;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
+import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.message.query.DirectQueryHandler;
 import io.axoniq.axonserver.message.query.QueryDefinition;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
@@ -20,13 +21,17 @@ import io.axoniq.axonserver.message.query.QueryRegistrationCache;
 import io.axoniq.axonserver.serializer.GsonMedia;
 import io.axoniq.axonserver.test.FakeStreamObserver;
 import io.axoniq.axonserver.topology.Topology;
-import org.junit.*;
+import org.junit.Before;
+import org.junit.Test;
 
 import java.util.Iterator;
 import java.util.List;
 
-import static org.junit.Assert.*;
-import static org.mockito.Mockito.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
 
 /**
  * @author Marc Gathier
@@ -49,6 +54,7 @@ public class QueryRestControllerTest {
         registationCache.add(new QueryDefinition(Topology.DEFAULT_CONTEXT, querySubscription.getQuery()),
                              "Response",
                              new DirectQueryHandler(new FakeStreamObserver<>(),
+                                                    new FlowControlQueues<>(),
                                                     clientStreamIdentification,
                                                     querySubscription.getComponentName(),
                                                     querySubscription.getClientId()));

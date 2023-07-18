@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -15,7 +15,6 @@ import io.axoniq.axonserver.grpc.ErrorMessage;
 import io.axoniq.axonserver.grpc.SerializedQuery;
 import io.axoniq.axonserver.grpc.query.QueryResponse;
 import io.axoniq.axonserver.message.Cancellable;
-import io.axoniq.axonserver.message.FlowControlQueues;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,8 +42,8 @@ public class ActiveQuery {
     private final Consumer<QueryResponse> responseConsumer;
     private final long timestamp = System.currentTimeMillis();
     private final Consumer<String> onCompleted;
-    private final Set<QueryHandler<?>> handlers;
-    private final Map<QueryHandler<?>, Cancellable> cancelOperations = new ConcurrentHashMap<>();
+    private final Set<QueryHandler> handlers;
+    private final Map<QueryHandler, Cancellable> cancelOperations = new ConcurrentHashMap<>();
     private final String sourceClientId;
     private final AtomicReference<QueryResponse> failedResponse = new AtomicReference<>();
     private final boolean streaming;
@@ -65,7 +64,7 @@ public class ActiveQuery {
                        SerializedQuery serializedQuery,
                        Consumer<QueryResponse> responseConsumer,
                        Consumer<String> onCompleted,
-                       Set<QueryHandler<?>> handlers) {
+                       Set<QueryHandler> handlers) {
         this(key, serializedQuery, responseConsumer, onCompleted, handlers, false);
     }
 
@@ -83,7 +82,7 @@ public class ActiveQuery {
                        SerializedQuery serializedQuery,
                        Consumer<QueryResponse> responseConsumer,
                        Consumer<String> onCompleted,
-                       Set<QueryHandler<?>> handlers,
+                       Set<QueryHandler> handlers,
                        boolean streaming) {
         this.key = key;
         this.sourceClientId = serializedQuery.query().getClientId();
@@ -119,12 +118,10 @@ public class ActiveQuery {
 
     /**
      * Dispatches the query request to all handlers.
-     *
-     * @param queues the destinations' queues used to buffer the query instructions to be sent
      */
-    public void dispatchQuery(FlowControlQueues<QueryInstruction> queues) {
+    public void dispatchQuery() {
         handlers.forEach(handler -> cancelOperations
-                .computeIfAbsent(handler, h -> h.enqueueQuery(serializedQuery, queues, timeout, streaming)));
+                .computeIfAbsent(handler, h -> h.dispatchQuery(serializedQuery, timeout, streaming)));
     }
 
     /**
@@ -182,10 +179,11 @@ public class ActiveQuery {
      * @return {@code true} if this was the last expected response, {@code false} if at least another response is expected
      */
     public boolean complete(String clientStreamId) {
-        for (QueryHandler<?> handler : handlers) {
+        for (QueryHandler handler : handlers) {
             if (clientStreamId.equals(handler.getClientStreamId())) {
-                if (cancelOperations.containsKey(handler)) {
-                    cancelOperations.remove(handler).cancel();
+                Cancellable cancel = cancelOperations.remove(handler);
+                if (cancel != null) {
+                    cancel.cancel();
                 }
                 handlers.remove(handler);
             }
@@ -326,7 +324,7 @@ public class ActiveQuery {
     /**
      * @return a set of all applicable handlers for this query. The set is not modifiable.
      */
-    public Set<QueryHandler<?>> handlers() {
+    public Set<QueryHandler> handlers() {
         return Collections.unmodifiableSet(handlers);
     }
 
@@ -339,9 +337,9 @@ public class ActiveQuery {
         logger.debug("Cancelling all query handlers for query {} but the one for clientStreamId {}",
                      serializedQuery.getMessageIdentifier(),
                      clientStreamId);
-        Set<QueryHandler<?>> toRemove = handlers.stream()
-                                                .filter(h -> !clientStreamId.equals(h.getClientStreamId()))
-                                                .collect(Collectors.toSet());
+        Set<QueryHandler> toRemove = handlers.stream()
+                                             .filter(h -> !clientStreamId.equals(h.getClientStreamId()))
+                                             .collect(Collectors.toSet());
         toRemove.forEach(handler -> {
             Cancellable cancellable = cancelOperations.remove(handler);
             if (cancellable != null) {

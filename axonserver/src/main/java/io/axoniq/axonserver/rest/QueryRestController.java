@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -38,12 +38,12 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-import javax.validation.Valid;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import javax.validation.Valid;
 
 import static io.axoniq.axonserver.AxonServerAccessController.CONTEXT_PARAM;
 import static io.axoniq.axonserver.AxonServerAccessController.TOKEN_PARAM;
@@ -123,7 +123,7 @@ public class QueryRestController {
         }
 
         public static JsonQueryMapping from(
-                Map.Entry<QueryDefinition, Map<String, Set<QueryHandler<?>>>> queryDefinitionEntry,
+                Map.Entry<QueryDefinition, Map<String, Set<QueryHandler>>> queryDefinitionEntry,
                 Set<String> resultNames) {
             JsonQueryMapping queryMapping = new JsonQueryMapping();
             queryMapping.query = queryDefinitionEntry.getKey().getQueryName();
@@ -149,7 +149,7 @@ public class QueryRestController {
             return clients;
         }
 
-        public static JsonComponentMapping from(Map.Entry<String, Set<QueryHandler<?>>> applicationEntry) {
+        public static JsonComponentMapping from(Map.Entry<String, Set<QueryHandler>> applicationEntry) {
             JsonComponentMapping jsonApplicationMapping = new JsonComponentMapping();
             jsonApplicationMapping.component = applicationEntry.getKey();
             jsonApplicationMapping.clients = applicationEntry.getValue().stream().map(QueryHandler::toString).collect(

@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -103,13 +103,14 @@ public class MetricsRestController {
 
     private List<QueryMetricsRegistry.QueryMetric> getQueryMetrics(QueryDefinition queryDefinition,
                                                                    Set<String> contexts,
-                                                                   Map<String, Set<QueryHandler<?>>> handlersPerComponent) {
+                                                                   Map<String, Set<QueryHandler>> handlersPerComponent) {
         return handlersPerComponent.entrySet()
                                    .stream()
                                    .map(queryHandlers -> queryHandlers
                                            .getValue()
                                            .stream()
-                                           .filter(queryHandler -> contexts.contains(queryHandler.getClientStreamIdentification().getContext()))
+                                           .filter(queryHandler -> contexts.contains(queryHandler.getClientStreamIdentification()
+                                                                                                 .getContext()))
                                            .map(queryHandler -> queryMetricsRegistry
                                                    .queryMetric(
                                                            queryDefinition,
