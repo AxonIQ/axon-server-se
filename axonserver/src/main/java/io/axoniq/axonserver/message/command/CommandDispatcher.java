@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -31,7 +31,6 @@ import org.springframework.context.event.EventListener;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
-import javax.annotation.Nonnull;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -39,6 +38,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import javax.annotation.Nonnull;
 
 /**
  * Responsible for managing command subscriptions and processing commands.
@@ -81,8 +81,8 @@ public class CommandDispatcher {
                                 Consumer<SerializedCommandResponse> responseObserver) {
         String clientStreamId = request.getClientStreamId();
         ClientStreamIdentification clientIdentification = new ClientStreamIdentification(context, clientStreamId);
-        CommandHandler<?> handler = registrations.findByClientAndCommand(clientIdentification,
-                                                                         request.getCommand());
+        CommandHandler handler = registrations.findByClientAndCommand(clientIdentification,
+                                                                      request.getCommand());
         dispatchToCommandHandler(request, handler, responseObserver,
                                  ErrorCode.CLIENT_DISCONNECTED,
                                  String.format("Client %s not found while processing: %s"
@@ -99,9 +99,9 @@ public class CommandDispatcher {
         try {
             SerializedCommand interceptedRequest = commandInterceptors.commandRequest(request, executionContext);
             commandRate(context).mark();
-            CommandHandler<?> commandHandler = registrations.getHandlerForCommand(context,
-                                                                                  interceptedRequest.wrapped(),
-                                                                                  interceptedRequest.getRoutingKey());
+            CommandHandler commandHandler = registrations.getHandlerForCommand(context,
+                                                                               interceptedRequest.wrapped(),
+                                                                               interceptedRequest.getRoutingKey());
             dispatchToCommandHandler(interceptedRequest,
                                      commandHandler,
                                      r -> {
@@ -172,7 +172,7 @@ public class CommandDispatcher {
         handlePendingCommands(client);
     }
 
-    private void dispatchToCommandHandler(SerializedCommand command, CommandHandler<?> commandHandler,
+    private void dispatchToCommandHandler(SerializedCommand command, CommandHandler commandHandler,
                                           Consumer<SerializedCommandResponse> responseObserver,
                                           ErrorCode noHandlerErrorCode, String noHandlerMessage) {
         if (commandHandler == null) {
@@ -192,16 +192,16 @@ public class CommandDispatcher {
                                                                            commandHandler
                                                                                    .getClientStreamIdentification(),
                                                                            commandHandler.getComponentName());
-            if(commandCache.putIfAbsent(command.getMessageIdentifier(), commandInformation)!=null){
+            if (commandCache.putIfAbsent(command.getMessageIdentifier(), commandInformation) != null) {
                 responseObserver.accept(errorCommandResponse(command.getMessageIdentifier(),
                                                              ErrorCode.COMMAND_DUPLICATED,
-                                                             String.format("command id %s duplicated",command.getMessageIdentifier())));
+                                                             String.format("command id %s duplicated",
+                                                                           command.getMessageIdentifier())));
                 return;
             }
-            WrappedCommand wrappedCommand = new WrappedCommand(commandHandler.getClientStreamIdentification(),
-                                                               commandHandler.getClientId(),
-                                                               command);
-            commandQueues.put(commandHandler.queueName(), wrappedCommand, wrappedCommand.priority());
+
+            commandHandler.dispatch(command);
+//            commandQueues.put(commandHandler.queueName(), wrappedCommand, wrappedCommand.priority());
         } catch (InsufficientBufferCapacityException insufficientBufferCapacityException) {
             responseObserver.accept(errorCommandResponse(command.getMessageIdentifier(),
                                                          ErrorCode.TOO_MANY_REQUESTS,
@@ -242,8 +242,8 @@ public class CommandDispatcher {
             return null;
         }
 
-        CommandHandler<?> client = registrations.getHandlerForCommand(command.client().getContext(), request.wrapped(),
-                                                                      request.getRoutingKey());
+        CommandHandler client = registrations.getHandlerForCommand(command.client().getContext(), request.wrapped(),
+                                                                   request.getRoutingKey());
         if (client == null) {
             commandInformation.getResponseConsumer().accept(errorCommandResponse(request.getMessageIdentifier(),
                                                                                  ErrorCode.NO_HANDLER_FOR_COMMAND,
@@ -261,7 +261,7 @@ public class CommandDispatcher {
                                                                                         .getResponseConsumer(),
                                                                                 client.getClientStreamIdentification(),
                                                                                 client.getComponentName()));
-        return client.queueName();
+        return client.clientStreamIdentification.toString();
     }
 
     private void handlePendingCommands(ClientStreamIdentification client) {

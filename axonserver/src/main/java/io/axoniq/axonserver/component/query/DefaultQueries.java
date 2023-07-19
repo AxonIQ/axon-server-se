@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -32,7 +32,7 @@ public class DefaultQueries implements Iterable<Query> {
 
     @Override
     public Iterator<Query> iterator() {
-        Map<QueryDefinition, Map<String, Set<QueryHandler<?>>>> all = registrationCache.getAll();
+        Map<QueryDefinition, Map<String, Set<QueryHandler>>> all = registrationCache.getAll();
         return all.entrySet().stream()
                   .map(entry -> (Query) new DefaultQuery(entry.getKey(),
                                                          entry.getValue(),

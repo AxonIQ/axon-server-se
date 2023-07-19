@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -205,7 +205,7 @@ public class QueryDispatcher {
 
             QueryRequest query = serializedQuery2.query();
 
-            Set<QueryHandler<?>> handlers = registrationCache.find(serializedQuery.context(), query);
+            Set<QueryHandler> handlers = registrationCache.find(serializedQuery.context(), query);
             if (handlers.isEmpty()) {
                 interceptedCallback.accept(QueryResponse.newBuilder()
                                                         .setErrorCode(ErrorCode.NO_HANDLER_FOR_QUERY.getCode())
@@ -282,7 +282,7 @@ public class QueryDispatcher {
     private void dispatch(String cacheKey, ActiveQuery activeQuery) {
         try {
             logger.trace("Dispatching query {}...", activeQuery.getKey());
-            activeQuery.dispatchQuery(queryQueue);
+            activeQuery.dispatchQuery();
         } catch (MessagingPlatformException exception) {
             logger.debug("Error during dispatching of query {}. Cancelling with error.",
                          activeQuery.getKey(), exception);
@@ -344,9 +344,9 @@ public class QueryDispatcher {
     }
 
     private void dispatchProxied(String context, String queryName, String clientStreamId,
-                                 Consumer<QueryHandler<?>> action) {
+                                 Consumer<QueryHandler> action) {
         QueryDefinition queryDefinition = new QueryDefinition(context, queryName);
-        QueryHandler<?> queryHandler = registrationCache.find(queryDefinition, clientStreamId);
+        QueryHandler queryHandler = registrationCache.find(queryDefinition, clientStreamId);
         if (queryHandler != null) {
             action.accept(queryHandler);
         }
@@ -377,7 +377,7 @@ public class QueryDispatcher {
         QueryRequest query = serializedQuery.query();
         String context = serializedQuery.context();
         String clientStreamId = serializedQuery.clientStreamId();
-        QueryHandler<?> queryHandler = registrationCache.find(context, query, clientStreamId);
+        QueryHandler queryHandler = registrationCache.find(context, query, clientStreamId);
         if (queryHandler == null) {
             callback.accept(QueryResponse.newBuilder()
                                          .setErrorCode(ErrorCode.CLIENT_DISCONNECTED.getCode())
@@ -423,10 +423,10 @@ public class QueryDispatcher {
         return ProcessingInstructionHelper.clientSupportsQueryStreaming(query.getProcessingInstructionsList());
     }
 
-    private void dispatchFlowControl(QueryHandler<?> queryHandler, String requestId, String queryName, long permits) {
+    private void dispatchFlowControl(QueryHandler queryHandler, String requestId, String queryName, long permits) {
         dispatch(requestId,
                  queryHandler.getClientStreamId(),
-                 () -> queryHandler.enqueueFlowControl(requestId, queryName, permits, queryQueue));
+                 () -> queryHandler.dispatchFlowControl(requestId, queryName, permits));
     }
 
     private void dispatch(String requestId, String targetClientStreamId, Runnable action) {

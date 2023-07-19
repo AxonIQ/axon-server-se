@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -22,21 +22,21 @@ public class SerializedCommand  {
 
     private final String clientStreamId;
     private final String messageId;
-    private final byte[] serializedData;
+    private final ByteString serializedData;
     private volatile Command command;
 
     public SerializedCommand(Command command) {
-        this(command.toByteArray());
+        this(command.toByteString());
         this.command = command;
     }
 
-    public SerializedCommand(byte[] serializedCommand) {
+    public SerializedCommand(ByteString serializedCommand) {
         this.serializedData = serializedCommand;
         this.clientStreamId = null;
         this.messageId = null;
     }
 
-    public SerializedCommand(byte[] serializedCommand, String clientStreamId, String messageId) {
+    public SerializedCommand(ByteString serializedCommand, String clientStreamId, String messageId) {
         this.serializedData = serializedCommand;
         this.clientStreamId = clientStreamId;
         this.messageId = messageId;
@@ -48,11 +48,7 @@ public class SerializedCommand  {
 
 
     public int getSerializedSize() {
-        return serializedData.length;
-    }
-
-    public byte[] toByteArray() {
-        return serializedData;
+        return serializedData.size();
     }
 
     public Command wrapped() {
@@ -68,7 +64,7 @@ public class SerializedCommand  {
 
 
     public ByteString toByteString() {
-        return ByteString.copyFrom(serializedData);
+        return serializedData;
     }
 
     public String getMessageIdentifier() {

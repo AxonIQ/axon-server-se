@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -12,7 +12,9 @@ package io.axoniq.axonserver.rest;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.config.SystemInfoProvider;
 import io.axoniq.axonserver.grpc.SerializedCommand;
+import io.axoniq.axonserver.grpc.SerializedQuery;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest;
+import io.axoniq.axonserver.message.Cancellable;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.command.CommandHandler;
 import io.axoniq.axonserver.message.command.CommandMetricsRegistry;
@@ -54,16 +56,11 @@ public class MetricsRestControllerTest {
     public void setUp() {
         CommandRegistrationCache commandRegistrationCache = new CommandRegistrationCache();
         testclient = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "testclient");
-        commandRegistrationCache.add("Sample", new CommandHandler<Object>(null,
-                                                                          testclient, "Target",
-                                                                          "testcomponent") {
+        commandRegistrationCache.add("Sample", new CommandHandler(
+                testclient, "Target",
+                "testcomponent") {
             @Override
-            public void dispatch(SerializedCommand request) {
-
-            }
-
-            @Override
-            public void confirm(String messageId) {
+            public void dispatch(SerializedCommand wrappedCommand) {
 
             }
 
@@ -78,10 +75,21 @@ public class MetricsRestControllerTest {
         QueryRegistrationCache queryRegistrationCache = new QueryRegistrationCache(new RoundRobinQueryHandlerSelector());
         queryClient = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "testclient");
         queryRegistrationCache.add(new QueryDefinition(Topology.DEFAULT_CONTEXT, "query"), "result",
-                                   new QueryHandler<Object>(null,
-                                                            queryClient, "testcomponent", "Target") {
+                                   new QueryHandler(queryClient, "testcomponent", "Target") {
                                        @Override
                                        public void dispatch(SubscriptionQueryRequest query) {
+
+                                       }
+
+                                       @Override
+                                       public Cancellable dispatchQuery(SerializedQuery request,
+                                                                        long timeout, boolean streaming) {
+                                           return () -> true;
+                                       }
+
+                                       @Override
+                                       public void dispatchFlowControl(String requestId, String queryName,
+                                                                       long permits) {
 
                                        }
                                    });
@@ -115,7 +123,7 @@ public class MetricsRestControllerTest {
         List<QueryMetricsRegistry.QueryMetric> queries = testSubject.getQueryMetrics(principal);
         assertEquals(1, queries.size());
         assertEquals("Target", queries.get(0).getClientId());
-        assertEquals( queryClient.getContext(), queries.get(0).getContext());
+        assertEquals(queryClient.getContext(), queries.get(0).getContext());
         assertEquals(0, queries.get(0).getCount());
 
         queryMetricsRegistry.addHandlerResponseTime(new QueryDefinition(Topology.DEFAULT_CONTEXT, "query"),
@@ -127,7 +135,7 @@ public class MetricsRestControllerTest {
         queries = testSubject.getQueryMetrics(principal);
         assertEquals(1, queries.size());
         assertEquals("Target", queries.get(0).getClientId());
-        assertEquals( queryClient.getContext(), queries.get(0).getContext());
+        assertEquals(queryClient.getContext(), queries.get(0).getContext());
         assertEquals(1, queries.get(0).getCount());
     }
 }

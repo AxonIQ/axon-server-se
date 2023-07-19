@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.grpc;
 
+import com.google.protobuf.ByteString;
 import io.axoniq.axonserver.applicationevents.SubscriptionEvents.SubscribeCommand;
 import io.axoniq.axonserver.applicationevents.SubscriptionEvents.UnsubscribeCommand;
 import io.axoniq.axonserver.applicationevents.TopologyEvents.CommandHandlerDisconnected;
@@ -19,7 +20,7 @@ import io.axoniq.axonserver.grpc.command.CommandProviderOutbound;
 import io.axoniq.axonserver.grpc.command.CommandServiceGrpc;
 import io.axoniq.axonserver.grpc.command.CommandSubscription;
 import io.axoniq.axonserver.grpc.heartbeat.ApplicationInactivityException;
-import io.axoniq.axonserver.message.ByteArrayMarshaller;
+import io.axoniq.axonserver.message.ByteStringMarshaller;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.command.CommandHandler;
@@ -60,8 +61,8 @@ import static io.grpc.stub.ServerCalls.asyncUnaryCall;
 @Service("CommandService")
 public class CommandService implements AxonServerClientService {
 
-    private static final MethodDescriptor<byte[], SerializedCommandResponse> METHOD_DISPATCH =
-            CommandServiceGrpc.getDispatchMethod().toBuilder(ByteArrayMarshaller.instance(),
+    private static final MethodDescriptor<ByteString, SerializedCommandResponse> METHOD_DISPATCH =
+            CommandServiceGrpc.getDispatchMethod().toBuilder(ByteStringMarshaller.instance(),
                                                              ProtoUtils.marshaller(SerializedCommandResponse
                                                                                            .getDefaultInstance()))
                               .build();
@@ -136,7 +137,7 @@ public class CommandService implements AxonServerClientService {
             private final AtomicReference<String> clientIdRef = new AtomicReference<>();
             private final AtomicReference<ClientStreamIdentification> clientRef = new AtomicReference<>();
             private final AtomicReference<GrpcCommandDispatcherListener> listenerRef = new AtomicReference<>();
-            private final AtomicReference<CommandHandler<?>> commandHandlerRef = new AtomicReference<>();
+            private final AtomicReference<CommandHandler> commandHandlerRef = new AtomicReference<>();
 
             @Override
             protected void consume(CommandProviderOutbound commandFromSubscriber) {
@@ -216,8 +217,8 @@ public class CommandService implements AxonServerClientService {
             private void checkInitClient(String clientId, String component) {
                 initClientReference(clientId);
                 commandHandlerRef.compareAndSet(null,
-                                                new DirectCommandHandler(wrappedResponseObserver,
-                                                                         clientRef.get(),
+                                                new DirectCommandHandler(clientRef.get(),
+                                                                         commandDispatcher.getCommandQueues(),
                                                                          clientId,
                                                                          component));
             }
@@ -265,7 +266,7 @@ public class CommandService implements AxonServerClientService {
                 && instructionResult.getError().getErrorCode().equals(ErrorCode.UNSUPPORTED_INSTRUCTION.getCode());
     }
 
-    public void dispatch(byte[] command, StreamObserver<SerializedCommandResponse> responseObserver) {
+    public void dispatch(ByteString command, StreamObserver<SerializedCommandResponse> responseObserver) {
         SerializedCommand request = new SerializedCommand(command);
         String clientId = request.wrapped().getClientId();
         if (logger.isTraceEnabled()) {

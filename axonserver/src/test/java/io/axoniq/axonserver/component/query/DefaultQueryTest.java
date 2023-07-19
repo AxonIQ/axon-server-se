@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -14,14 +14,17 @@ import io.axoniq.axonserver.message.query.DirectQueryHandler;
 import io.axoniq.axonserver.message.query.QueryDefinition;
 import io.axoniq.axonserver.message.query.QueryHandler;
 import io.axoniq.axonserver.serializer.GsonMedia;
-import org.junit.*;
+import org.junit.Before;
+import org.junit.Test;
 
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Created by Sara Pellegrini on 23/03/2018.
@@ -34,9 +37,9 @@ public class DefaultQueryTest {
     @Before
     public void setUp() throws Exception {
         QueryDefinition queryDefinition = new QueryDefinition("context", "queryName");
-        Map<String, Set<QueryHandler<?>>> handlers = new HashMap<>();
-        handlers.put("componentA", ImmutableSet.of(new DirectQueryHandler(null, null, null, null),
-                                                   new DirectQueryHandler(null, null, null, null)));
+        Map<String, Set<QueryHandler>> handlers = new HashMap<>();
+        handlers.put("componentA", ImmutableSet.of(new DirectQueryHandler(null, null, null, null, null),
+                                                   new DirectQueryHandler(null, null, null, null, null)));
         handlers.put("componentB", ImmutableSet.of());
         handlers.put("componentC", null);
 
