@@ -86,8 +86,7 @@ public class CommandDispatcherTest {
                                  .build();
         FakeStreamObserver<SerializedCommandProviderInbound> commandProviderInbound = new FakeStreamObserver<>();
         ClientStreamIdentification client = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "client");
-        DirectCommandHandler result = new DirectCommandHandler(commandProviderInbound,
-                                                               client,
+        DirectCommandHandler result = new DirectCommandHandler(client,
                                                                commandDispatcher.getCommandQueues(),
                                                                "client",
                                                                "component");
@@ -143,8 +142,7 @@ public class CommandDispatcherTest {
                                  .build();
         FakeStreamObserver<SerializedCommandProviderInbound> commandProviderInbound = new FakeStreamObserver<>();
         ClientStreamIdentification client = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "client");
-        DirectCommandHandler result = new DirectCommandHandler(commandProviderInbound,
-                                                               client,
+        DirectCommandHandler result = new DirectCommandHandler(client,
                                                                commandDispatcher.getCommandQueues(),
                                                                "client",
                                                                "component");
@@ -192,8 +190,7 @@ public class CommandDispatcherTest {
         ClientStreamIdentification clientIdentification = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
                                                                                          "client");
         FakeStreamObserver<SerializedCommandProviderInbound> commandProviderInbound = new FakeStreamObserver<>();
-        DirectCommandHandler result = new DirectCommandHandler(commandProviderInbound,
-                                                               clientIdentification,
+        DirectCommandHandler result = new DirectCommandHandler(clientIdentification,
                                                                commandDispatcher.getCommandQueues(),
                                                                "client",
                                                                "component");
@@ -305,8 +302,7 @@ public class CommandDispatcherTest {
         commandCache = new CommandCache(10000, Clock.systemUTC(), 100000);
         FakeStreamObserver<SerializedCommandProviderInbound> commandProviderInbound = new FakeStreamObserver<>();
         ClientStreamIdentification client = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "client");
-        DirectCommandHandler result = new DirectCommandHandler(commandProviderInbound,
-                                                               client,
+        DirectCommandHandler result = new DirectCommandHandler(client,
                                                                commandDispatcher.getCommandQueues(),
                                                                "client",
                                                                "component");
@@ -370,8 +366,7 @@ public class CommandDispatcherTest {
 
         FakeStreamObserver<SerializedCommandProviderInbound> commandProviderInbound = new FakeStreamObserver<>();
         ClientStreamIdentification client = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "client");
-        DirectCommandHandler result = new DirectCommandHandler(commandProviderInbound,
-                                                               client,
+        DirectCommandHandler result = new DirectCommandHandler(client,
                                                                commandDispatcher.getCommandQueues(),
                                                                "client",
                                                                "component");

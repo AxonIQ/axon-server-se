@@ -117,11 +117,11 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
         SendingStreamObserver<QueryProviderInbound> wrappedQueryProviderInboundObserver = new SendingStreamObserver<>(
                 inboundStreamObserver);
 
-        return new ReceivingStreamObserver<QueryProviderOutbound>(logger) {
+        return new ReceivingStreamObserver<>(logger) {
             private final AtomicReference<String> clientIdRef = new AtomicReference<>();
             private final AtomicReference<GrpcQueryDispatcherListener> listener = new AtomicReference<>();
             private final AtomicReference<ClientStreamIdentification> clientRef = new AtomicReference<>();
-            private final AtomicReference<QueryHandler<QueryProviderInbound>> queryHandler = new AtomicReference<>();
+            private final AtomicReference<QueryHandler> queryHandler = new AtomicReference<>();
 
             @Override
             protected void consume(QueryProviderOutbound queryProviderOutbound) {
@@ -249,7 +249,9 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
             private void checkInitClient(String clientId, String componentName) {
                 initClientReference(clientId);
                 queryHandler.compareAndSet(null,
-                                           new DirectQueryHandler(wrappedQueryProviderInboundObserver, clientRef.get(),
+                                           new DirectQueryHandler(wrappedQueryProviderInboundObserver,
+                                                                  queryDispatcher.getQueryQueue(),
+                                                                  clientRef.get(),
                                                                   componentName, clientId));
             }
 

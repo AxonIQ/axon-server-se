@@ -9,46 +9,38 @@
 
 package io.axoniq.axonserver.message.command;
 
-import io.axoniq.axonserver.grpc.InstructionAck;
 import io.axoniq.axonserver.grpc.SerializedCommand;
-import io.axoniq.axonserver.grpc.SerializedCommandProviderInbound;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
-import io.grpc.stub.StreamObserver;
+import io.axoniq.axonserver.message.FlowControlQueues;
 
 /**
  * @author Marc Gathier
  */
-public class DirectCommandHandler extends CommandHandler<SerializedCommandProviderInbound> {
+public class DirectCommandHandler extends CommandHandler {
 
     private final FlowControlQueues<WrappedCommand> flowControlQueues;
 
-    public DirectCommandHandler(StreamObserver<SerializedCommandProviderInbound> responseObserver,
+    public DirectCommandHandler(
                                 ClientStreamIdentification clientStreamIdentification,
                                 FlowControlQueues<WrappedCommand> flowControlQueues,
                                 String clientId,
                                 String componentName) {
-        super(responseObserver, clientStreamIdentification, clientId, componentName);
+        super( clientStreamIdentification, clientId, componentName);
         this.flowControlQueues = flowControlQueues;
     }
 
-    @Override
-    public void dispatch(SerializedCommand request) {
-        observer.onNext(SerializedCommandProviderInbound.newBuilder().setCommand(request).build());
-    }
 
     @Override
-    public void confirm(String messageId) {
-        observer.onNext(SerializedCommandProviderInbound.newBuilder()
-                                                        .setAcknowledgement(InstructionAck.newBuilder()
-                                                                                          .setSuccess(true)
-                                                                                          .setInstructionId(messageId)
-                                                                                          .build())
-                                                        .build());
+    public void dispatch(SerializedCommand command) {
+        WrappedCommand wrappedCommand = new WrappedCommand(clientStreamIdentification,
+                                                           getClientId(),
+                                                           command);
+
+        flowControlQueues.put(queueName(), wrappedCommand, wrappedCommand.priority());
     }
 
-    @Override
-    public void send(WrappedCommand wrappedCommand) {
-        flowControlQueues.put(clientStreamIdentification, wrappedCommand, wrappedCommand.priority());
+    public String queueName() {
+        return clientStreamIdentification.toString();
     }
 }

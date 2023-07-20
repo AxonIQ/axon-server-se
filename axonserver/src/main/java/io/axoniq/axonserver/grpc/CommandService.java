@@ -137,7 +137,7 @@ public class CommandService implements AxonServerClientService {
             private final AtomicReference<String> clientIdRef = new AtomicReference<>();
             private final AtomicReference<ClientStreamIdentification> clientRef = new AtomicReference<>();
             private final AtomicReference<GrpcCommandDispatcherListener> listenerRef = new AtomicReference<>();
-            private final AtomicReference<CommandHandler<?>> commandHandlerRef = new AtomicReference<>();
+            private final AtomicReference<CommandHandler> commandHandlerRef = new AtomicReference<>();
 
             @Override
             protected void consume(CommandProviderOutbound commandFromSubscriber) {
@@ -217,8 +217,7 @@ public class CommandService implements AxonServerClientService {
             private void checkInitClient(String clientId, String component) {
                 initClientReference(clientId);
                 commandHandlerRef.compareAndSet(null,
-                                                new DirectCommandHandler(wrappedResponseObserver,
-                                                                         clientRef.get(),
+                                                new DirectCommandHandler(clientRef.get(),
                                                                          commandDispatcher.getCommandQueues(),
                                                                          clientId,
                                                                          component));

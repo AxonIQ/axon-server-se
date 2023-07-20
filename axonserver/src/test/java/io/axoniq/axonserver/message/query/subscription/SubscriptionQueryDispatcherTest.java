@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -15,16 +15,17 @@ import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents.Subscripti
 import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents.SubscriptionQueryInitialResultRequested;
 import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents.SubscriptionQueryRequested;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
-import io.axoniq.axonserver.grpc.query.QueryProviderInbound;
+import io.axoniq.axonserver.grpc.SerializedQuery;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
 import io.axoniq.axonserver.grpc.query.QuerySubscription;
 import io.axoniq.axonserver.grpc.query.SubscriptionQuery;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest;
+import io.axoniq.axonserver.message.Cancellable;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.query.QueryHandler;
 import io.axoniq.axonserver.message.query.QueryRegistrationCache;
-import io.axoniq.axonserver.test.FakeStreamObserver;
-import org.junit.*;
+import org.junit.Before;
+import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -34,8 +35,12 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import javax.annotation.Nonnull;
 
-import static io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest.RequestCase.*;
-import static org.junit.Assert.*;
+import static io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest.RequestCase.GET_INITIAL_RESULT;
+import static io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest.RequestCase.SUBSCRIBE;
+import static io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest.RequestCase.UNSUBSCRIBE;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 
 /**
  * @author Marc Gathier
@@ -87,12 +92,22 @@ public class SubscriptionQueryDispatcherTest {
     @Nonnull
     private SubscribeQuery subscribeQuery(Consumer<SubscriptionQueryRequest> requestConsumer, String client) {
         final String clientStreamId = client + "StreamId";
-        QueryHandler<QueryProviderInbound> queryHandler = new QueryHandler<QueryProviderInbound>(
-                new FakeStreamObserver<>(),
+        QueryHandler queryHandler = new QueryHandler(
                 new ClientStreamIdentification(context, clientStreamId), COMPONENT, client) {
             @Override
             public void dispatch(SubscriptionQueryRequest query) {
                 requestConsumer.accept(query);
+            }
+
+            @Override
+            public Cancellable dispatchQuery(SerializedQuery request,
+                                             long timeout, boolean streaming) {
+                return () -> true;
+            }
+
+            @Override
+            public void dispatchFlowControl(String requestId, String queryName, long permits) {
+
             }
         };
         return new SubscribeQuery(context,

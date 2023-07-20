@@ -22,6 +22,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.function.Supplier;
 
+import static io.axoniq.axonserver.ProcessingInstructionHelper.streamingProcessingInstruction;
 import static java.lang.String.format;
 
 /**
@@ -105,15 +106,6 @@ public class GrpcQueryDispatcherListener
                                                  .setQueryFlowControl(flowControlMessage)
                                                  .build());
         return true;
-    }
-
-    private ProcessingInstruction streamingProcessingInstruction(boolean streaming) {
-        MetaDataValue.Builder value = MetaDataValue.newBuilder()
-                                                   .setBooleanValue(streaming);
-        return ProcessingInstruction.newBuilder()
-                                    .setKey(ProcessingKey.SERVER_SUPPORTS_STREAMING)
-                                    .setValue(value)
-                                    .build();
     }
 
     private void debug(Supplier<String> messageSupplier) {

@@ -10,7 +10,7 @@
 package io.axoniq.axonserver.component.command;
 
 import com.google.common.collect.ImmutableSet;
-import io.axoniq.axonserver.message.ClientStreamIdentification;
+import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.message.command.CommandHandler;
 import io.axoniq.axonserver.message.command.CommandRegistrationCache;
@@ -35,9 +35,8 @@ public class DefaultCommandTest {
     @Before
     public void setUp() throws Exception {
         ImmutableSet<CommandHandler> commandHandlers = ImmutableSet.of(new DirectCommandHandler(null,
-                                                                                                new ClientStreamIdentification(
-                                                                                                        Topology.DEFAULT_CONTEXT,
-                                                                                                        "client"),
+
+                                                                                                new FlowControlQueues<>(),
                                                                                                 new FlowControlQueues<>(),
                                                                                                 "client",
                                                                                                 "componentA"));

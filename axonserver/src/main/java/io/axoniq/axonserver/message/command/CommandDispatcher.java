@@ -81,8 +81,8 @@ public class CommandDispatcher {
                                 Consumer<SerializedCommandResponse> responseObserver) {
         String clientStreamId = request.getClientStreamId();
         ClientStreamIdentification clientIdentification = new ClientStreamIdentification(context, clientStreamId);
-        CommandHandler<?> handler = registrations.findByClientAndCommand(clientIdentification,
-                                                                         request.getCommand());
+        CommandHandler handler = registrations.findByClientAndCommand(clientIdentification,
+                                                                      request.getCommand());
         dispatchToCommandHandler(request, handler, responseObserver,
                                  ErrorCode.CLIENT_DISCONNECTED,
                                  String.format("Client %s not found while processing: %s"
@@ -100,9 +100,9 @@ public class CommandDispatcher {
         try {
             SerializedCommand interceptedRequest = commandInterceptors.commandRequest(request, executionContext);
             commandRate(context).mark();
-            CommandHandler<?> commandHandler = registrations.getHandlerForCommand(context,
-                                                                                  interceptedRequest.wrapped(),
-                                                                                  interceptedRequest.getRoutingKey());
+            CommandHandler commandHandler = registrations.getHandlerForCommand(context,
+                                                                               interceptedRequest.wrapped(),
+                                                                               interceptedRequest.getRoutingKey());
             dispatchToCommandHandler(interceptedRequest,
                                      commandHandler,
                                      r -> {
@@ -180,7 +180,7 @@ public class CommandDispatcher {
         handlePendingCommands(client);
     }
 
-    private void dispatchToCommandHandler(SerializedCommand command, CommandHandler<?> commandHandler,
+    private void dispatchToCommandHandler(SerializedCommand command, CommandHandler commandHandler,
                                           Consumer<SerializedCommandResponse> responseObserver,
                                           ErrorCode noHandlerErrorCode, String noHandlerMessage) {
         if (commandHandler == null) {
@@ -207,12 +207,7 @@ public class CommandDispatcher {
                                                                            command.getMessageIdentifier())));
                 return;
             }
-            WrappedCommand wrappedCommand = new WrappedCommand(commandHandler.getClientStreamIdentification(),
-                                                               commandHandler.getClientId(),
-                                                               command);
-
-            commandHandler.send(wrappedCommand);
-//            commandQueues.put(commandHandler.queueName(), wrappedCommand, wrappedCommand.priority());
+            commandHandler.dispatch(command);
         } catch (InsufficientBufferCapacityException insufficientBufferCapacityException) {
             responseObserver.accept(errorCommandResponse(command.getMessageIdentifier(),
                                                          ErrorCode.TOO_MANY_REQUESTS,
@@ -253,8 +248,8 @@ public class CommandDispatcher {
             return null;
         }
 
-        CommandHandler<?> client = registrations.getHandlerForCommand(command.client().getContext(), request.wrapped(),
-                                                                      request.getRoutingKey());
+        CommandHandler client = registrations.getHandlerForCommand(command.client().getContext(), request.wrapped(),
+                                                                   request.getRoutingKey());
         if (client == null) {
             commandInformation.getResponseConsumer().accept(errorCommandResponse(request.getMessageIdentifier(),
                                                                                  ErrorCode.NO_HANDLER_FOR_COMMAND,
@@ -272,7 +267,7 @@ public class CommandDispatcher {
                                                                                         .getResponseConsumer(),
                                                                                 client.getClientStreamIdentification(),
                                                                                 client.getComponentName()));
-        return client.getClientStreamIdentification();
+        return client.clientStreamIdentification;
     }
 
     private void handlePendingCommands(ClientStreamIdentification client) {

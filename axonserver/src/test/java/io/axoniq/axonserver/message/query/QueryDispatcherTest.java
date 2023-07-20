@@ -20,6 +20,7 @@ import io.axoniq.axonserver.grpc.query.QueryResponse;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest;
 import io.axoniq.axonserver.interceptor.NoOpQueryInterceptors;
 import io.axoniq.axonserver.interceptor.QueryInterceptors;
+import io.axoniq.axonserver.message.Cancellable;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
@@ -164,10 +165,11 @@ public class QueryDispatcherTest {
                                            .setClientId("sampleClient")
                                            .build();
         FakeStreamObserver<QueryResponse> responseObserver = new FakeStreamObserver<>();
-        Set<QueryHandler<?>> handlers = new HashSet<>();
+        Set<QueryHandler> handlers = new HashSet<>();
 
         FakeStreamObserver<QueryProviderInbound> dispatchStreamObserver = new FakeStreamObserver<>();
         handlers.add(new DirectQueryHandler(dispatchStreamObserver,
+                                            testSubject.getQueryQueue(),
                                             new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "client"),
                                             "componentName", "client"));
         when(registrationCache.find(any(String.class), any())).thenReturn(handlers);
@@ -188,11 +190,12 @@ public class QueryDispatcherTest {
                                            .setMessageIdentifier("1234")
                                            .build();
         FakeStreamObserver<QueryResponse> responseObserver = new FakeStreamObserver<>();
-        Set<QueryHandler<?>> handlers = new HashSet<>();
+        Set<QueryHandler> handlers = new HashSet<>();
 
         FakeStreamObserver<QueryProviderInbound> dispatchStreamObserver = new FakeStreamObserver<>();
 
         handlers.add(new DirectQueryHandler(dispatchStreamObserver,
+                                            testSubject.getQueryQueue(),
                                             new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "client"),
                                             "componentName", "client"));
         when(registrationCache.find(any(String.class), any())).thenReturn(handlers);
@@ -271,15 +274,26 @@ public class QueryDispatcherTest {
 
         CompletableFuture<QueryResponse> futureResponse = new CompletableFuture<>();
         CompletableFuture<Boolean> futureCompleted = new CompletableFuture<>();
-        Set<QueryHandler<?>> handlers = Collections.singleton(new QueryHandler<QueryProviderInbound>(null,
-                                                                                                  new ClientStreamIdentification(
-                                                                                                          Topology.DEFAULT_CONTEXT,
-                                                                                                          "clientStreamId"),
-                                                                                                  null,
-                                                                                                  null) {
+        Set<QueryHandler> handlers = Collections.singleton(new QueryHandler(
+                new ClientStreamIdentification(
+                        Topology.DEFAULT_CONTEXT,
+                        "clientStreamId"),
+                null,
+                null) {
             @Override
             public void dispatch(SubscriptionQueryRequest query) {
 
+            }
+
+            @Override
+            public void dispatchFlowControl(String requestId, String queryName, long permits) {
+
+            }
+
+            @Override
+            public Cancellable dispatchQuery(SerializedQuery request,
+                                             long timeout, boolean streaming) {
+                return () -> true;
             }
         });
         when(registrationCache.find(any(String.class), any())).thenReturn(handlers);
@@ -311,11 +325,11 @@ public class QueryDispatcherTest {
         FakeStreamObserver<QueryProviderInbound> FakeStreamObserver = new FakeStreamObserver<>();
         SerializedQuery forwardedQuery = new SerializedQuery(Topology.DEFAULT_CONTEXT, "client", request);
 
-        ClientStreamIdentification client = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
-                                                                           "client");
-        QueryHandler<?> handler = new DirectQueryHandler(FakeStreamObserver,
-                                                         client,
-                                                         "componentName", "client");
+        QueryHandler handler = new DirectQueryHandler(FakeStreamObserver,
+                                                      testSubject.getQueryQueue(),
+                                                      new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
+                                                                                     "client"),
+                                                      "componentName", "client");
         when(registrationCache.find(any(), any(), any())).thenReturn(handler);
         testSubject.dispatchProxied(forwardedQuery, r -> {
         }, s -> {
@@ -340,7 +354,7 @@ public class QueryDispatcherTest {
     }
 
     @Test
-    public void clientDisconnectedError(){
+    public void clientDisconnectedError() {
         String requestId = "1234";
         QueryRequest request = QueryRequest.newBuilder()
                                            .setQuery("test")
@@ -357,7 +371,7 @@ public class QueryDispatcherTest {
         assertEquals(ErrorCode.CLIENT_DISCONNECTED.getCode(), responses.get(0).getErrorCode());
     }
 
-//    @Test
+    //    @Test
     public void dispatchProxiedWithError() throws Exception {
         QueryRequest request = QueryRequest.newBuilder()
                                            .setQuery("test")
@@ -365,10 +379,11 @@ public class QueryDispatcherTest {
                                            .build();
         SerializedQuery forwardedQuery = new SerializedQuery(Topology.DEFAULT_CONTEXT, "client", request);
         AtomicInteger dispatchCount = new AtomicInteger(0);
-        QueryHandler<?> handler = new DirectQueryHandler(new FailingStreamObserver<>(),
-                                                         new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
-                                                                                        "client"),
-                                                         "componentName", "client");
+        QueryHandler handler = new DirectQueryHandler(new FailingStreamObserver<>(),
+                                                      testSubject.getQueryQueue(),
+                                                      new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
+                                                                                     "client"),
+                                                      "componentName", "client");
         when(registrationCache.find(any(), any(), any())).thenReturn(handler);
         testSubject.dispatchProxied(forwardedQuery, r -> dispatchCount.incrementAndGet(), s -> {
         });
@@ -383,10 +398,11 @@ public class QueryDispatcherTest {
                                            .setMessageIdentifier(requestId)
                                            .build();
 
-        Set<QueryHandler<?>> handlers = new HashSet<>();
+        Set<QueryHandler> handlers = new HashSet<>();
 
         FakeStreamObserver<QueryProviderInbound> dispatchStreamObserver = new FakeStreamObserver<>();
         handlers.add(new DirectQueryHandler(dispatchStreamObserver,
+                                            testSubject.getQueryQueue(),
                                             new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "client"),
                                             "componentName", "client"));
         when(registrationCache.find(any(String.class), any())).thenReturn(handlers);
@@ -415,18 +431,21 @@ public class QueryDispatcherTest {
                                            .setMessageIdentifier(requestId)
                                            .build();
 
-        Set<QueryHandler<?>> handlers = new HashSet<>();
+        Set<QueryHandler> handlers = new HashSet<>();
 
         FakeStreamObserver<QueryProviderInbound> dispatchStreamObserver = new FakeStreamObserver<>();
         handlers.add(new DirectQueryHandler(dispatchStreamObserver,
+                                            testSubject.getQueryQueue(),
                                             new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "client"),
                                             "componentName", "client"));
         when(registrationCache.find(any(String.class), any())).thenReturn(handlers);
 
         testSubject.query(new SerializedQuery(Topology.DEFAULT_CONTEXT, request),
                           GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL,
-                          q -> { },
-                          d -> { });
+                          q -> {
+                          },
+                          d -> {
+                          });
 
         testSubject.flowControl(requestId, 100);
         ClientStreamIdentification clientStreamIdentification = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
@@ -450,9 +469,10 @@ public class QueryDispatcherTest {
         CompletableFuture<Boolean> originalFutureCompleted = new CompletableFuture<>();
 
         // set up handlers so AS can find one to dispatch to
-        Set<QueryHandler<?>> handlers = new HashSet<>();
+        Set<QueryHandler> handlers = new HashSet<>();
         FakeStreamObserver<QueryProviderInbound> dispatchStreamObserver = new FakeStreamObserver<>();
         handlers.add(new DirectQueryHandler(dispatchStreamObserver,
+                                            testSubject.getQueryQueue(),
                                             new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "client"),
                                             "componentName", "clientId"));
         when(registrationCache.find(any(String.class), any())).thenReturn(handlers);
@@ -474,9 +494,9 @@ public class QueryDispatcherTest {
 
         // this request has THE SAME requestId as the one already in the cache
         QueryRequest duplicatedRequest = QueryRequest.newBuilder()
-                                           .setMessageIdentifier(requestId)
-                                           .setQuery("test")
-                                           .build();
+                                                     .setMessageIdentifier(requestId)
+                                                     .setQuery("test")
+                                                     .build();
 
         CompletableFuture<QueryResponse> futureResponse = new CompletableFuture<>();
         CompletableFuture<Boolean> futureCompleted = new CompletableFuture<>();
@@ -528,16 +548,16 @@ public class QueryDispatcherTest {
         }
     }
 
-    private Set<QueryHandler<?>> mockedQueryHandler() {
-        QueryHandler<?> handler = mock(QueryHandler.class);
+    private Set<QueryHandler> mockedQueryHandler() {
+        QueryHandler handler = mock(QueryHandler.class);
         when(handler.getClientStreamId()).thenReturn("client");
         return Collections.singleton(handler);
     }
 
-    private Set<QueryHandler<?>> mockedQueryHandlers() {
-        QueryHandler<?> handler1 = mock(QueryHandler.class);
+    private Set<QueryHandler> mockedQueryHandlers() {
+        QueryHandler handler1 = mock(QueryHandler.class);
         when(handler1.getClientStreamId()).thenReturn("client1");
-        QueryHandler<?> handler2 = mock(QueryHandler.class);
+        QueryHandler handler2 = mock(QueryHandler.class);
         when(handler2.getClientStreamId()).thenReturn("client2");
         return new HashSet<>(asList(handler1, handler2));
     }
@@ -565,9 +585,10 @@ public class QueryDispatcherTest {
                                            .setQuery("test")
                                            .setMessageIdentifier(requestId)
                                            .build();
-        Set<QueryHandler<?>> handlers = new HashSet<>();
+        Set<QueryHandler> handlers = new HashSet<>();
         FakeStreamObserver<QueryProviderInbound> dispatchStreamObserver = new FakeStreamObserver<>();
         handlers.add(new DirectQueryHandler(dispatchStreamObserver,
+                                            testSubject.getQueryQueue(),
                                             new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "client"),
                                             "componentName", "client"));
         when(registrationCache.find(any(String.class), any())).thenReturn(handlers);
