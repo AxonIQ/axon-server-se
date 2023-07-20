@@ -134,13 +134,22 @@
                         <span>Context</span>
                         <span id="context" class="number">
                             <select v-model="context" @change="reloadStatus">
-                                <option v-for="n in contexts">{{n}}</option>
+                                <option v-for="n in contexts">{{ n }}</option>
                             </select>
                         </span>
                     </li>
                     <li>
                         <span>Last event token</span>
-                        <span id="nrEvents" class="number">{{status.nrOfEvents}}</span>
+                        <span id="nrEvents" class="number">{{ status.nrOfEvents }}</span>
+                    </li>
+                    <li>
+                        <span style="display: block; height: 10px"></span>
+                    </li>
+                    <li>
+                        <div v-if="node.developmentMode">
+                            <button @click="resetEvents()" class="button-reset" title="Reset">Reset Event Store</button>
+                        </div>
+                        <span>&nbsp;</span>
                     </li>
                 </ul>
 
@@ -163,15 +172,6 @@
                     <li>
                         <span>Snapshots stored / second</span>
                         <span id="snapshotRate" class="number">{{status.snapshotRate | formatRate}}</span>
-                    </li>
-                    <li>
-                        <span style="display: block; height: 10px"></span>
-                    </li>
-                    <li>
-                        <div v-if="node.developmentMode">
-                            <button @click="resetEvents()" class="button-reset" title="Reset">Reset Event Store</button>
-                        </div>
-                        <span>&nbsp;</span>
                     </li>
 
                 </ul>
