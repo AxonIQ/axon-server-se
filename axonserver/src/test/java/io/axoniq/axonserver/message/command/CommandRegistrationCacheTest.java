@@ -48,23 +48,23 @@ public class CommandRegistrationCacheTest {
 
         registrationCache.add("command1",
                               new DirectCommandHandler(
-                                                       new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
-                                                                                      "client1"),flowControlQueues,
-                                                       flowControlQueues,
-                                                       "client1", "component"));
+                                      new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
+                                                                     "client1"),
+                                      flowControlQueues,
+                                      "client1", "component"));
         registrationCache.add("command1",
                               new DirectCommandHandler(
-                                                       new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
-                                                                                      "client2"),flowControlQueues,
-                                                       flowControlQueues,
-                                                       "client2", "component"));
+                                      new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
+                                                                     "client2"),
+                                      flowControlQueues,
+                                      "client2", "component"));
         registrationCache.add("command2",
                               new DirectCommandHandler(
-                                                       new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
-                                                                                      "client2"),flowControlQueues,
-                                                       flowControlQueues,
-                                                       "client2",
-                                                       "component"));
+                                      new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
+                                                                     "client2"),
+                                      flowControlQueues,
+                                      "client2",
+                                      "component"));
     }
 
     @Test
@@ -76,9 +76,8 @@ public class CommandRegistrationCacheTest {
                 new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
                                                "client2"),
                 flowControlQueues,
-                flowControlQueues,
-                                                                      "client2",
-                                                                      "component")));
+                "client2",
+                "component")));
         assertEquals(1,
                      registrations.get(new DirectCommandHandler(new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
                                                                                                "client2"),
@@ -91,11 +90,11 @@ public class CommandRegistrationCacheTest {
     public void singleDestinationShortcutTakesContextIntoAccount() {
         registrationCache.add("contextBCommand", new DirectCommandHandler(
 
-                                                                          new ClientStreamIdentification("otherContext",
-                                                                                                         "client1"),
-                                                                          flowControlQueues,
-                                                                          "client1",
-                                                                          "component"));
+                new ClientStreamIdentification("otherContext",
+                                               "client1"),
+                flowControlQueues,
+                "client1",
+                "component"));
 
         assertNotNull(registrationCache.getHandlerForCommand("otherContext",
                                                              Command.newBuilder().setName("contextBCommand").build(),
@@ -109,43 +108,42 @@ public class CommandRegistrationCacheTest {
     public void removeLastCommandSubscription() {
         registrationCache.remove(new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "client1"), "command1");
         assertFalse(registrationCache.getAll().containsKey(new DirectCommandHandler(
-                                                                                    new ClientStreamIdentification(
-                                                                                            Topology.DEFAULT_CONTEXT,
-                                                                                            "client1"),
-                                                                                    flowControlQueues,
-                                                                                    "client1",
-                                                                                    "component")));
+                new ClientStreamIdentification(
+                        Topology.DEFAULT_CONTEXT,
+                        "client1"),
+                flowControlQueues,
+                "client1",
+                "component")));
     }
 
     @Test
     public void removeConnection() {
         registrationCache.remove(new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "client2"));
         assertFalse(registrationCache.getAll().containsKey(new DirectCommandHandler(
-                                                                                    new ClientStreamIdentification(
-                                                                                            Topology.DEFAULT_CONTEXT,
-                                                                                            "client2"),
-                                                                                    flowControlQueues,
-                                                                                    "client2",
-                                                                                    "component")));
+                new ClientStreamIdentification(
+                        Topology.DEFAULT_CONTEXT,
+                        "client2"),
+                flowControlQueues,
+                "client2",
+                "component")));
     }
 
     @Test
     public void add() {
         registrationCache.add("command2",
                               new DirectCommandHandler(
-                                                       new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
-                                                                                      "client1"),
-                                                       flowControlQueues,
-                                                       "client1",
-                                                       "component"));
+                                      new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
+                                                                     "client1"),
+                                      flowControlQueues,
+                                      "client1",
+                                      "component"));
         assertEquals(2,
                      registrationCache.getAll().get(new DirectCommandHandler(
                              new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
                                                             "client1"),
                              flowControlQueues,
-                             flowControlQueues,
-                                                                             "client1",
-                                                                             "component")).size());
+                             "client1",
+                             "component")).size());
     }
 
     @Test

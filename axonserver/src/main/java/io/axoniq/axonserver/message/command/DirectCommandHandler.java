@@ -12,7 +12,6 @@ package io.axoniq.axonserver.message.command;
 import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
-import io.axoniq.axonserver.message.FlowControlQueues;
 
 /**
  * @author Marc Gathier
@@ -37,10 +36,6 @@ public class DirectCommandHandler extends CommandHandler {
                                                            getClientId(),
                                                            command);
 
-        flowControlQueues.put(queueName(), wrappedCommand, wrappedCommand.priority());
-    }
-
-    public String queueName() {
-        return clientStreamIdentification.toString();
+        flowControlQueues.put(clientStreamIdentification, wrappedCommand, wrappedCommand.priority());
     }
 }

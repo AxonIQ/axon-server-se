@@ -19,7 +19,6 @@ import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.command.CommandHandler;
 import io.axoniq.axonserver.message.command.CommandMetricsRegistry;
 import io.axoniq.axonserver.message.command.CommandRegistrationCache;
-import io.axoniq.axonserver.message.command.WrappedCommand;
 import io.axoniq.axonserver.message.query.QueryDefinition;
 import io.axoniq.axonserver.message.query.QueryHandler;
 import io.axoniq.axonserver.message.query.QueryMetricsRegistry;
@@ -62,11 +61,6 @@ public class MetricsRestControllerTest {
                 "testcomponent") {
             @Override
             public void dispatch(SerializedCommand wrappedCommand) {
-
-            }
-
-            @Override
-            public void send(WrappedCommand wrappedCommand) {
 
             }
 

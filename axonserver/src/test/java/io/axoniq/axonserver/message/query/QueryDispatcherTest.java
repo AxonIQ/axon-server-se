@@ -325,10 +325,11 @@ public class QueryDispatcherTest {
         FakeStreamObserver<QueryProviderInbound> FakeStreamObserver = new FakeStreamObserver<>();
         SerializedQuery forwardedQuery = new SerializedQuery(Topology.DEFAULT_CONTEXT, "client", request);
 
+        ClientStreamIdentification client = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
+                                                                           "client");
         QueryHandler handler = new DirectQueryHandler(FakeStreamObserver,
                                                       testSubject.getQueryQueue(),
-                                                      new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
-                                                                                     "client"),
+                                                      client,
                                                       "componentName", "client");
         when(registrationCache.find(any(), any(), any())).thenReturn(handler);
         testSubject.dispatchProxied(forwardedQuery, r -> {

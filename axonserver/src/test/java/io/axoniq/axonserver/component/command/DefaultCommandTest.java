@@ -11,7 +11,6 @@ package io.axoniq.axonserver.component.command;
 
 import com.google.common.collect.ImmutableSet;
 import io.axoniq.axonserver.message.FlowControlQueues;
-import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.message.command.CommandHandler;
 import io.axoniq.axonserver.message.command.CommandRegistrationCache;
 import io.axoniq.axonserver.message.command.DirectCommandHandler;
@@ -35,8 +34,6 @@ public class DefaultCommandTest {
     @Before
     public void setUp() throws Exception {
         ImmutableSet<CommandHandler> commandHandlers = ImmutableSet.of(new DirectCommandHandler(null,
-
-                                                                                                new FlowControlQueues<>(),
                                                                                                 new FlowControlQueues<>(),
                                                                                                 "client",
                                                                                                 "componentA"));

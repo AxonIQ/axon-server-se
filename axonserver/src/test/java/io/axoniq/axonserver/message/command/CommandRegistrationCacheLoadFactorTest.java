@@ -116,10 +116,5 @@ public class CommandRegistrationCacheLoadFactorTest {
         public void dispatch(SerializedCommand wrappedCommand) {
 
         }
-
-        @Override
-        public void send(WrappedCommand wrappedCommand) {
-
-        }
     }
 }

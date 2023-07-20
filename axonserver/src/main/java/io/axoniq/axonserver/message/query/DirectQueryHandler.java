@@ -111,15 +111,6 @@ public class DirectQueryHandler extends QueryHandler {
      * @return the function to remove the instruction from the queue
      */
     private Cancellable enqueueInstruction(QueryInstruction instruction) {
-        return queryInstructionFlowControlQueues.put(queueName(), instruction, instruction.priority());
-    }
-
-    /**
-     * Returns the name of the query that this handler can receive
-     *
-     * @return the name of the query that this handler can receive
-     */
-    public String queueName() {
-        return clientStreamIdentification.toString();
+        return queryInstructionFlowControlQueues.put(clientStreamIdentification, instruction, instruction.priority());
     }
 }

@@ -46,11 +46,11 @@ public class CommandRestControllerTest {
         CommandRegistrationCache commandRegistationCache = new CommandRegistrationCache();
         commandRegistationCache.add("DoIt",
                                     new DirectCommandHandler(
-                                                             new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
-                                                                                            "client"),new FlowControlQueues<>(),
-                                                             new FlowControlQueues<>(),
-                                                             "client",
-                                                             "component"));
+                                            new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
+                                                                           "client"),
+                                            new FlowControlQueues<>(),
+                                            "client",
+                                            "component"));
         testSubject = new CommandRestController(commandDispatcher, commandRegistationCache);
     }
 
