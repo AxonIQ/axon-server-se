@@ -18,6 +18,7 @@ import reactor.core.scheduler.Schedulers;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 
@@ -70,6 +71,9 @@ public class FileUtils {
 
         try {
             Files.delete(file.toPath());
+        } catch (DirectoryNotEmptyException e) {
+            logger.info("Failed to delete directory: {}, it is not empty", file);
+            return false;
         } catch (IOException e) {
             logger.warn("Failed to delete: {}", file, e);
             return false;

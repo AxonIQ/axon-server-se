@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -14,11 +14,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.util.unit.DataSize;
 
-import javax.annotation.Nonnull;
 import java.time.Clock;
 import java.util.Collection;
 import java.util.Map;
@@ -55,34 +53,20 @@ public class CommandCache
             long totalMemory = DataSize.ofBytes(Runtime.getRuntime().maxMemory()).toGigabytes();
             this.cacheCapacity = (totalMemory > 0) ? (COMMANDS_PER_GB * totalMemory) : COMMANDS_PER_GB;
         }
-
     }
 
     public CommandCache(Clock clock) {
         this(300000, clock, 25000);
     }
 
-    @Scheduled(fixedDelayString = "${axoniq.axonserver.cache-close-rate:5000}")
-    public void clearOnTimeout() {
-        logger.debug("Checking timed out commands");
+    @Override
+    public Set<Map.Entry<String, CommandInformation>> timedOut() {
         long minTimestamp = clock.millis() - defaultCommandTimeout;
-        Set<Map.Entry<String, CommandInformation>> toDelete = map.entrySet().stream().filter(e -> e.getValue()
-                                                                                                   .getTimestamp()
-                < minTimestamp).collect(
-                Collectors.toSet());
-        if( ! toDelete.isEmpty()) {
-            logger.warn("Found {} waiting commands to delete", toDelete.size());
-            toDelete.forEach(e -> {
-                logger.warn("Cancelling command {} sent by {}, waiting for reply from {}",
-                            e.getValue().getRequestIdentifier(),
-                            e.getValue().getSourceClientId(),
-                            e.getValue().getClientStreamIdentification());
-                remove(e.getKey());
-                e.getValue().cancel();
-            });
-        }
+        return map.entrySet()
+                  .stream()
+                  .filter(e -> e.getValue().getTimestamp() < minTimestamp)
+                  .collect(Collectors.toSet());
     }
-
 
     @Override
     public int size() {
@@ -103,7 +87,7 @@ public class CommandCache
      * This operation is performed atomically w.r.t. the insert itself, not the constraints.
      */
     @Override
-    public CommandInformation putIfAbsent(String key, CommandInformation value){
+    public CommandInformation putIfAbsent(String key, CommandInformation value) {
         checkCapacity();
         return map.putIfAbsent(key, value);
     }
@@ -116,7 +100,7 @@ public class CommandCache
     private void checkCapacity() {
         if (map.size() >= cacheCapacity) {
             throw new InsufficientBufferCapacityException(
-                    "Command buffer is full " + "(" + cacheCapacity + "/" + cacheCapacity + ") "
+                    "Command buffer is full " + "(" + cacheCapacity + "/" + map.size() + ") "
                             + "Command handlers might be slow. Try increasing 'axoniq.axonserver.command-cache-capacity' property.");
         }
     }
