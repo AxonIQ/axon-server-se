@@ -299,7 +299,7 @@ public class QueryDispatcher {
         try {
             QueryResponse interceptedResponse = queryInterceptors.queryResponse(response, executionContext);
             callback.accept(interceptedResponse);
-            if (interceptedResponse.hasErrorMessage()) {
+            if (axonServerError(interceptedResponse)) {
                 queryMetricsRegistry.errorMetric(response.getErrorCode(), executionContext.contextName(), request);
             }
         } catch (Exception ex) {
@@ -316,6 +316,13 @@ public class QueryDispatcher {
                                              request);
             executionContext.compensate(ex);
         }
+    }
+
+    private boolean axonServerError(QueryResponse wrapped) {
+        return ErrorCode.NO_HANDLER_FOR_QUERY.getCode().equals(wrapped.getErrorCode()) ||
+                ErrorCode.TOO_MANY_REQUESTS.getCode().equals(wrapped.getErrorCode()) ||
+                ErrorCode.OTHER.getCode().equals(wrapped.getErrorCode()) ||
+                ErrorCode.EXCEPTION_IN_INTERCEPTOR.getCode().equals(wrapped.getErrorCode());
     }
 
     public MeterFactory.RateMeter queryRate(String context) {

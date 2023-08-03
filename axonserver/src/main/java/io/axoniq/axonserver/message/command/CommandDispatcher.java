@@ -140,7 +140,7 @@ public class CommandDispatcher {
         try {
             SerializedCommandResponse commandResponse = commandInterceptors.commandResponse(response, executionContext);
             responseObserver.accept(commandResponse);
-            if (commandResponse.wrapped().hasErrorMessage()) {
+            if (axonServerError(commandResponse.wrapped())) {
                 metricRegistry.errorMetric(response.wrapped().getErrorCode(), executionContext.contextName(), request);
             }
         } catch (MessagingPlatformException ex) {
@@ -158,6 +158,14 @@ public class CommandDispatcher {
             metricRegistry.errorMetric(ErrorCode.OTHER.getCode(), executionContext.contextName(), request);
             executionContext.compensate(other);
         }
+    }
+
+    private boolean axonServerError(CommandResponse wrapped) {
+        return ErrorCode.NO_HANDLER_FOR_COMMAND.getCode().equals(wrapped.getErrorCode()) ||
+                ErrorCode.TOO_MANY_REQUESTS.getCode().equals(wrapped.getErrorCode()) ||
+                ErrorCode.OTHER.getCode().equals(wrapped.getErrorCode()) ||
+                ErrorCode.EXCEPTION_IN_INTERCEPTOR.getCode().equals(wrapped.getErrorCode()) ||
+                ErrorCode.COMMAND_DUPLICATED.getCode().equals(wrapped.getErrorCode());
     }
 
 
