@@ -118,7 +118,7 @@ public class StorageProperties implements Cloneable {
     /**
      * Forcefully clean memory mapped files
      */
-    private Boolean forceClean;
+    private Boolean forceClean = true;
 
     /**
      * Define how many events to prefetch from disk when streaming events to the client
