@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -17,7 +17,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.event.EventListener;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.util.unit.DataSize;
 
@@ -72,27 +71,14 @@ public class QueryCache
         return map.get(key);
     }
 
-    @Scheduled(fixedDelayString = "${axoniq.axonserver.cache-close-rate:5000}")
-    public void clearOnTimeout() {
-        logger.debug("Checking timed out queries");
+    @Override
+    public Set<Map.Entry<String, ActiveQuery>> timedOut() {
         long minTimestamp = System.currentTimeMillis() - defaultQueryTimeout;
-        Set<Map.Entry<String, ActiveQuery>> toDelete = entrySet().stream()
-                                                                 .filter(e -> e.getValue().getTimestamp()
-                                                                         < minTimestamp)
-                                                                 .filter(e -> !e.getValue()
-                                                                                .isStreaming()) // streaming queries can last theoretically forever, let's keep them in cache
-                                                                 .collect(Collectors.toSet());
-        if (!toDelete.isEmpty()) {
-            logger.warn("Found {} waiting queries to delete", toDelete.size());
-            toDelete.forEach(e -> {
-                logger.warn("Cancelling query {} sent by {}, waiting for reply from {}",
-                            e.getValue().getQuery().getQueryName(),
-                            e.getValue().getSourceClientId(),
-                            e.getValue().waitingFor());
-                remove(e.getKey());
-                e.getValue().cancelWithError(ErrorCode.QUERY_TIMEOUT, "Query cancelled due to timeout");
-            });
-        }
+        return entrySet().stream()
+                         .filter(e -> e.getValue().getTimestamp() < minTimestamp)
+                         .filter(e -> !e.getValue()
+                                        .isStreaming()) // streaming queries can last theoretically forever, let's keep them in cache
+                         .collect(Collectors.toSet());
     }
 
     @EventListener

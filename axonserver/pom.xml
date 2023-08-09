@@ -28,7 +28,7 @@
         <frontend-maven-plugin.nodeVersion>v9.7.1</frontend-maven-plugin.nodeVersion>
         <frontend-maven-plugin.npmVersion>5.6.0</frontend-maven-plugin.npmVersion>
         <dropwizard-metrics.version>4.0.0</dropwizard-metrics.version>
-        <reactor.pool.version>1.0.0</reactor.pool.version>
+        <reactor.pool.version>1.0.1</reactor.pool.version>
 
         <mapdb.version>3.0.8</mapdb.version>
 
@@ -36,7 +36,7 @@
         <skipITs>${skipTests}</skipITs>
         <skipUTs>${skipTests}</skipUTs>
 
-        <reactor.version>3.5.7</reactor.version>
+        <reactor.version>3.5.8</reactor.version>
     </properties>
 
     <dependencies>
@@ -172,7 +172,7 @@
         <dependency>
             <groupId>org.webjars</groupId>
             <artifactId>jquery</artifactId>
-            <version>3.6.4</version>
+            <version>3.7.0</version>
         </dependency>
         <dependency>
             <groupId>org.mapdb</groupId>

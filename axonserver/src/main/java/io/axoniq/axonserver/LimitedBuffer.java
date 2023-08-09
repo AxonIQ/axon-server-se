@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -13,7 +13,9 @@ import io.axoniq.axonserver.message.command.InsufficientBufferCapacityException;
 import io.axoniq.axonserver.util.ConstraintCache;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import javax.annotation.Nonnull;
@@ -80,5 +82,10 @@ public class LimitedBuffer<T> implements ConstraintCache<String, T> {
                     bufferName + "buffer is full " + "(" + capacity + "/" + capacity + ") " + fullBufferMessage;
             throw new InsufficientBufferCapacityException(message);
         }
+    }
+
+    @Override
+    public Set<Map.Entry<String, T>> timedOut() {
+        return Collections.emptySet();
     }
 }

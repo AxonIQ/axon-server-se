@@ -8,10 +8,7 @@ properties([
 def label = "worker-${UUID.randomUUID().toString()}"
 
 def deployingBranches = [   // The branches mentioned here will get their artifacts deployed to Nexus
-    "master", "axonserver-se-2023.0.x"
-]
-def dockerBranches = [      // The branches mentioned here will get Docker images built
-    "master", "axonserver-se-2023.0.x"
+    "master", "axonserver-se-2023.1.x"
 ]
 
 /*
@@ -129,26 +126,6 @@ podTemplate(label: label,
                 }
             }
 
-            stage ('Docker image builds') {
-                if (releaseBuild || relevantBranch(gitBranch, dockerBranches)) {
-                    archiveArtifacts artifacts: 'axonserver/target/axonserver-*-exec.jar', fingerprint: true
-                    def imageJob = build job: 'axon-server-image-build/main', propagate: false, wait: true,
-                                            parameters: [
-                                                string(name: 'serverEdition', value: 'se'),
-                                                string(name: 'serverVersion', value: pomVersion),
-                                                string(name: 'cliVersion', value: pomVersion),
-                                                string(name: 'callerProject', value: env.JOB_NAME),
-                                                string(name: 'buildNumber', value: "${currentBuild.getNumber()}"),
-                                                string(name: 'buildVMimage', value: "true")
-                                            ]
-                    if (imageJob.result == "FAILURE") {
-                        slackReport += "\n- Image builds FAILED!"
-                        } else {
-                        slackReport += "\n- New Docker and VM images pushed."
-                    }
-                }
-            }
-
             stage ('Integration Tests') {
                 container("maven-jdk11") {
                     try {
@@ -183,7 +160,7 @@ podTemplate(label: label,
             }
 
             stage('Trigger followup') {
-                if (!releaseBuild && relevantBranch(gitBranch, dockerBranches) && relevantBranch(gitBranch, deployingBranches)) {
+                if (!releaseBuild && relevantBranch(gitBranch, deployingBranches)) {
                     def canaryTests = build job: 'axon-server-canary/master', propagate: false, wait: true,
                         parameters: [
                             string(name: 'serverEdition', value: 'se'),
@@ -195,8 +172,6 @@ podTemplate(label: label,
                     }
                 } else if (releaseBuild) {
                     slackReport += "\n- Skipped Canary tests (already run for this release)"
-                } else if (!relevantBranch(gitBranch, dockerBranches)) {
-                    slackReport += "\n- Skipped Canary tests (no Docker images for this branch)"
                 } else if (!relevantBranch(gitBranch, deployingBranches)) {
                     slackReport += "\n- Skipped Canary tests (no JAR file deployed for this branch)"
                 }

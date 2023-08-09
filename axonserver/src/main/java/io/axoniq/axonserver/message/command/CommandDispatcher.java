@@ -201,7 +201,6 @@ public class CommandDispatcher {
             }
 
             commandHandler.dispatch(command);
-//            commandQueues.put(commandHandler.queueName(), wrappedCommand, wrappedCommand.priority());
         } catch (InsufficientBufferCapacityException insufficientBufferCapacityException) {
             responseObserver.accept(errorCommandResponse(command.getMessageIdentifier(),
                                                          ErrorCode.TOO_MANY_REQUESTS,
