@@ -40,7 +40,10 @@ import org.springframework.security.core.Authentication;
 import org.springframework.util.unit.DataSize;
 
 import java.util.Collections;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Supplier;
 
 import static io.axoniq.axonserver.config.GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL;
 import static org.junit.Assert.assertEquals;
@@ -58,7 +61,8 @@ public class GatewayTest {
     private Gateway testSubject;
     private AxonServerAccessController accessController;
     private MessagingPlatformConfiguration routingConfiguration;
-    private LicenseAccessController licenseAccessController = mock(LicenseAccessController.class);
+    private final LicenseAccessController licenseAccessController = mock(LicenseAccessController.class);
+    private final Supplier<ScheduledExecutorService> maintenanceSchedulerSupplier = Executors::newSingleThreadScheduledExecutor;
 
 
     @Before
@@ -83,7 +87,7 @@ public class GatewayTest {
     @Test
     public void stopWithCallback() {
         testSubject = new Gateway(routingConfiguration, Collections.emptyList(),
-                                  accessController, licenseAccessController);
+                                  accessController, licenseAccessController, maintenanceSchedulerSupplier);
 
         AtomicBoolean stopped = new AtomicBoolean(false);
         testSubject.start();
@@ -95,7 +99,7 @@ public class GatewayTest {
     @Test
     public void start() {
         testSubject = new Gateway(routingConfiguration, Collections.emptyList(),
-                                  accessController, licenseAccessController);
+                                  accessController, licenseAccessController, maintenanceSchedulerSupplier);
 
         testSubject.start();
         assertTrue(testSubject.isRunning());
@@ -108,7 +112,7 @@ public class GatewayTest {
         routingConfiguration.setSsl(new SslConfiguration());
         routingConfiguration.getSsl().setEnabled(true);
         testSubject = new Gateway(routingConfiguration, Collections.emptyList(),
-                                  accessController, licenseAccessController);
+                                  accessController, licenseAccessController, maintenanceSchedulerSupplier);
 
         testSubject.start();
     }
@@ -120,7 +124,7 @@ public class GatewayTest {
         routingConfiguration.getSsl().setCertChainFile("../resources/sample.crt");
         routingConfiguration.getSsl().setPrivateKeyFile("../resources/sample.pem");
         testSubject = new Gateway(routingConfiguration, Collections.emptyList(),
-                                  accessController, licenseAccessController);
+                                  accessController, licenseAccessController, maintenanceSchedulerSupplier);
         assertTrue(testSubject.isAutoStartup());
         testSubject.start();
         assertTrue(testSubject.isRunning());
@@ -148,7 +152,7 @@ public class GatewayTest {
         AxonServerClientService dummyPlatformService = new DummyPlatformService();
         testSubject = new Gateway(routingConfiguration,
                                   Collections.singletonList(dummyPlatformService),
-                                  accessController, licenseAccessController);
+                                  accessController, licenseAccessController, maintenanceSchedulerSupplier);
         testSubject.start();
 
         Channel channel = NettyChannelBuilder.forAddress("localhost", routingConfiguration.getPort()).usePlaintext()
@@ -191,7 +195,7 @@ public class GatewayTest {
         AxonServerClientService dummyPlatformService = new DummyPlatformService();
         testSubject = new Gateway(routingConfiguration,
                                   Collections.singletonList(dummyPlatformService),
-                                  accessController, licenseAccessController);
+                                  accessController, licenseAccessController, maintenanceSchedulerSupplier);
         testSubject.start();
 
         String aLongName = generateString(size);
@@ -216,7 +220,7 @@ public class GatewayTest {
         AxonServerClientService dummyPlatformService = new DummyPlatformService();
         testSubject = new Gateway(routingConfiguration,
                                   Collections.singletonList(dummyPlatformService),
-                                  accessController, licenseAccessController);
+                                  accessController, licenseAccessController, maintenanceSchedulerSupplier);
         testSubject.start();
 
         String aLongName = generateString(size);
