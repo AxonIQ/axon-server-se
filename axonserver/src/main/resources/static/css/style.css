@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -1094,4 +1094,12 @@ span[data-tooltip]:hover:after {
 	padding: 3px 5px;
 	width: 200px;
 	white-space: break-spaces;
+}
+
+button.small {
+	width: 80px;
+	height: 30px;
+	padding: 5px;
+	font-size: smaller;
+	float: right;
 }

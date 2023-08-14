@@ -27,6 +27,7 @@
                     errorCounters: null,
                     details: null,
                     detailsType: null,
+                    detailsTitle: null,
                     status: null
                 },
                 mounted() {
@@ -109,11 +110,13 @@
                     showCommandDetails() {
                         this.details = this.commands.percentileValues;
                         this.detailsType = "commands"
+                        this.detailsTitle = "Command latency"
                         this.showModal('request-metrics-details');
                     },
                     showQueryDetails() {
                         this.details = this.queries.percentileValues;
                         this.detailsType = "queries"
+                        this.detailsTitle = "Query latency"
                         this.showModal('request-metrics-details');
                     },
                     showModal: function (name) {
@@ -125,21 +128,25 @@
                     showAppendEventsDetails() {
                         this.details = this.appendEvents.percentileValues;
                         this.detailsType = "appendEvents"
+                        this.detailsTitle = "Append events latency"
                         this.showModal('context-metrics-details');
                     },
                     showReadEventsDetails() {
                         this.details = this.readEvents.percentileValues;
                         this.detailsType = "readEvents"
+                        this.detailsTitle = "Read events latency"
                         this.showModal('context-metrics-details');
                     },
                     showAppendSnapshotsDetails() {
                         this.details = this.appendSnapshots.percentileValues;
                         this.detailsType = "appendSnapshots"
+                        this.detailsTitle = "Append snapshot latency"
                         this.showModal('context-metrics-details');
                     },
                     showReadSnapshotsDetails() {
                         this.details = this.readSnapshots.percentileValues;
                         this.detailsType = "readSnapshots"
+                        this.detailsTitle = "Read snapshot latency"
                         this.showModal('context-metrics-details');
                     },
                     rtrim(text) {
@@ -183,7 +190,7 @@
                         <span class="number">{{ commands.max | formatLatency }}</span>
                     </li>
                 </ul>
-                <button class="button"
+                <button class="button small"
                         @click.prevent="showCommandDetails()">
                     Details
                 </button>
@@ -199,7 +206,7 @@
                     </li>
 
                 </ul>
-                <button class="button"
+                <button class="button small"
                         @click.prevent="showQueryDetails()">
                     Details
                 </button>
@@ -220,7 +227,7 @@
                         <span class="number">{{ appendEvents.max | formatLatency }}</span>
                     </li>
                 </ul>
-                <button class="button"
+                <button class="button small"
                         @click.prevent="showAppendEventsDetails()">
                     Details
                 </button>
@@ -236,7 +243,7 @@
                     </li>
 
                 </ul>
-                <button class="button"
+                <button class="button small"
                         @click.prevent="showReadEventsDetails()">
                     Details
                 </button>
@@ -257,7 +264,7 @@
                     </li>
 
                 </ul>
-                <button class="button"
+                <button class="button small"
                         @click.prevent="showAppendSnapshotsDetails()">
                     Details
                 </button>
@@ -273,7 +280,7 @@
                     </li>
 
                 </ul>
-                <button class="button"
+                <button class="button small"
                         @click.prevent="showReadSnapshotsDetails()">
                     Details
                 </button>
@@ -520,19 +527,20 @@
     </div>
 
     <modal name="request-metrics-details" width="1000" height="550">
-        <div style="width: 100%; height: 500px; overflow: auto">
-            <h2>{{ detailsType }}</h2>
-            <table v-if="details">
-                <thead>
-                <tr>
-                    <th></th>
-                    <th style="width: 30%"></th>
-                    <th></th>
-                    <th style="width: 80px"></th>
-                    <th colspan="3" style="width: 300px; text-align: center">Percentiles</th>
-                </tr>
+        <div style="margin: 10px;  width: 980px; height: 100%">
+            <div style="width: 100%; height: 490px; overflow: auto">
+                <h2>{{ detailsTitle }}</h2>
+                <table v-if="details">
+                    <thead>
+                    <tr>
+                        <th></th>
+                        <th style="width: 30%"></th>
+                        <th></th>
+                        <th style="width: 80px"></th>
+                        <th colspan="3" style="width: 300px; text-align: center">Percentiles</th>
+                    </tr>
 
-                <tr>
+                    <tr>
                     <th>Context</th>
                     <th>Request</th>
                     <!--                            <th>Source</th>-->
@@ -554,24 +562,26 @@
                     <td style="text-align: right">{{ c.latency.percentileValues[1].value | formatLatency }}</td>
                     <td style="text-align: right">{{ c.latency.percentileValues[2].value | formatLatency }}</td>
                 </tbody>
-            </table>
+                </table>
+            </div>
+            <button @click.prevent="hideModal('request-metrics-details')" class="button">Ok</button>
         </div>
-        <button @click.prevent="hideModal('request-metrics-details')" class="button">Ok</button>
-
     </modal>
+
     <modal name="context-metrics-details" width="800" height="550">
-        <div style="width: 100%; height: 500px; overflow: auto">
-            <h2>{{ detailsType }}</h2>
-            <table v-if="details">
-                <thead>
-                <tr>
-                    <th></th>
-                    <th style="width: 100px"></th>
-                    <th colspan="3" style="width: 300px; text-align: center">Percentiles</th>
-                </tr>
-                <tr>
-                    <th>Context</th>
-                    <th>Count</th>
+        <div style="margin: 10px;  width: 780px; height: 100%">
+            <div style="width: 100%; height: 490px; overflow: auto">
+                <h2>{{ detailsTitle }}</h2>
+                <table v-if="details">
+                    <thead>
+                    <tr>
+                        <th></th>
+                        <th style="width: 100px"></th>
+                        <th colspan="3" style="width: 300px; text-align: center">Percentiles</th>
+                    </tr>
+                    <tr>
+                        <th>Context</th>
+                        <th>Count</th>
                     <th style="width: 100px; text-align: right">50%</th>
                     <th style="width: 100px; text-align: right">95%</th>
                     <th style="width: 100px; text-align: right">99%</th>
@@ -585,10 +595,10 @@
                     <td style="text-align: right">{{ c.latency.percentileValues[1].value | formatLatency }}</td>
                     <td style="text-align: right">{{ c.latency.percentileValues[2].value | formatLatency }}</td>
                 </tbody>
-            </table>
+                </table>
+            </div>
+            <button @click.prevent="hideModal('context-metrics-details')" class="button">Ok</button>
         </div>
-        <button @click.prevent="hideModal('context-metrics-details')" class="button">Ok</button>
-
     </modal>
 
 </div>
