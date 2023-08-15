@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -9,8 +9,11 @@
 
 package io.axoniq.axonserver.config;
 
+import io.grpc.util.AdvancedTlsX509TrustManager;
+
 /**
  * Configuration properties for SSL (TLS) settings.
+ *
  * @author Marc Gathier
  */
 public class SslConfiguration {
@@ -39,6 +42,13 @@ public class SslConfiguration {
      * File containing the private key to be used in internal communication between Axon Server nodes.
      */
     private String internalPrivateKeyFile;
+
+    /**
+     * Certificate verification level for the internal communication between Axon Server nodes (possible values
+     * CERTIFICATE_AND_HOST_NAME_VERIFICATION, CERTIFICATE_ONLY_VERIFICATION or INSECURELY_SKIP_ALL_VERIFICATION).
+     */
+    private AdvancedTlsX509TrustManager.Verification trustManagerVerification =
+            AdvancedTlsX509TrustManager.Verification.CERTIFICATE_AND_HOST_NAME_VERIFICATION;
 
     public boolean isEnabled() {
         return enabled;
@@ -92,5 +102,13 @@ public class SslConfiguration {
 
     public void setInternalTrustManagerFile(String internalTrustManagerFile) {
         this.internalTrustManagerFile = internalTrustManagerFile;
+    }
+
+    public AdvancedTlsX509TrustManager.Verification getTrustManagerVerification() {
+        return trustManagerVerification;
+    }
+
+    public void setTrustManagerVerification(AdvancedTlsX509TrustManager.Verification trustManagerVerification) {
+        this.trustManagerVerification = trustManagerVerification;
     }
 }
