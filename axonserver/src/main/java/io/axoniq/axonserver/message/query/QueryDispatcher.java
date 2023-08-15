@@ -94,6 +94,11 @@ public class QueryDispatcher {
             ClientStreamIdentification clientStream = new ClientStreamIdentification(activeQuery.getContext(),
                                                                                      clientStreamId);
             long responseTime = System.currentTimeMillis() - activeQuery.getTimestamp();
+            queryMetricsRegistry.addHandlerResponseTime(activeQuery.getQuery(),
+                                                        activeQuery.getSourceClientId(),
+                                                        clientId,
+                                                        clientStream.getContext(),
+                                                        responseTime);
             queryMetricsRegistry.addEndToEndResponseTime(activeQuery.getQuery(),
                                                          clientId,
                                                          clientStream.getContext(),
@@ -120,14 +125,6 @@ public class QueryDispatcher {
         if (activeQuery != null) {
             if (activeQuery.complete(clientStreamId)) {
                 queryCache.remove(activeQuery.getKey());
-            }
-            if (!proxied) {
-                queryMetricsRegistry.addHandlerResponseTime(activeQuery.getQuery(),
-                                                            activeQuery.getSourceClientId(),
-                                                            clientId,
-                                                            activeQuery.getContext(),
-                                                            System.currentTimeMillis() - activeQuery
-                                                                    .getTimestamp());
             }
         } else {
             logger.debug("No (more) information for {} on completed", requestId);

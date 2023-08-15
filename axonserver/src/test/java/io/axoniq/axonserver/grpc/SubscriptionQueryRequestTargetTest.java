@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -19,14 +19,16 @@ import io.axoniq.axonserver.interceptor.SubscriptionQueryInterceptors;
 import io.axoniq.axonserver.plugin.ExecutionContext;
 import io.axoniq.axonserver.test.FakeStreamObserver;
 import io.grpc.StatusRuntimeException;
-import org.junit.*;
+import org.junit.Before;
+import org.junit.Test;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.LinkedList;
 import java.util.List;
 import java.util.UUID;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 /**
  * @author Marc Gathier
@@ -42,11 +44,11 @@ public class SubscriptionQueryRequestTargetTest {
         ApplicationEventPublisher eventPublisher = event -> {
             if (event instanceof SubscriptionQueryEvents.SubscriptionQueryRequested) {
                 SubscriptionQueryEvents.SubscriptionQueryRequested requested = (SubscriptionQueryEvents.SubscriptionQueryRequested) event;
-                requested.handler().onSubscriptionQueryResponse(SubscriptionQueryResponse.newBuilder().build());
+                requested.handler().onSubscriptionQueryResponse(SubscriptionQueryResponse.newBuilder().build(), null);
             }
             if (event instanceof SubscriptionQueryEvents.SubscriptionQueryInitialResultRequested) {
                 SubscriptionQueryEvents.SubscriptionQueryInitialResultRequested requested = (SubscriptionQueryEvents.SubscriptionQueryInitialResultRequested) event;
-                requested.handler().onSubscriptionQueryResponse(SubscriptionQueryResponse.newBuilder().build());
+                requested.handler().onSubscriptionQueryResponse(SubscriptionQueryResponse.newBuilder().build(), null);
             }
         };
 

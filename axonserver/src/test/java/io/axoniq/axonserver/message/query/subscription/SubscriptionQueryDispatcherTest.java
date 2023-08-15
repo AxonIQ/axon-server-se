@@ -130,7 +130,7 @@ public class SubscriptionQueryDispatcherTest {
         cache.on(subscribeQuery(requestConsumer, "client4"));
         testSubject.on(new SubscriptionQueryInitialResultRequested(context,
                                                                    subscriptionQuery,
-                                                                   response -> {
+                                                                   (response, client) -> {
                                                                    },
                                                                    error -> {
                                                                    }));
@@ -152,7 +152,7 @@ public class SubscriptionQueryDispatcherTest {
         SubscriptionQueryEvents.SubscriptionQueryStarted queryStarted =
                 testSubject.on(new SubscriptionQueryRequested(context,
                                                               subscriptionQuery,
-                                                              response -> {
+                                                              (response, client) -> {
                                                               },
                                                               throwable -> {
                                                               }));
@@ -166,7 +166,7 @@ public class SubscriptionQueryDispatcherTest {
         SubscriptionQueryEvents.SubscriptionQueryStarted queryStarted =
                 testSubject.on(new SubscriptionQueryRequested(context,
                                                               subscriptionQuery,
-                                                              response -> {
+                                                              (response, client) -> {
                                                               },
                                                               error::set));
         assertNull(queryStarted);
