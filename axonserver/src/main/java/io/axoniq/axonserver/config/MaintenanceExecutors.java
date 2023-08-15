@@ -16,6 +16,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.Supplier;
 
+/**
+ * Contains a thread pool that can be used to schedule maintenance tasks.
+ */
 @Component
 public class MaintenanceExecutors implements Supplier<ScheduledExecutorService> {
 
@@ -23,6 +26,11 @@ public class MaintenanceExecutors implements Supplier<ScheduledExecutorService> 
                                                                                                    new DaemonThreadFactory(
                                                                                                            "maintenance-scheduler"));
 
+    /**
+     * Returns a {@link ScheduledExecutorService} to schedule maintenance tasks.
+     *
+     * @return a thread pool to schedule maintenance tasks
+     */
     @Override
     public ScheduledExecutorService get() {
         return maintenanceScheduler;
