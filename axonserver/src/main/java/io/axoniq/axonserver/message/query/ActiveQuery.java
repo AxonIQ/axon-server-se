@@ -36,6 +36,8 @@ import javax.annotation.Nonnull;
  */
 public class ActiveQuery {
 
+    public static final boolean FIRST_RECEIVER = true;
+    public static final boolean PROXIED_RECEIVER = false;
     private final Logger logger = LoggerFactory.getLogger(ActiveQuery.class);
     private final String key;
     private final QueryDefinition query;
@@ -50,6 +52,7 @@ public class ActiveQuery {
     private final AtomicReference<String> targetClientStreamId = new AtomicReference<>();
     private final SerializedQuery serializedQuery;
     private final long timeout;
+    private final boolean firstReceiver;
 
     /**
      * Creates an instance with the specified parameters.
@@ -65,7 +68,16 @@ public class ActiveQuery {
                        Consumer<QueryResponse> responseConsumer,
                        Consumer<String> onCompleted,
                        Set<QueryHandler> handlers) {
-        this(key, serializedQuery, responseConsumer, onCompleted, handlers, false);
+        this(key, serializedQuery, FIRST_RECEIVER, responseConsumer, onCompleted, handlers, false);
+    }
+
+    public ActiveQuery(String key,
+                       SerializedQuery serializedQuery,
+                       boolean firstReceiver,
+                       Consumer<QueryResponse> responseConsumer,
+                       Consumer<String> onCompleted,
+                       Set<QueryHandler> handlers) {
+        this(key, serializedQuery, firstReceiver, responseConsumer, onCompleted, handlers, false);
     }
 
     /**
@@ -80,6 +92,7 @@ public class ActiveQuery {
      */
     public ActiveQuery(String key,
                        SerializedQuery serializedQuery,
+                       boolean firstReceiver,
                        Consumer<QueryResponse> responseConsumer,
                        Consumer<String> onCompleted,
                        Set<QueryHandler> handlers,
@@ -87,6 +100,7 @@ public class ActiveQuery {
         this.key = key;
         this.sourceClientId = serializedQuery.query().getClientId();
         this.query = new QueryDefinition(serializedQuery.context(), serializedQuery.query().getQuery());
+        this.firstReceiver = firstReceiver;
         this.responseConsumer = responseConsumer;
         this.onCompleted = onCompleted;
         this.handlers = new CopyOnWriteArraySet<>(handlers);
@@ -179,6 +193,7 @@ public class ActiveQuery {
      * @return {@code true} if this was the last expected response, {@code false} if at least another response is expected
      */
     public boolean complete(String clientStreamId) {
+        boolean handlerFound = false;
         for (QueryHandler handler : handlers) {
             if (clientStreamId.equals(handler.getClientStreamId())) {
                 Cancellable cancel = cancelOperations.remove(handler);
@@ -186,7 +201,11 @@ public class ActiveQuery {
                     cancel.cancel();
                 }
                 handlers.remove(handler);
+                handlerFound = true;
             }
+        }
+        if (!handlerFound) {
+            throw new IllegalStateException("Handler not found: " + clientStreamId);
         }
         if (handlers.isEmpty()) {
             QueryResponse response = failedResponse.getAndSet(null);
@@ -281,8 +300,12 @@ public class ActiveQuery {
      * @return {@code true} if the query request has been completed, {@code false} if there are other handlers still active.
      */
     public boolean completeWithError(String clientStreamId, ErrorCode errorCode, String message) {
-        responseConsumer.accept(buildErrorResponse(errorCode, message));
-        return complete(clientStreamId);
+        try {
+            responseConsumer.accept(buildErrorResponse(errorCode, message));
+            return complete(clientStreamId);
+        } catch (IllegalStateException illegalStateException) {
+            return false;
+        }
     }
 
     @Nonnull
@@ -354,5 +377,9 @@ public class ActiveQuery {
      */
     public String queryName() {
         return query.getQueryName();
+    }
+
+    public boolean firstReceiver() {
+        return firstReceiver;
     }
 }

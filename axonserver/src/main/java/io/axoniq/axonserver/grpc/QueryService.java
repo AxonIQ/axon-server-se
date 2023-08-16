@@ -189,8 +189,7 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                                                                wrappedQueryProviderInboundObserver);
                         queryDispatcher.handleComplete(queryProviderOutbound.getQueryComplete().getRequestId(),
                                                        clientRef.get().getClientStreamId(),
-                                                       clientIdRef.get(),
-                                                       false);
+                                                       clientIdRef.get());
                         break;
                     case SUBSCRIPTION_QUERY_RESPONSE:
                         logger.debug("{}-[{}]: Subscription Query Response received of type {}.",

@@ -134,12 +134,13 @@ public class SubscriptionQueryMetricRegistry {
 
     @EventListener
     public void on(SubscriptionQueryEvents.SubscriptionQueryResponseReceived event) {
-        Long startTime = started.remove(event.subscriptionId());
+        String subscriptionId = event.subscriptionId();
+        Long startTime = started.remove(subscriptionId);
         if (startTime != null && event.response().getResponseCase().equals(INITIAL_RESULT)
                 && event.clientId() != null) {
-            String clientId = clients.getOrDefault(event.subscriptionId(), "UNKNOWN_CLIENT");
-            String context = contexts.getOrDefault(event.subscriptionId(), "UNKNOWN_CONTEXT");
-            String request = queries.getOrDefault(event.subscriptionId(), "UNKNOWN_REQUEST");
+            String clientId = clients.getOrDefault(subscriptionId, "UNKNOWN_CLIENT");
+            String context = contexts.getOrDefault(subscriptionId, "UNKNOWN_CONTEXT");
+            String request = queries.getOrDefault(subscriptionId, "UNKNOWN_REQUEST");
             long durationInMillis = System.currentTimeMillis() - startTime;
             localMetricRegistry.timer(BaseMetricName.AXON_QUERY,
                                       Tags.of(CONTEXT,
@@ -157,10 +158,10 @@ public class SubscriptionQueryMetricRegistry {
                     MeterFactory.TARGET, clientId)).record(durationInMillis, TimeUnit.MILLISECONDS);
         }
 
-        if (componentNames.containsKey(event.subscriptionId()) && event.response().getResponseCase().equals(UPDATE)) {
-            String component = componentNames.get(event.subscriptionId());
-            String context = contexts.get(event.subscriptionId());
-            String request = queries.get(event.subscriptionId());
+        if (componentNames.containsKey(subscriptionId) && event.response().getResponseCase().equals(UPDATE)) {
+            String component = componentNames.get(subscriptionId);
+            String context = contexts.get(subscriptionId);
+            String request = queries.get(subscriptionId);
 
             if (component != null && context != null) {
                 updatesMetric(component, context, request).increment();
