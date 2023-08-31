@@ -70,7 +70,7 @@ public class MetricsRestControllerTest {
             }
         });
         commandMetricsRegistry = new CommandMetricsRegistry(new MeterFactory(new SimpleMeterRegistry(),
-                                                                             new DefaultMetricCollector()));
+                                                                             new DefaultMetricCollector()), true);
 
         QueryRegistrationCache queryRegistrationCache = new QueryRegistrationCache(new RoundRobinQueryHandlerSelector());
         queryClient = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "testclient");

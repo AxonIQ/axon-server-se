@@ -14,6 +14,8 @@ import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.InvalidTokenException;
 import io.axoniq.axonserver.logging.AuditLog;
+import io.axoniq.axonserver.metric.MeterFactory;
+import io.axoniq.axonserver.metric.StandardMetricName;
 import io.grpc.Context;
 import io.grpc.Contexts;
 import io.grpc.Grpc;
@@ -22,6 +24,7 @@ import io.grpc.ServerCall;
 import io.grpc.ServerCallHandler;
 import io.grpc.ServerInterceptor;
 import io.grpc.StatusRuntimeException;
+import io.micrometer.core.instrument.Counter;
 import org.springframework.security.core.Authentication;
 
 /**
@@ -31,9 +34,11 @@ import org.springframework.security.core.Authentication;
  */
 public class AuthenticationInterceptor implements ServerInterceptor {
     private final AxonServerAccessController axonServerAccessController;
+    private final Counter authenticationErrors;
 
-    public AuthenticationInterceptor(AxonServerAccessController axonServerAccessController) {
+    public AuthenticationInterceptor(AxonServerAccessController axonServerAccessController, MeterFactory meterFactory) {
         this.axonServerAccessController = axonServerAccessController;
+        this.authenticationErrors = meterFactory.counter(StandardMetricName.AUTHENTICATION_ERRORS);
     }
 
     @Override
@@ -60,6 +65,7 @@ public class AuthenticationInterceptor implements ServerInterceptor {
                 sre = GrpcExceptionBuilder.build(ErrorCode.AUTHENTICATION_INVALID_TOKEN,
                                                  "Invalid token for " + serverCall.getMethodDescriptor()
                                                                                   .getFullMethodName());
+                authenticationErrors.increment();
             }
         }
 

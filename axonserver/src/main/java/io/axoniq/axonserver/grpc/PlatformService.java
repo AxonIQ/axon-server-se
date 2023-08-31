@@ -28,10 +28,14 @@ import io.axoniq.axonserver.grpc.control.PlatformServiceGrpc;
 import io.axoniq.axonserver.grpc.control.RequestReconnect;
 import io.axoniq.axonserver.grpc.heartbeat.ApplicationInactivityException;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
+import io.axoniq.axonserver.metric.MeterFactory;
+import io.axoniq.axonserver.metric.StandardMetricName;
 import io.axoniq.axonserver.topology.AxonServerNode;
 import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.util.StreamObserverUtils;
 import io.grpc.stub.StreamObserver;
+import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.Tags;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,8 +53,12 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+
+import static io.axoniq.axonserver.metric.MeterFactory.CONTEXT;
 
 /**
  * gRPC service to track connected applications. Each application will first call the openStream operation with a
@@ -64,12 +72,15 @@ import java.util.stream.Collectors;
 public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase implements AxonServerClientService {
 
     private static final Logger logger = LoggerFactory.getLogger(PlatformService.class);
+    public static final String TAG_COMPONENT = "component";
 
     private final Map<ClientComponent, SendingStreamObserver<PlatformOutboundInstruction>> connectionMap = new ConcurrentHashMap<>();
+    private final Map<String, Gauge> activeConnectionsPerContext = new ConcurrentHashMap<>();
     private final Topology topology;
     private final ContextProvider contextProvider;
     private final ApplicationEventPublisher eventPublisher;
     private final Map<RequestCase, Deque<InstructionConsumer>> handlers = new EnumMap<>(RequestCase.class);
+    private final MeterFactory meterFactory;
     private final InstructionAckSource<PlatformOutboundInstruction> instructionAckSource;
     private final ClientIdRegistry clientIdRegistry;
 
@@ -87,12 +98,14 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                            ContextProvider contextProvider,
                            ClientIdRegistry clientIdRegistry,
                            ApplicationEventPublisher eventPublisher,
+                           MeterFactory meterFactory,
                            @Qualifier("platformInstructionAckSource")
                                    InstructionAckSource<PlatformOutboundInstruction> instructionAckSource) {
         this.topology = topology;
         this.contextProvider = contextProvider;
         this.clientIdRegistry = clientIdRegistry;
         this.eventPublisher = eventPublisher;
+        this.meterFactory = meterFactory;
         this.instructionAckSource = instructionAckSource;
         onInboundInstruction(RequestCase.ACK, (client, instruction) -> {
             InstructionAck ack = instruction.getAck();
@@ -150,11 +163,13 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
 
         return new ReceivingStreamObserver<>(logger) {
             private final AtomicReference<ClientComponent> clientComponent = new AtomicReference<>();
+            private final AtomicLong registered = new AtomicLong();
 
             @Override
             protected void consume(PlatformInboundInstruction instruction) {
                 RequestCase requestCase = instruction.getRequestCase();
                 if (instruction.hasRegister()) { // TODO: 11/1/2019 register this as instruction handler
+                    registered.compareAndSet(0, System.currentTimeMillis());
                     instructionAckSource.sendSuccessfulAck(instruction.getInstructionId(), sendingStreamObserver);
                     ClientIdentification client = instruction.getRegister();
                     String clientId = client.getClientId();
@@ -175,6 +190,13 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                     eventPublisher.publishEvent(new ClientVersionUpdate(clientStreamId,
                                                                         context,
                                                                         client.getVersion()));
+                    meterFactory.counter(StandardMetricName.APPLICATION_CONNECT,
+                                         Tags.of(CONTEXT, context, TAG_COMPONENT, client.getComponentName()))
+                                .increment();
+                    activeConnectionsPerContext.computeIfAbsent(context,
+                                                                c -> meterFactory.gauge(StandardMetricName.APPLICATION_CONNECTED,
+                                                                                        Tags.of(CONTEXT, c),
+                                                                                        () -> activeConnections(c)));
                 } else if (!handlers.containsKey(requestCase)) {
                     instructionAckSource.sendUnsupportedInstruction(instruction.getInstructionId(),
                                                                     topology.getMe().getName(),
@@ -200,14 +222,22 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                 if (!ExceptionUtils.isCancelled(throwable)) {
                     logger.warn("{}: error on connection - {}", sender(), throwable.getMessage());
                 }
-                deregisterClient(clientComponent.get(), "Error on platform connection from client");
+                deregisterClient(clientComponent.get(), registered.get(), "Error on platform connection from client");
             }
 
             @Override
             public void onCompleted() {
-                deregisterClient(clientComponent.get(), "Platform connection completed by client");
+
+                deregisterClient(clientComponent.get(), registered.get(), "Platform connection completed by client");
             }
         };
+    }
+
+    private long activeConnections(String context) {
+        return connectionMap.keySet()
+                            .stream()
+                            .filter(cc -> cc.getContext().equals(context))
+                            .count();
     }
 
     @EventListener
@@ -310,10 +340,18 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
         ));
     }
 
-    private void deregisterClient(ClientComponent clientComponent, String reason) {
+    private void deregisterClient(ClientComponent clientComponent, long registeredTimestamp, String reason) {
         logger.debug("De-registered client : {}", clientComponent);
 
         if (clientComponent != null) {
+            Tags tags = Tags.of(CONTEXT, clientComponent.getContext(),
+                                TAG_COMPONENT, clientComponent.getComponent());
+            meterFactory.counter(StandardMetricName.APPLICATION_DISCONNECT, tags)
+                        .increment();
+            if (registeredTimestamp > 0) {
+                meterFactory.timer(StandardMetricName.APPLICATION_CONNECT_DURATION, tags)
+                            .record(System.currentTimeMillis() - registeredTimestamp, TimeUnit.MILLISECONDS);
+            }
             SendingStreamObserver<PlatformOutboundInstruction> stream = connectionMap.remove(clientComponent);
             if (stream != null) {
                 StreamObserverUtils.complete(stream);
@@ -337,7 +375,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
             StreamObserverUtils.error(stream, cause);
         }
 
-        deregisterClient(clientComponent, cause.getMessage());
+        deregisterClient(clientComponent, 0, cause.getMessage());
     }
 
     /**

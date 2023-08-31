@@ -80,6 +80,7 @@ public class QueryDispatcherTest {
                                           queryMetricsRegistry,
                                           new NoOpQueryInterceptors(),
                                           meterFactory,
+                                          null,
                                           10_000);
     }
 
@@ -157,6 +158,7 @@ public class QueryDispatcherTest {
                                           queryMetricsRegistry,
                                           new NoOpQueryInterceptors(),
                                           meterFactory,
+                                          null,
                                           0);
         String requestId = "1234";
         QueryRequest request = QueryRequest.newBuilder()
@@ -212,6 +214,7 @@ public class QueryDispatcherTest {
                                           queryMetricsRegistry,
                                           new MyQueryInterceptors(),
                                           meterFactory,
+                                          null,
                                           10_000);
         String requestId = "REJECT";
         QueryRequest request = QueryRequest.newBuilder()
@@ -238,6 +241,7 @@ public class QueryDispatcherTest {
                                           queryMetricsRegistry,
                                           new MyQueryInterceptors(),
                                           meterFactory,
+                                          null,
                                           10_000);
         String requestId = "FAIL";
         QueryRequest request = QueryRequest.newBuilder()
@@ -265,6 +269,7 @@ public class QueryDispatcherTest {
                                           queryMetricsRegistry,
                                           new MyQueryInterceptors(),
                                           meterFactory,
+                                          null,
                                           10_000);
         QueryRequest request = QueryRequest.newBuilder()
                                            .setMessageIdentifier("RESPOND")
@@ -486,6 +491,7 @@ public class QueryDispatcherTest {
                                           queryMetricsRegistry,
                                           new MyQueryInterceptors(),
                                           meterFactory,
+                                          null,
                                           10_000);
 
         // this request has THE SAME requestId as the one already in the cache
@@ -575,6 +581,7 @@ public class QueryDispatcherTest {
                                                               queryMetricsRegistry,
                                                               new MyQueryInterceptors(),
                                                               meterFactory,
+                                                              null,
                                                               10_000);
         String requestId = "1234";
         QueryRequest request = QueryRequest.newBuilder()

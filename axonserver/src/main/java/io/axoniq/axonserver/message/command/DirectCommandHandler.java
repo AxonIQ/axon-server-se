@@ -40,6 +40,6 @@ public class DirectCommandHandler extends CommandHandler {
     }
 
     public String queueName() {
-        return clientStreamIdentification.toString();
+        return clientStreamIdentification.getClientStreamId();
     }
 }

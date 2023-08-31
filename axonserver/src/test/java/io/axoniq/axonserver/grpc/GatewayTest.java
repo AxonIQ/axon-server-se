@@ -21,6 +21,7 @@ import io.axoniq.axonserver.grpc.control.ClientIdentification;
 import io.axoniq.axonserver.grpc.control.NodeInfo;
 import io.axoniq.axonserver.grpc.control.PlatformInfo;
 import io.axoniq.axonserver.grpc.control.PlatformServiceGrpc;
+import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.topology.Topology;
 import io.grpc.CallOptions;
 import io.grpc.Channel;
@@ -63,6 +64,7 @@ public class GatewayTest {
     private MessagingPlatformConfiguration routingConfiguration;
     private final LicenseAccessController licenseAccessController = mock(LicenseAccessController.class);
     private final Supplier<ScheduledExecutorService> maintenanceSchedulerSupplier = Executors::newSingleThreadScheduledExecutor;
+    private final MeterFactory meterFactory = mock(MeterFactory.class);
 
 
     @Before
@@ -87,7 +89,10 @@ public class GatewayTest {
     @Test
     public void stopWithCallback() {
         testSubject = new Gateway(routingConfiguration, Collections.emptyList(),
-                                  accessController, licenseAccessController, maintenanceSchedulerSupplier);
+                                  accessController,
+                                  licenseAccessController,
+                                  maintenanceSchedulerSupplier,
+                                  meterFactory);
 
         AtomicBoolean stopped = new AtomicBoolean(false);
         testSubject.start();
@@ -99,7 +104,10 @@ public class GatewayTest {
     @Test
     public void start() {
         testSubject = new Gateway(routingConfiguration, Collections.emptyList(),
-                                  accessController, licenseAccessController, maintenanceSchedulerSupplier);
+                                  accessController,
+                                  licenseAccessController,
+                                  maintenanceSchedulerSupplier,
+                                  meterFactory);
 
         testSubject.start();
         assertTrue(testSubject.isRunning());
@@ -112,7 +120,10 @@ public class GatewayTest {
         routingConfiguration.setSsl(new SslConfiguration());
         routingConfiguration.getSsl().setEnabled(true);
         testSubject = new Gateway(routingConfiguration, Collections.emptyList(),
-                                  accessController, licenseAccessController, maintenanceSchedulerSupplier);
+                                  accessController,
+                                  licenseAccessController,
+                                  maintenanceSchedulerSupplier,
+                                  meterFactory);
 
         testSubject.start();
     }
@@ -124,7 +135,10 @@ public class GatewayTest {
         routingConfiguration.getSsl().setCertChainFile("../resources/sample.crt");
         routingConfiguration.getSsl().setPrivateKeyFile("../resources/sample.pem");
         testSubject = new Gateway(routingConfiguration, Collections.emptyList(),
-                                  accessController, licenseAccessController, maintenanceSchedulerSupplier);
+                                  accessController,
+                                  licenseAccessController,
+                                  maintenanceSchedulerSupplier,
+                                  meterFactory);
         assertTrue(testSubject.isAutoStartup());
         testSubject.start();
         assertTrue(testSubject.isRunning());
@@ -152,7 +166,10 @@ public class GatewayTest {
         AxonServerClientService dummyPlatformService = new DummyPlatformService();
         testSubject = new Gateway(routingConfiguration,
                                   Collections.singletonList(dummyPlatformService),
-                                  accessController, licenseAccessController, maintenanceSchedulerSupplier);
+                                  accessController,
+                                  licenseAccessController,
+                                  maintenanceSchedulerSupplier,
+                                  meterFactory);
         testSubject.start();
 
         Channel channel = NettyChannelBuilder.forAddress("localhost", routingConfiguration.getPort()).usePlaintext()
@@ -195,7 +212,10 @@ public class GatewayTest {
         AxonServerClientService dummyPlatformService = new DummyPlatformService();
         testSubject = new Gateway(routingConfiguration,
                                   Collections.singletonList(dummyPlatformService),
-                                  accessController, licenseAccessController, maintenanceSchedulerSupplier);
+                                  accessController,
+                                  licenseAccessController,
+                                  maintenanceSchedulerSupplier,
+                                  meterFactory);
         testSubject.start();
 
         String aLongName = generateString(size);
@@ -220,7 +240,10 @@ public class GatewayTest {
         AxonServerClientService dummyPlatformService = new DummyPlatformService();
         testSubject = new Gateway(routingConfiguration,
                                   Collections.singletonList(dummyPlatformService),
-                                  accessController, licenseAccessController, maintenanceSchedulerSupplier);
+                                  accessController,
+                                  licenseAccessController,
+                                  maintenanceSchedulerSupplier,
+                                  meterFactory);
         testSubject.start();
 
         String aLongName = generateString(size);

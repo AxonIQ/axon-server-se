@@ -25,10 +25,13 @@ import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.command.WrappedCommand;
+import io.axoniq.axonserver.metric.DefaultMetricCollector;
+import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.test.FakeStreamObserver;
 import io.axoniq.axonserver.topology.DefaultTopology;
 import io.axoniq.axonserver.topology.Topology;
 import io.grpc.stub.StreamObserver;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
@@ -73,6 +76,7 @@ public class CommandServiceTest {
                                          () -> Topology.DEFAULT_CONTEXT,
                                          () -> GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL,
                                          new DefaultClientIdRegistry(),
+                                         new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector()),
                                          eventPublisher,
                                          new DefaultInstructionAckSource<>(ack -> new SerializedCommandProviderInbound(
                                                  CommandProviderInbound.newBuilder().setAck(ack).build())));

@@ -25,12 +25,15 @@ import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.command.CommandHandler;
 import io.axoniq.axonserver.message.command.DirectCommandHandler;
+import io.axoniq.axonserver.metric.MeterFactory;
+import io.axoniq.axonserver.metric.StandardMetricName;
 import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.util.StreamObserverUtils;
 import io.grpc.MethodDescriptor;
 import io.grpc.ServerServiceDefinition;
 import io.grpc.protobuf.ProtoUtils;
 import io.grpc.stub.StreamObserver;
+import io.micrometer.core.instrument.Tags;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -43,18 +46,20 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.annotation.PreDestroy;
 
+import static io.axoniq.axonserver.metric.MeterFactory.CONTEXT;
+import static io.axoniq.axonserver.metric.MeterFactory.REQUEST;
+import static io.axoniq.axonserver.metric.MeterFactory.TARGET;
 import static io.grpc.stub.ServerCalls.asyncBidiStreamingCall;
 import static io.grpc.stub.ServerCalls.asyncUnaryCall;
 
 /**
- * GRPC service to handle command bus requests from Axon Application
- * Client can sent two requests:
- * dispatch: sends a singe command to AxonServer
- * openStream: used by application providing command handlers, maintains an open bi directional connection between the
- * application and AxonServer
+ * GRPC service to handle command bus requests from Axon Application Client can sent two requests: dispatch: sends a
+ * singe command to AxonServer openStream: used by application providing command handlers, maintains an open bi
+ * directional connection between the application and AxonServer
  *
  * @author Marc Gathier
  */
@@ -80,6 +85,7 @@ public class CommandService implements AxonServerClientService {
     private final ContextProvider contextProvider;
     private final AuthenticationProvider authenticationProvider;
     private final ClientIdRegistry clientIdRegistry;
+    private final MeterFactory meterFactory;
     private final ApplicationEventPublisher eventPublisher;
     private final Logger logger = LoggerFactory.getLogger(CommandService.class);
     private final Map<ClientStreamIdentification, GrpcFlowControlledDispatcherListener> dispatcherListeners = new ConcurrentHashMap<>();
@@ -93,14 +99,16 @@ public class CommandService implements AxonServerClientService {
                           ContextProvider contextProvider,
                           AuthenticationProvider authenticationProvider,
                           ClientIdRegistry clientIdRegistry,
+                          MeterFactory meterFactory,
                           ApplicationEventPublisher eventPublisher,
                           @Qualifier("commandInstructionAckSource")
-                                  InstructionAckSource<SerializedCommandProviderInbound> instructionAckSource) {
+                          InstructionAckSource<SerializedCommandProviderInbound> instructionAckSource) {
         this.topology = topology;
         this.commandDispatcher = commandDispatcher;
         this.contextProvider = contextProvider;
         this.authenticationProvider = authenticationProvider;
         this.clientIdRegistry = clientIdRegistry;
+        this.meterFactory = meterFactory;
         this.eventPublisher = eventPublisher;
         this.instructionAckSource = instructionAckSource;
     }
@@ -131,9 +139,20 @@ public class CommandService implements AxonServerClientService {
     public StreamObserver<CommandProviderOutbound> openStream(
             StreamObserver<SerializedCommandProviderInbound> responseObserver) {
         String context = contextProvider.getContext();
+        Map<String, CommandStart> commandMap = new ConcurrentHashMap<>();
         SendingStreamObserver<SerializedCommandProviderInbound> wrappedResponseObserver = new SendingStreamObserver<>(
-                responseObserver);
-        return new ReceivingStreamObserver<CommandProviderOutbound>(logger) {
+                responseObserver) {
+            @Override
+            public void onNext(SerializedCommandProviderInbound serializedCommandProviderInbound) {
+                if (serializedCommandProviderInbound.wrapped().hasCommand()) {
+                    commandMap.put(serializedCommandProviderInbound.getSerializedCommand().getMessageIdentifier(),
+                                   new CommandStart(
+                                           serializedCommandProviderInbound.getSerializedCommand().getCommand()));
+                }
+                super.onNext(serializedCommandProviderInbound);
+            }
+        };
+        return new ReceivingStreamObserver<>(logger) {
             private final AtomicReference<String> clientIdRef = new AtomicReference<>();
             private final AtomicReference<ClientStreamIdentification> clientRef = new AtomicReference<>();
             private final AtomicReference<GrpcCommandDispatcherListener> listenerRef = new AtomicReference<>();
@@ -172,6 +191,16 @@ public class CommandService implements AxonServerClientService {
                         flowControl(commandFromSubscriber.getFlowControl());
                         break;
                     case COMMAND_RESPONSE:
+                        CommandStart started = commandMap.remove(commandFromSubscriber.getCommandResponse()
+                                                                                      .getRequestIdentifier());
+                        if (started != null) {
+                            meterFactory.timer(StandardMetricName.COMMAND_HANDLING_DURATION, Tags.of(
+                                                CONTEXT, clientRef.get().getContext(),
+                                                TARGET, clientIdRef.get(),
+                                                REQUEST, started.command
+                                        ))
+                                        .record(System.currentTimeMillis() - started.started, TimeUnit.MILLISECONDS);
+                        }
                         instructionAckSource.sendSuccessfulAck(commandFromSubscriber.getInstructionId(),
                                                                wrappedResponseObserver);
                         commandDispatcher.handleResponse(new SerializedCommandResponse(commandFromSubscriber
@@ -197,7 +226,9 @@ public class CommandService implements AxonServerClientService {
             private void initClientReference(String clientId) {
                 String clientStreamId = clientId + "." + UUID.randomUUID();
                 if (clientRef.compareAndSet(null, new ClientStreamIdentification(context, clientStreamId))) {
-                    clientIdRegistry.register(clientStreamId, new ClientContext(clientId, context), ClientIdRegistry.ConnectionType.COMMAND);
+                    clientIdRegistry.register(clientStreamId,
+                                              new ClientContext(clientId, context),
+                                              ClientIdRegistry.ConnectionType.COMMAND);
                 }
                 clientIdRef.compareAndSet(null, clientId);
             }
@@ -206,7 +237,7 @@ public class CommandService implements AxonServerClientService {
                 initClientReference(flowControl.getClientId());
                 if (listenerRef.compareAndSet(null,
                                               new GrpcCommandDispatcherListener(commandDispatcher.getCommandQueues(),
-                                                                                clientRef.get().toString(),
+                                                                                clientRef.get().getClientStreamId(),
                                                                                 wrappedResponseObserver,
                                                                                 processingThreads))) {
                     dispatcherListeners.put(clientRef.get(), listenerRef.get());
@@ -310,6 +341,16 @@ public class CommandService implements AxonServerClientService {
             eventPublisher.publishEvent(new CommandHandlerDisconnected(clientStreamIdentification.getContext(),
                                                                        clientId,
                                                                        clientStreamIdentification.getClientStreamId()));
+        }
+    }
+
+    private static class CommandStart {
+
+        final long started = System.currentTimeMillis();
+        private final String command;
+
+        public CommandStart(String command) {
+            this.command = command;
         }
     }
 }

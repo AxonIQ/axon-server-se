@@ -14,6 +14,8 @@ import io.axoniq.axonserver.applicationevents.TopologyEvents.CommandHandlerDisco
 import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
+import io.axoniq.axonserver.grpc.ClientContext;
+import io.axoniq.axonserver.grpc.ClientIdRegistry;
 import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.grpc.SerializedCommandProviderInbound;
 import io.axoniq.axonserver.grpc.SerializedCommandResponse;
@@ -45,6 +47,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.times;
@@ -63,12 +66,16 @@ public class CommandDispatcherTest {
     private CommandCache commandCache;
     @Mock
     private CommandRegistrationCache registrations;
+    @Mock
+    private ClientIdRegistry clientIdRegistry;
 
     @Before
     public void setup() {
-        metricsRegistry = new CommandMetricsRegistry(meterFactory);
+        metricsRegistry = new CommandMetricsRegistry(meterFactory, true);
+        when(clientIdRegistry.clientId(anyString())).then(invocationOnMock -> new ClientContext(invocationOnMock.getArgument(
+                0), Topology.DEFAULT_CONTEXT));
         commandDispatcher = new CommandDispatcher(registrations, commandCache, metricsRegistry, meterFactory,
-                                                  new NoOpCommandInterceptors(), 10_000);
+                                                  new NoOpCommandInterceptors(), clientIdRegistry, 10_000);
     }
 
     @Test
@@ -99,7 +106,7 @@ public class CommandDispatcherTest {
                                        responseObserver.onNext(response);
                                        responseObserver.onCompleted();
                                    });
-        assertEquals(1, commandDispatcher.getCommandQueues().getSegments().get(client.toString()).size());
+        assertEquals(1, commandDispatcher.getCommandQueues().getSegments().get(client.getClientStreamId()).size());
         assertEquals(0, responseObserver.values().size());
         Mockito.verify(commandCache, times(1)).putIfAbsent(eq("12"), any());
     }
@@ -133,6 +140,7 @@ public class CommandDispatcherTest {
                                                   metricsRegistry,
                                                   meterFactory,
                                                   new NoOpCommandInterceptors(),
+                                                  clientIdRegistry,
                                                   0);
         FakeStreamObserver<SerializedCommandResponse> responseObserver = new FakeStreamObserver<>();
         Command request = Command.newBuilder()
@@ -201,8 +209,10 @@ public class CommandDispatcherTest {
                                                                 "client",
                                                                 request.getMessageIdentifier()),
                                           responseObserver::onNext);
-        assertEquals(1, commandDispatcher.getCommandQueues().getSegments().get(clientIdentification.toString()).size());
-        assertEquals("12", commandDispatcher.getCommandQueues().take(clientIdentification.toString()).command()
+        assertEquals(1,
+                     commandDispatcher.getCommandQueues().getSegments().get(clientIdentification.getClientStreamId())
+                                      .size());
+        assertEquals("12", commandDispatcher.getCommandQueues().take(clientIdentification.getClientStreamId()).command()
                                             .getMessageIdentifier());
         assertEquals(0, responseObserver.values().size());
         Mockito.verify(commandCache, times(1)).putIfAbsent(eq("12"), any());
@@ -257,7 +267,7 @@ public class CommandDispatcherTest {
                                                               ExecutionContext executionContext) {
                                                           return serializedResponse;
                                                       }
-                                                  }, 10_000);
+                                                  }, null, 10_000);
         CompletableFuture<SerializedCommandResponse> futureResponse = new CompletableFuture<>();
         commandDispatcher.dispatch("demo",
                                    null,
@@ -286,7 +296,7 @@ public class CommandDispatcherTest {
                                                               ExecutionContext executionContext) {
                                                           return serializedResponse;
                                                       }
-                                                  }, 10_000);
+                                                  }, null, 10_000);
         CompletableFuture<SerializedCommandResponse> futureResponse = new CompletableFuture<>();
         commandDispatcher.dispatch("demo",
                                    null,
@@ -323,7 +333,7 @@ public class CommandDispatcherTest {
                                                           throw new MessagingPlatformException(ErrorCode.EXCEPTION_IN_INTERCEPTOR,
                                                                                                "failed");
                                                       }
-                                                  }, 10_000);
+                                                  }, null, 10_000);
 
         CompletableFuture<SerializedCommandResponse> futureResponse = new CompletableFuture<>();
         commandDispatcher.dispatch(Topology.DEFAULT_CONTEXT, null,
@@ -362,6 +372,7 @@ public class CommandDispatcherTest {
                                                   metricsRegistry,
                                                   meterFactory,
                                                   new NoOpCommandInterceptors(),
+                                                  null,
                                                   10_000);
 
         FakeStreamObserver<SerializedCommandProviderInbound> commandProviderInbound = new FakeStreamObserver<>();

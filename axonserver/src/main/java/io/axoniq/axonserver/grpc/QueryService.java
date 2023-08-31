@@ -230,7 +230,7 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
             private void flowControl(FlowControl flowControl) {
                 initClientReference(flowControl.getClientId());
                 if (listener.compareAndSet(null, new GrpcQueryDispatcherListener(queryDispatcher,
-                                                                                 clientRef.get().toString(),
+                                                                                 clientRef.get().getClientStreamId(),
                                                                                  wrappedQueryProviderInboundObserver,
                                                                                  processingThreads))) {
                     dispatcherListeners.put(clientRef.get(), listener.get());

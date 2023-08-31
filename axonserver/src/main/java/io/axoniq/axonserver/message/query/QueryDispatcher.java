@@ -13,12 +13,14 @@ import io.axoniq.axonserver.ProcessingInstructionHelper;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.ErrorMessageFactory;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
+import io.axoniq.axonserver.grpc.ClientIdRegistry;
 import io.axoniq.axonserver.grpc.SerializedQuery;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
 import io.axoniq.axonserver.grpc.query.QueryResponse;
 import io.axoniq.axonserver.interceptor.DefaultExecutionContext;
 import io.axoniq.axonserver.interceptor.QueryInterceptors;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
+import io.axoniq.axonserver.message.DispatchQueueMetrics;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.message.command.InsufficientBufferCapacityException;
 import io.axoniq.axonserver.metric.BaseMetricName;
@@ -64,6 +66,7 @@ public class QueryDispatcher {
                            QueryMetricsRegistry queryMetricsRegistry,
                            QueryInterceptors queryInterceptors,
                            MeterFactory meterFactory,
+                           ClientIdRegistry clientIdRegistry,
                            @Value("${axoniq.axonserver.query-queue-capacity-per-client:10000}") int queueCapacity) {
         this.registrationCache = registrationCache;
         this.queryMetricsRegistry = queryMetricsRegistry;
@@ -71,8 +74,9 @@ public class QueryDispatcher {
         this.queryInterceptors = queryInterceptors;
         queryQueue = new FlowControlQueues<>(Comparator.comparing(QueryInstruction::priority).reversed(),
                                              queueCapacity,
-                                             BaseMetricName.AXON_APPLICATION_QUERY_QUEUE_SIZE,
-                                             meterFactory,
+                                             new DispatchQueueMetrics(meterFactory,
+                                                                      BaseMetricName.AXON_APPLICATION_QUERY_QUEUE_SIZE,
+                                                                      clientIdRegistry),
                                              ErrorCode.TOO_MANY_REQUESTS);
         queryMetricsRegistry.gauge(BaseMetricName.AXON_ACTIVE_QUERIES, queryCache, ConstraintCache::size);
     }
@@ -151,8 +155,8 @@ public class QueryDispatcher {
     }
 
     /**
-     * Completes the communication with one specific target client id.
-     * If there are no others query handlers remaining, then remove the query from the cache.
+     * Completes the communication with one specific target client id. If there are no others query handlers remaining,
+     * then remove the query from the cache.
      *
      * @param requestId            the message identifier of the query
      * @param targetClientStreamId the clientStreamId for the query long living call for the specific query handler that
@@ -222,7 +226,7 @@ public class QueryDispatcher {
                                                           interceptedCallback,
                                                           onCompleted,
                                                           handlers, isStreamingQuery(query));
-                if(queryCache.putIfAbsent(query.getMessageIdentifier(), activeQuery)!=null){
+                if (queryCache.putIfAbsent(query.getMessageIdentifier(), activeQuery) != null) {
                     callback.accept(QueryResponse.newBuilder()
                                                  .setErrorCode(ErrorCode.QUERY_DUPLICATED.getCode())
                                                  .setRequestIdentifier(serializedQuery.getMessageIdentifier())
@@ -398,7 +402,7 @@ public class QueryDispatcher {
                                                       singleton(queryHandler),
                                                       serverSupportsStreaming && isStreamingQuery(query));
             try {
-                if(queryCache.putIfAbsent(key, activeQuery)!=null){
+                if (queryCache.putIfAbsent(key, activeQuery) != null) {
                     callback.accept(QueryResponse.newBuilder()
                                                  .setErrorCode(ErrorCode.QUERY_DUPLICATED.getCode())
                                                  .setRequestIdentifier(serializedQuery.getMessageIdentifier())
@@ -407,9 +411,8 @@ public class QueryDispatcher {
                                                                           .build("Query with supplied ID already present"))
                                                  .build());
                     onCompleted.accept("DuplicateId");
-                }
-                else{
-                    dispatch(key,activeQuery);
+                } else {
+                    dispatch(key, activeQuery);
                 }
             } catch (InsufficientBufferCapacityException insufficientBufferCapacityException) {
                 activeQuery.completeWithError(queryHandler.getClientStreamId(),
