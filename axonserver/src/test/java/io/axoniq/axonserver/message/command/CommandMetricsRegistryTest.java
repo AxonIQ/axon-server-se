@@ -9,7 +9,7 @@
 
 package io.axoniq.axonserver.message.command;
 
-import io.axoniq.axonserver.message.ClientStreamIdentification;
+import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.topology.Topology;
@@ -27,6 +27,8 @@ import org.mockito.junit.MockitoJUnitRunner;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import static org.junit.Assert.assertEquals;
+
 /**
  * @author Marc Gathier
  */
@@ -43,10 +45,17 @@ public class CommandMetricsRegistryTest {
 
     @Test
     public void add() {
-        ClientStreamIdentification client1 = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "Client1");
-//        testSubject.add("Command", client1, 1);
-//
-//        assertEquals(1L, testSubject.commandMetric("Command", client1, null).getCount());
+        testSubject.add("Command", "source1", "target1", Topology.DEFAULT_CONTEXT, 1);
+        assertEquals(1L, testSubject.commandMetric("Command",  "target1",Topology.DEFAULT_CONTEXT, null).getCount());
+    }
+
+    @Test
+    public void addAfterReconnect() {
+        testSubject.add("Command", "source1", "target1", Topology.DEFAULT_CONTEXT, 1);
+        assertEquals(1L, testSubject.commandMetric("Command",  "target1",Topology.DEFAULT_CONTEXT, null).getCount());
+        testSubject.on(new TopologyEvents.ApplicationDisconnected(Topology.DEFAULT_CONTEXT, null, "source1", "disconnect" ));
+        testSubject.add("Command", "source1", "target1", Topology.DEFAULT_CONTEXT, 1);
+        assertEquals(1L, testSubject.commandMetric("Command",  "target1",Topology.DEFAULT_CONTEXT, null).getCount());
     }
 
 

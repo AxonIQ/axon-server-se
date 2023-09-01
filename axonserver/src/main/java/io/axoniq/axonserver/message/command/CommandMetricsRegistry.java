@@ -26,9 +26,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
-import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import java.util.function.ToDoubleFunction;
@@ -44,7 +42,6 @@ public class CommandMetricsRegistry {
 
     private final Logger logger = LoggerFactory.getLogger(CommandMetricsRegistry.class);
 
-    private final Map<String, Timer> timerMap = new ConcurrentHashMap<>();
     private final MeterFactory meterFactory;
     private final boolean legacyMetricsEnabled;
 
@@ -65,13 +62,6 @@ public class CommandMetricsRegistry {
         meterFactory.remove(BaseMetricName.AXON_COMMAND, MeterFactory.TARGET, event.getClientId());
     }
 
-
-    private static String metricName(String command,
-                                     String sourceClientId,
-                                     String targetClientId,
-                                     String context) {
-        return String.join(".", command, sourceClientId, targetClientId, context);
-    }
 
     /**
      * Registers the duration of a command in the registry. Timer name is "axon.command", tags are the context, the
@@ -118,17 +108,20 @@ public class CommandMetricsRegistry {
                         String sourceClientId,
                         String targetClientId,
                         String context) {
-        return timerMap.computeIfAbsent(metricName(command, sourceClientId, targetClientId, context),
-                                        n -> meterFactory.timer(BaseMetricName.AXON_COMMAND,
+        return meterFactory.timer(BaseMetricName.AXON_COMMAND,
                                                                 Tags.of(
                                                                         MeterFactory.REQUEST,
-                                                                        command.replaceAll("\\.", "/"),
+                                                                        normalizeCommandName(command),
                                                                         MeterFactory.CONTEXT,
                                                                         context,
                                                                         MeterFactory.SOURCE,
                                                                         sourceClientId,
                                                                         MeterFactory.TARGET,
-                                                                        targetClientId)));
+                                                                        targetClientId));
+    }
+
+    private String normalizeCommandName(String command) {
+        return command.replace(".", "/");
     }
 
 
@@ -138,7 +131,7 @@ public class CommandMetricsRegistry {
         Tags tags = Tags.of(MeterFactory.CONTEXT,
                             context,
                             MeterFactory.REQUEST,
-                            command.replaceAll("\\.", "/"),
+                            normalizeCommandName(command),
                             MeterFactory.TARGET,
                             targetClientId);
         return new CompositeMetric(meterFactory.snapshot(BaseMetricName.AXON_COMMAND, tags),

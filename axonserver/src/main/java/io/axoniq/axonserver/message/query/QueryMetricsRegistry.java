@@ -24,9 +24,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
-import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.ToDoubleFunction;
 
@@ -38,7 +36,6 @@ import java.util.function.ToDoubleFunction;
 @Service("QueryMetricsRegistry")
 public class QueryMetricsRegistry {
     private final Logger logger = LoggerFactory.getLogger(QueryMetricsRegistry.class);
-    private final Map<String, Timer> timerMap = new ConcurrentHashMap<>();
     private final MeterFactory meterFactory;
 
     /**
@@ -89,7 +86,7 @@ public class QueryMetricsRegistry {
      */
     public ClusterMetric clusterMetric(QueryDefinition query, String targetClientId, String context) {
         Tags tags = Tags.of(MeterFactory.CONTEXT, context,
-                            MeterFactory.REQUEST, query.getQueryName().replaceAll("\\.", "/"),
+                            MeterFactory.REQUEST, normalizeQueryName(query.getQueryName()),
                             MeterFactory.TARGET, targetClientId);
         return new CompositeMetric(meterFactory.snapshot(BaseMetricName.AXON_QUERY, tags),
                                    new Metrics(BaseMetricName.AXON_QUERY.metric(),
@@ -99,19 +96,18 @@ public class QueryMetricsRegistry {
 
 
     private Timer timer(QueryDefinition query, String sourceClientId, String targetClientId, String context) {
-        String metricName = metricName(query, sourceClientId, targetClientId, context);
-        return timerMap.computeIfAbsent(metricName, n ->
-                meterFactory.timer(BaseMetricName.AXON_QUERY,
+        return meterFactory.timer(BaseMetricName.AXON_QUERY,
                                    Tags.of(
-                                           MeterFactory.REQUEST, query.getQueryName().replaceAll("\\.", "/"),
+                                           MeterFactory.REQUEST, normalizeQueryName(query.getQueryName()),
                                            MeterFactory.CONTEXT, context,
                                            MeterFactory.SOURCE, sourceClientId,
-                                           MeterFactory.TARGET, targetClientId)));
+                                           MeterFactory.TARGET, targetClientId));
     }
 
-    private String metricName(QueryDefinition query, String sourceClientId, String targetClientId, String context) {
-        return String.join(".", query.getQueryName(), sourceClientId, targetClientId, context);
+    private String normalizeQueryName(String query) {
+        return query.replace(".", "/");
     }
+
 
     /**
      * Retrieves the number of times that a query has been handled by a specific client.
@@ -163,7 +159,7 @@ public class QueryMetricsRegistry {
      */
     public void addEndToEndResponseTime(QueryDefinition query, String clientId, String context, long durationInMillis) {
         meterFactory.timer(BaseMetricName.LOCAL_QUERY_RESPONSE_TIME, Tags.of(
-                MeterFactory.REQUEST, query.getQueryName().replaceAll("\\.", "/"),
+                MeterFactory.REQUEST, normalizeQueryName(query.getQueryName()),
                 MeterFactory.CONTEXT, context,
                 MeterFactory.TARGET, clientId)).record(durationInMillis, TimeUnit.MILLISECONDS);
     }
@@ -178,7 +174,7 @@ public class QueryMetricsRegistry {
      */
     public HistogramSnapshot endToEndResponseTime(QueryDefinition query, String clientId, String context) {
         return meterFactory.timer(BaseMetricName.LOCAL_QUERY_RESPONSE_TIME, Tags.of(
-                MeterFactory.REQUEST, query.getQueryName().replaceAll("\\.", "/"),
+                MeterFactory.REQUEST, normalizeQueryName(query.getQueryName()),
                 MeterFactory.CONTEXT, context,
                 MeterFactory.TARGET, clientId)).takeSnapshot();
     }
