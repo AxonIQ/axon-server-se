@@ -58,8 +58,12 @@ public class CommandMetricsRegistry {
 
     @EventListener
     public void on(TopologyEvents.ApplicationDisconnected event) {
-        meterFactory.remove(BaseMetricName.AXON_COMMAND, MeterFactory.SOURCE, event.getClientId());
-        meterFactory.remove(BaseMetricName.AXON_COMMAND, MeterFactory.TARGET, event.getClientId());
+        meterFactory.remove(StandardMetricName.COMMAND_DURATION, MeterFactory.SOURCE, event.getClientId());
+        meterFactory.remove(StandardMetricName.COMMAND_DURATION, MeterFactory.TARGET, event.getClientId());
+        if (legacyMetricsEnabled) {
+            meterFactory.remove(BaseMetricName.AXON_COMMAND, MeterFactory.SOURCE, event.getClientId());
+            meterFactory.remove(BaseMetricName.AXON_COMMAND, MeterFactory.TARGET, event.getClientId());
+        }
     }
 
 

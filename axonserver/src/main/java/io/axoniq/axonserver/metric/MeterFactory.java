@@ -135,7 +135,7 @@ public class MeterFactory {
         meterRegistry.remove(meter);
     }
 
-    public void remove(BaseMetricName axonQuery, String tagName, String tagValue) {
+    public void remove(MetricName axonQuery, String tagName, String tagValue) {
         List<Meter> toDelete = new LinkedList<>();
         meterRegistry.find(axonQuery.metric()).meters().forEach(m -> {
             if (tagValue.equals(m.getId().getTag(tagName))) {
