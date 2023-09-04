@@ -18,6 +18,7 @@ import io.axoniq.axonserver.metric.GaugeMetric;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Tags;
+import io.micrometer.core.instrument.Timer;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
@@ -30,6 +31,7 @@ import java.util.function.BiFunction;
 import static io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse.ResponseCase.INITIAL_RESULT;
 import static io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse.ResponseCase.UPDATE;
 import static io.axoniq.axonserver.metric.BaseMetricName.AXON_SUBSCRIPTION_ACTIVE;
+import static io.axoniq.axonserver.metric.BaseMetricName.AXON_SUBSCRIPTION_DURATION;
 import static io.axoniq.axonserver.metric.BaseMetricName.AXON_SUBSCRIPTION_TOTAL;
 import static io.axoniq.axonserver.metric.BaseMetricName.AXON_SUBSCRIPTION_UPDATES;
 import static io.axoniq.axonserver.metric.MeterFactory.CONTEXT;
@@ -47,12 +49,8 @@ public class SubscriptionQueryMetricRegistry {
     private static final String TAG_COMPONENT = "component";
     private final MeterFactory localMetricRegistry;
     private final BiFunction<String, Tags, ClusterMetric> clusterMetricProvider;
-    private final Map<String, String> componentNames = new ConcurrentHashMap<>();
-    private final Map<String, String> clients = new ConcurrentHashMap<>();
-    private final Map<String, Long> started = new ConcurrentHashMap<>();
-    private final Map<String, String> contexts = new ConcurrentHashMap<>();
     private final Map<String, AtomicInteger> activeSubscriptionsMap = new ConcurrentHashMap<>();
-    private final Map<String, String> queries = new ConcurrentHashMap<>();
+    private final Map<String, ActiveSubscriptionQuery> activeSubscriptionQueryMap = new ConcurrentHashMap<>();
 
     public SubscriptionQueryMetricRegistry(MeterFactory localMetricRegistry,
                                            BiFunction<String, Tags, ClusterMetric> clusterMetricProvider) {
@@ -104,64 +102,52 @@ public class SubscriptionQueryMetricRegistry {
         String clientId = event.subscription().getQueryRequest().getClientId();
         activeSubscriptionsMetric(componentName, context, request).incrementAndGet();
         totalSubscriptionsMetric(componentName, context, request).increment();
-        contexts.putIfAbsent(event.subscriptionId(), context);
-        componentNames.putIfAbsent(event.subscriptionId(), componentName);
-        queries.putIfAbsent(event.subscriptionId(), request);
-        clients.putIfAbsent(event.subscriptionId(), clientId);
-    }
-
-    @EventListener
-    public void on(SubscriptionQueryEvents.SubscriptionQueryInitialResultRequested event) {
-        String client = clients.get(event.subscriptionId());
-        if (client != null) {
-            started.putIfAbsent(event.subscriptionId(), System.currentTimeMillis());
-        }
+        activeSubscriptionQueryMap.putIfAbsent(event.subscriptionId(),
+                                               new ActiveSubscriptionQuery(componentName, context, request, clientId));
     }
 
     @EventListener
     public void on(SubscriptionQueryEvents.SubscriptionQueryCanceled event) {
-        String componentName = event.unsubscribe().getQueryRequest().getComponentName();
-        String context = event.context();
-        String request = event.unsubscribe().getQueryRequest().getQuery();
-        componentNames.remove(event.subscriptionId());
-        queries.remove(event.subscriptionId());
-        clients.remove(event.subscriptionId());
-        started.remove(event.subscriptionId());
-        if (contexts.remove(event.subscriptionId()) != null) {
-            activeSubscriptionsMetric(componentName, context, request).decrementAndGet();
+        ActiveSubscriptionQuery activeSubscriptionQuery = activeSubscriptionQueryMap.remove(event.subscriptionId());
+        if (activeSubscriptionQuery != null) {
+            activeSubscriptionsMetric(activeSubscriptionQuery.componentName,
+                                      activeSubscriptionQuery.context,
+                                      activeSubscriptionQuery.request).decrementAndGet();
+
+            subscriptionDurationMetric(activeSubscriptionQuery.componentName,
+                                       activeSubscriptionQuery.context,
+                                       activeSubscriptionQuery.request)
+                    .record(System.currentTimeMillis() - activeSubscriptionQuery.started, TimeUnit.MILLISECONDS);
         }
     }
 
     @EventListener
     public void on(SubscriptionQueryEvents.SubscriptionQueryResponseReceived event) {
-        String subscriptionId = event.subscriptionId();
-        Long startTime = started.remove(subscriptionId);
-        if (startTime != null && event.response().getResponseCase().equals(INITIAL_RESULT)
+        ActiveSubscriptionQuery activeSubscriptionQuery = activeSubscriptionQueryMap.remove(event.subscriptionId());
+        if (activeSubscriptionQuery != null && event.response().getResponseCase().equals(INITIAL_RESULT)
                 && event.clientId() != null) {
-            String clientId = clients.getOrDefault(subscriptionId, "UNKNOWN_CLIENT");
-            String context = contexts.getOrDefault(subscriptionId, "UNKNOWN_CONTEXT");
-            String request = queries.getOrDefault(subscriptionId, "UNKNOWN_REQUEST");
-            long durationInMillis = System.currentTimeMillis() - startTime;
+            long durationInMillis = System.currentTimeMillis() - activeSubscriptionQuery.started;
             localMetricRegistry.timer(BaseMetricName.AXON_QUERY,
                                       Tags.of(CONTEXT,
-                                              context,
+                                              activeSubscriptionQuery.context,
                                               REQUEST,
-                                              request.replace(".", "/"),
+                                              activeSubscriptionQuery.request,
                                               SOURCE,
-                                              clientId,
+                                              activeSubscriptionQuery.clientId,
                                               TARGET,
                                               event.clientId()))
                                .record(durationInMillis, TimeUnit.MILLISECONDS);
             localMetricRegistry.timer(BaseMetricName.LOCAL_QUERY_RESPONSE_TIME, Tags.of(
-                    MeterFactory.REQUEST, request.replace(".", "/"),
-                    MeterFactory.CONTEXT, context,
-                    MeterFactory.TARGET, clientId)).record(durationInMillis, TimeUnit.MILLISECONDS);
+                    MeterFactory.REQUEST, activeSubscriptionQuery.request,
+                    MeterFactory.CONTEXT, activeSubscriptionQuery.context,
+                    MeterFactory.TARGET, activeSubscriptionQuery.clientId)).record(durationInMillis,
+                                                                                   TimeUnit.MILLISECONDS);
         }
 
-        if (componentNames.containsKey(subscriptionId) && event.response().getResponseCase().equals(UPDATE)) {
-            String component = componentNames.get(subscriptionId);
-            String context = contexts.get(subscriptionId);
-            String request = queries.get(subscriptionId);
+        if (activeSubscriptionQuery != null && event.response().getResponseCase().equals(UPDATE)) {
+            String component = activeSubscriptionQuery.componentName;
+            String context = activeSubscriptionQuery.context;
+            String request = activeSubscriptionQuery.request;
 
             if (component != null && context != null) {
                 updatesMetric(component, context, request).increment();
@@ -202,6 +188,14 @@ public class SubscriptionQueryMetricRegistry {
                                  REQUEST, request));
     }
 
+    private Timer subscriptionDurationMetric(String component, String context, String request) {
+        return localMetricRegistry
+                .timer(AXON_SUBSCRIPTION_DURATION,
+                       Tags.of(MeterFactory.CONTEXT, context,
+                               TAG_COMPONENT, component,
+                               REQUEST, request));
+    }
+
     private Counter updatesMetric(String component, String context, String request) {
         return localMetricRegistry
                 .counter(AXON_SUBSCRIPTION_UPDATES,
@@ -210,5 +204,21 @@ public class SubscriptionQueryMetricRegistry {
                                  TAG_COMPONENT,
                                  component,
                                  REQUEST, request));
+    }
+
+    private static class ActiveSubscriptionQuery {
+
+        final long started = System.currentTimeMillis();
+        final String componentName;
+        final String context;
+        final String request;
+        private final String clientId;
+
+        private ActiveSubscriptionQuery(String componentName, String context, String request, String clientId) {
+            this.componentName = componentName;
+            this.context = context;
+            this.request = request;
+            this.clientId = clientId;
+        }
     }
 }

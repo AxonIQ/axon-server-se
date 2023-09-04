@@ -77,6 +77,8 @@ public enum BaseMetricName implements MetricName {
                                          "Active number of subscription queries on this node per application"),
     AXON_SUBSCRIPTION_TOTAL("axon.queries.subscriptionquery.throughput.total",
                             "Total number of subscription queries subscribed"),
+    AXON_SUBSCRIPTION_DURATION("axon.queries.subscriptionquery.duration",
+                               "Duration of a subscription query connection"),
     AXON_SUBSCRIPTION_UPDATES("axon.queries.subscriptionquery.throughput.updates",
                               "Total number of updates submitted on subscription queries"),
     AXON_SUBSCRIPTION_ACTIVE("axon.queries.subscriptionquery.saturation.active",
