@@ -102,7 +102,7 @@ public class QueryDispatcherTest {
                                                 .setMessageIdentifier("1234")
                                                 .setRequestIdentifier("1234")
                                                 .build(), "client", "clientId");
-        testSubject.handleComplete("1234", "client", "clientId", false);
+        testSubject.handleComplete("1234", "client", "clientId");
         assertEquals(2, dispatchCalled.get());
         assertTrue(doneCalled.get());
     }
@@ -121,14 +121,14 @@ public class QueryDispatcherTest {
                                                 .build(), "client", "clientId1");
         assertEquals(1, dispatchCalled.get());
         assertFalse(doneCalled.get());
-        testSubject.handleComplete("1234", "client1", "clientId1", false);
+        testSubject.handleComplete("1234", "client1", "clientId1");
         assertFalse(doneCalled.get());
 
         testSubject.handleResponse(QueryResponse.newBuilder()
                                                 .setMessageIdentifier("1234")
                                                 .setRequestIdentifier("1234")
                                                 .build(), "client2", "clientId2");
-        testSubject.handleComplete("1234", "client2", "clientId2", false);
+        testSubject.handleComplete("1234", "client2", "clientId2");
         assertEquals(2, dispatchCalled.get());
         assertTrue(doneCalled.get());
     }
@@ -311,7 +311,7 @@ public class QueryDispatcherTest {
 
         QueryResponse response = futureResponse.get();
         assertEquals(ErrorCode.EXCEPTION_IN_INTERCEPTOR.getCode(), response.getErrorCode());
-        testSubject.handleComplete(request.getMessageIdentifier(), "clientStreamId", "clientId", false);
+        testSubject.handleComplete(request.getMessageIdentifier(), "clientStreamId", "clientId");
 
         assertTrue(futureCompleted.get());
     }
@@ -508,7 +508,7 @@ public class QueryDispatcherTest {
                                    "client",
                                    "clientId");
 
-        testSubject.handleComplete(requestId, "client", "clientId", false);
+        testSubject.handleComplete(requestId, "client", "clientId");
 
         // would not finish, if AS would override query in query cache
         QueryResponse originalResponse = originalFutureResponse.get(1, TimeUnit.SECONDS);

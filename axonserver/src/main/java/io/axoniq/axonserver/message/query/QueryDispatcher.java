@@ -115,19 +115,23 @@ public class QueryDispatcher {
         return activeQuery;
     }
 
-    public void handleComplete(String requestId, String clientStreamId, String clientId, boolean proxied) {
+    public void handleComplete(String requestId, String clientStreamId, String clientId) {
         ActiveQuery activeQuery = activeQuery(clientStreamId, requestId);
         if (activeQuery != null) {
-            if (activeQuery.complete(clientStreamId)) {
-                queryCache.remove(activeQuery.getKey());
-            }
-            if (!proxied) {
-                queryMetricsRegistry.addHandlerResponseTime(activeQuery.getQuery(),
-                                                            activeQuery.getSourceClientId(),
-                                                            clientId,
-                                                            activeQuery.getContext(),
-                                                            System.currentTimeMillis() - activeQuery
-                                                                    .getTimestamp());
+            try {
+                if (activeQuery.complete(clientStreamId)) {
+                    queryCache.remove(activeQuery.getKey());
+                }
+                long responseTime = System.currentTimeMillis() - activeQuery.getTimestamp();
+                if (activeQuery.firstReceiver()) {
+                    queryMetricsRegistry.addHandlerResponseTime(activeQuery.getQuery(),
+                                                                activeQuery.getSourceClientId(),
+                                                                clientId,
+                                                                activeQuery.getContext(),
+                                                                responseTime);
+                }
+            } catch (IllegalStateException illegalStateException) {
+                logger.warn("{}: Handler not found", clientStreamId);
             }
         } else {
             logger.debug("No (more) information for {} on completed", requestId);
@@ -151,8 +155,8 @@ public class QueryDispatcher {
     }
 
     /**
-     * Completes the communication with one specific target client id.
-     * If there are no others query handlers remaining, then remove the query from the cache.
+     * Completes the communication with one specific target client id. If there are no others query handlers remaining,
+     * then remove the query from the cache.
      *
      * @param requestId            the message identifier of the query
      * @param targetClientStreamId the clientStreamId for the query long living call for the specific query handler that
@@ -219,10 +223,11 @@ public class QueryDispatcher {
             } else {
                 ActiveQuery activeQuery = new ActiveQuery(query.getMessageIdentifier(),
                                                           serializedQuery2,
+                                                          ActiveQuery.FIRST_RECEIVER,
                                                           interceptedCallback,
                                                           onCompleted,
                                                           handlers, isStreamingQuery(query));
-                if(queryCache.putIfAbsent(query.getMessageIdentifier(), activeQuery)!=null){
+                if (queryCache.putIfAbsent(query.getMessageIdentifier(), activeQuery) != null) {
                     callback.accept(QueryResponse.newBuilder()
                                                  .setErrorCode(ErrorCode.QUERY_DUPLICATED.getCode())
                                                  .setRequestIdentifier(serializedQuery.getMessageIdentifier())
@@ -393,12 +398,13 @@ public class QueryDispatcher {
             String key = proxiedQueryKey(query.getMessageIdentifier(), serializedQuery.clientStreamId());
             ActiveQuery activeQuery = new ActiveQuery(key,
                                                       serializedQuery,
+                                                      ActiveQuery.PROXIED_RECEIVER,
                                                       callback,
                                                       onCompleted,
                                                       singleton(queryHandler),
                                                       serverSupportsStreaming && isStreamingQuery(query));
             try {
-                if(queryCache.putIfAbsent(key, activeQuery)!=null){
+                if (queryCache.putIfAbsent(key, activeQuery) != null) {
                     callback.accept(QueryResponse.newBuilder()
                                                  .setErrorCode(ErrorCode.QUERY_DUPLICATED.getCode())
                                                  .setRequestIdentifier(serializedQuery.getMessageIdentifier())
@@ -407,9 +413,8 @@ public class QueryDispatcher {
                                                                           .build("Query with supplied ID already present"))
                                                  .build());
                     onCompleted.accept("DuplicateId");
-                }
-                else{
-                    dispatch(key,activeQuery);
+                } else {
+                    dispatch(key, activeQuery);
                 }
             } catch (InsufficientBufferCapacityException insufficientBufferCapacityException) {
                 activeQuery.completeWithError(queryHandler.getClientStreamId(),

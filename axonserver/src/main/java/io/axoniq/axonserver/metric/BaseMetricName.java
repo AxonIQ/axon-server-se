@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -75,6 +75,14 @@ public enum BaseMetricName implements MetricName {
                                           "Total number of updates submitted on subscription queries per application"),
     AXON_APPLICATION_SUBSCRIPTION_ACTIVE("axon.ApplicationSubscriptionMetricRegistry.active",
                                          "Active number of subscription queries on this node per application"),
+    AXON_SUBSCRIPTION_TOTAL("axon.queries.subscriptionquery.throughput.total",
+                            "Total number of subscription queries subscribed"),
+    AXON_SUBSCRIPTION_DURATION("axon.queries.subscriptionquery.duration",
+                               "Duration of a subscription query connection"),
+    AXON_SUBSCRIPTION_UPDATES("axon.queries.subscriptionquery.throughput.updates",
+                              "Total number of updates submitted on subscription queries"),
+    AXON_SUBSCRIPTION_ACTIVE("axon.queries.subscriptionquery.saturation.active",
+                             "Active number of subscription queries on this node"),
     AXON_APPLICATION_COMMAND_QUEUE_SIZE("axon.ApplicationCommandQueue.size",
                                         "The size of queue holding commands waiting for permits from client"),
     AXON_APPLICATION_QUERY_QUEUE_SIZE("axon.ApplicationQueryQueue.size",
@@ -84,10 +92,12 @@ public enum BaseMetricName implements MetricName {
     AXON_BLOOM_OPEN("file.bloom.open", "Number of bloom filter files opened"),
     AXON_BLOOM_CLOSE("file.bloom.close", "Number of bloom filter files closed"),
     AXON_SEGMENT_OPEN("file.segment.open", "Number of event store segment files opened"),
-    AXON_SEGMENT_MOVE_INITIATED("file.segment.moved.initiated", "Number of event store segment files initiated to be moved to next tier"),
+    AXON_SEGMENT_MOVE_INITIATED("file.segment.moved.initiated",
+                                "Number of event store segment files initiated to be moved to next tier"),
     AXON_SEGMENT_MOVED("file.segment.moved.completed", "Number of event store segment files moved to next tier"),
-    AXON_SEGMENT_MOVED_DURATION("file.segment.moved.duration", "Duration of moving event store segment files to next tier"),
-    AXON_SEGMENTS_PER_TIER( "file.segment.per.tier", "Current number of segments in a tier"),
+    AXON_SEGMENT_MOVED_DURATION("file.segment.moved.duration",
+                                "Duration of moving event store segment files to next tier"),
+    AXON_SEGMENTS_PER_TIER("file.segment.per.tier", "Current number of segments in a tier"),
     AXON_AGGREGATE_READTIME("local.aggregate.readtime", "Elapsed time for reading events from the event store"),
     AXON_AGGREGATE_SEGMENT_COUNT("local.aggregate.segments", "Number of segments where aggregate is found"),
     AXON_LAST_SEQUENCE_READTIME("local.lastsequence.readtime",
