@@ -20,6 +20,7 @@ import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.rest.json.NodeConfiguration;
 import io.axoniq.axonserver.rest.svg.mapping.AxonServers;
+import io.axoniq.axonserver.test.FakeClock;
 import io.axoniq.axonserver.topology.DefaultTopology;
 import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.version.DefaultVersionInfoProvider;
@@ -76,7 +77,8 @@ public class PublicRestControllerTest {
                                                new DefaultVersionInfoProvider(),
                                                new SubscriptionQueryMetricRegistry(new MeterFactory(new SimpleMeterRegistry(),
                                                                                                     new DefaultMetricCollector()),
-                                                                                   (metric, tags) -> null));
+                                                                                   (metric, tags) -> null,
+                                                                                   new FakeClock()));
 
     }
 

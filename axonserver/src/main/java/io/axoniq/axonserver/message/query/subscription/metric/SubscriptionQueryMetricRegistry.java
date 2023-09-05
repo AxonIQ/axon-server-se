@@ -22,6 +22,7 @@ import io.micrometer.core.instrument.Timer;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
+import java.time.Clock;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -40,22 +41,28 @@ import static io.axoniq.axonserver.metric.MeterFactory.SOURCE;
 import static io.axoniq.axonserver.metric.MeterFactory.TARGET;
 
 /**
- * @author Sara Pellegrini
- * @since 4.0
+ * Component capturing metrics for subscription queries.
+ *
+ * @author Marc Gathier
+ * @since 2023.2.0
  */
 @Component
 public class SubscriptionQueryMetricRegistry {
 
-    private static final String TAG_COMPONENT = "component";
+    public static final String TAG_COMPONENT = "component";
     private final MeterFactory localMetricRegistry;
     private final BiFunction<String, Tags, ClusterMetric> clusterMetricProvider;
+    private final Clock clock;
     private final Map<String, AtomicInteger> activeSubscriptionsMap = new ConcurrentHashMap<>();
     private final Map<String, ActiveSubscriptionQuery> activeSubscriptionQueryMap = new ConcurrentHashMap<>();
+    private final Map<String, Long> initialQueryStartedMap = new ConcurrentHashMap<>();
 
     public SubscriptionQueryMetricRegistry(MeterFactory localMetricRegistry,
-                                           BiFunction<String, Tags, ClusterMetric> clusterMetricProvider) {
+                                           BiFunction<String, Tags, ClusterMetric> clusterMetricProvider,
+                                           Clock clock) {
         this.localMetricRegistry = localMetricRegistry;
         this.clusterMetricProvider = clusterMetricProvider;
+        this.clock = clock;
     }
 
     public HubSubscriptionMetrics getByComponentAndContext(String componentName, String context) {
@@ -99,13 +106,16 @@ public class SubscriptionQueryMetricRegistry {
         String componentName = event.subscription().getQueryRequest().getComponentName();
         String context = event.context();
         String request = event.subscription().getQueryRequest().getQuery();
-        String clientId = event.subscription().getQueryRequest().getClientId();
         activeSubscriptionsMetric(componentName, context, request).incrementAndGet();
         totalSubscriptionsMetric(componentName, context, request).increment();
         activeSubscriptionQueryMap.putIfAbsent(event.subscriptionId(),
-                                               new ActiveSubscriptionQuery(componentName, context, request, clientId));
+                                               new ActiveSubscriptionQuery(componentName, context, request));
     }
 
+    @EventListener
+    public void on(SubscriptionQueryEvents.SubscriptionQueryInitialResultRequested event) {
+        initialQueryStartedMap.put(event.subscriptionId(), clock.millis());
+    }
     @EventListener
     public void on(SubscriptionQueryEvents.SubscriptionQueryCanceled event) {
         ActiveSubscriptionQuery activeSubscriptionQuery = activeSubscriptionQueryMap.remove(event.subscriptionId());
@@ -117,31 +127,35 @@ public class SubscriptionQueryMetricRegistry {
             subscriptionDurationMetric(activeSubscriptionQuery.componentName,
                                        activeSubscriptionQuery.context,
                                        activeSubscriptionQuery.request)
-                    .record(System.currentTimeMillis() - activeSubscriptionQuery.started, TimeUnit.MILLISECONDS);
+                    .record(clock.millis() - activeSubscriptionQuery.started, TimeUnit.MILLISECONDS);
         }
     }
 
     @EventListener
     public void on(SubscriptionQueryEvents.SubscriptionQueryResponseReceived event) {
-        ActiveSubscriptionQuery activeSubscriptionQuery = activeSubscriptionQueryMap.remove(event.subscriptionId());
+        ActiveSubscriptionQuery activeSubscriptionQuery = activeSubscriptionQueryMap.get(event.subscriptionId());
         if (activeSubscriptionQuery != null && event.response().getResponseCase().equals(INITIAL_RESULT)
                 && event.clientId() != null) {
-            long durationInMillis = System.currentTimeMillis() - activeSubscriptionQuery.started;
-            localMetricRegistry.timer(BaseMetricName.AXON_QUERY,
-                                      Tags.of(CONTEXT,
-                                              activeSubscriptionQuery.context,
-                                              REQUEST,
-                                              activeSubscriptionQuery.request,
-                                              SOURCE,
-                                              activeSubscriptionQuery.clientId,
-                                              TARGET,
-                                              event.clientId()))
-                               .record(durationInMillis, TimeUnit.MILLISECONDS);
-            localMetricRegistry.timer(BaseMetricName.LOCAL_QUERY_RESPONSE_TIME, Tags.of(
-                    MeterFactory.REQUEST, activeSubscriptionQuery.request,
-                    MeterFactory.CONTEXT, activeSubscriptionQuery.context,
-                    MeterFactory.TARGET, activeSubscriptionQuery.clientId)).record(durationInMillis,
-                                                                                   TimeUnit.MILLISECONDS);
+            Long initialQueryStarted = initialQueryStartedMap.remove(event.subscriptionId());
+            if (initialQueryStarted != null) {
+                String clientId = event.clientId();
+                long durationInMillis = clock.millis() - initialQueryStarted;
+                localMetricRegistry.timer(BaseMetricName.AXON_QUERY,
+                                          Tags.of(CONTEXT,
+                                                  activeSubscriptionQuery.context,
+                                                  REQUEST,
+                                                  normalizeRequest(activeSubscriptionQuery.request),
+                                                  SOURCE,
+                                                  clientId,
+                                                  TARGET,
+                                                  event.clientId()))
+                                   .record(durationInMillis, TimeUnit.MILLISECONDS);
+                localMetricRegistry.timer(BaseMetricName.LOCAL_QUERY_RESPONSE_TIME, Tags.of(
+                        MeterFactory.REQUEST, normalizeRequest(activeSubscriptionQuery.request),
+                        MeterFactory.CONTEXT, activeSubscriptionQuery.context,
+                        MeterFactory.TARGET, clientId)).record(durationInMillis,
+                                                               TimeUnit.MILLISECONDS);
+            }
         }
 
         if (activeSubscriptionQuery != null && event.response().getResponseCase().equals(UPDATE)) {
@@ -153,6 +167,10 @@ public class SubscriptionQueryMetricRegistry {
                 updatesMetric(component, context, request).increment();
             }
         }
+    }
+
+    private String normalizeRequest(String request) {
+        return request.replace(".", "/");
     }
 
     private AtomicInteger activeSubscriptionsMetric(String component, String context, String request) {
@@ -206,19 +224,17 @@ public class SubscriptionQueryMetricRegistry {
                                  REQUEST, request));
     }
 
-    private static class ActiveSubscriptionQuery {
+    private class ActiveSubscriptionQuery {
 
-        final long started = System.currentTimeMillis();
+        final long started = clock.millis();
         final String componentName;
         final String context;
         final String request;
-        private final String clientId;
 
-        private ActiveSubscriptionQuery(String componentName, String context, String request, String clientId) {
+        private ActiveSubscriptionQuery(String componentName, String context, String request) {
             this.componentName = componentName;
             this.context = context;
             this.request = request;
-            this.clientId = clientId;
         }
     }
 }

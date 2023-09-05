@@ -15,13 +15,19 @@ import io.axoniq.axonserver.grpc.query.QueryRequest;
 import io.axoniq.axonserver.grpc.query.QueryUpdate;
 import io.axoniq.axonserver.grpc.query.SubscriptionQuery;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse;
+import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.metric.MetricCollector;
+import io.axoniq.axonserver.test.FakeClock;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Tags;
+import io.micrometer.core.instrument.distribution.HistogramSnapshot;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.concurrent.TimeUnit;
 import javax.annotation.Nonnull;
 
 import static org.junit.Assert.assertEquals;
@@ -33,13 +39,16 @@ import static org.junit.Assert.assertEquals;
 public class SubscriptionQueryMetricRegistryTest {
 
     private SubscriptionQueryMetricRegistry testSubject;
+    private final FakeClock clock = new FakeClock();
+    private final MeterRegistry meterRegistry = new SimpleMeterRegistry();
 
     @Before
     public void setUp() {
         MetricCollector metricCollector = new DefaultMetricCollector();
-        testSubject = new SubscriptionQueryMetricRegistry(new MeterFactory(new SimpleMeterRegistry(),
+        testSubject = new SubscriptionQueryMetricRegistry(new MeterFactory(meterRegistry,
                                                                            metricCollector),
-                                                          metricCollector::apply);
+                                                          metricCollector::apply,
+                                                          clock);
     }
 
     @Test
@@ -107,8 +116,20 @@ public class SubscriptionQueryMetricRegistryTest {
         }, t -> {
         }));
         assertEquals(1L, metrics.activesCount().longValue());
+        clock.timeElapses(10);
         testSubject.on(new SubscriptionQueryCanceled("context", query("3")));
         assertEquals(0L, metrics.activesCount().longValue());
         assertEquals(0L, metrics.updatesCount().longValue());
+        HistogramSnapshot snapshot = meterRegistry.timer(BaseMetricName.AXON_SUBSCRIPTION_DURATION.metric(),
+                                                         Tags.of(
+                                                                 MeterFactory.REQUEST,
+                                                                 "query",
+                                                                 MeterFactory.CONTEXT,
+                                                                 "context",
+                                                                 SubscriptionQueryMetricRegistry.TAG_COMPONENT,
+                                                                 "myComponent"))
+                                                  .takeSnapshot();
+        assertEquals(1, snapshot.count());
+        assertEquals(10, (int) snapshot.max(TimeUnit.MILLISECONDS));
     }
 }
