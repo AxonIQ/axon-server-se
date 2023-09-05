@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -15,12 +15,16 @@ import io.axoniq.axonserver.config.SystemInfoProvider;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.event.EventDispatcher;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
-import io.axoniq.axonserver.message.query.subscription.FakeSubscriptionMetrics;
+import io.axoniq.axonserver.message.query.subscription.metric.SubscriptionQueryMetricRegistry;
+import io.axoniq.axonserver.metric.DefaultMetricCollector;
+import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.rest.json.NodeConfiguration;
 import io.axoniq.axonserver.rest.svg.mapping.AxonServers;
+import io.axoniq.axonserver.test.FakeClock;
 import io.axoniq.axonserver.topology.DefaultTopology;
 import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.version.DefaultVersionInfoProvider;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -71,7 +75,10 @@ public class PublicRestControllerTest {
                                                limits,
                                                messagePlatformConfiguration,
                                                new DefaultVersionInfoProvider(),
-                                               () -> new FakeSubscriptionMetrics(500, 400, 1000));
+                                               new SubscriptionQueryMetricRegistry(new MeterFactory(new SimpleMeterRegistry(),
+                                                                                                    new DefaultMetricCollector()),
+                                                                                   (metric, tags) -> null,
+                                                                                   new FakeClock()));
 
     }
 

@@ -139,10 +139,28 @@ public class MeterFactory {
         List<Meter> toDelete = new LinkedList<>();
         meterRegistry.find(axonQuery.metric()).meters().forEach(m -> {
             if (tagValue.equals(m.getId().getTag(tagName))) {
-               toDelete.add(m);
+                toDelete.add(m);
             }
         });
         toDelete.forEach(meterRegistry::remove);
+    }
+
+    public double sum(MetricName metricName, Tags tags) {
+        return meterRegistry.find(metricName.metric()).tags(tags).meters().stream().mapToDouble(meter -> {
+            if (meter instanceof Gauge) {
+                return ((Gauge) meter).value();
+            }
+            return 0;
+        }).sum();
+    }
+
+    public long count(MetricName metricName, Tags tags) {
+        return meterRegistry.find(metricName.metric()).tags(tags).meters().stream().mapToLong(meter -> {
+            if (meter instanceof Counter) {
+                return (long) ((Counter) meter).count();
+            }
+            return 0;
+        }).sum();
     }
 
     /**

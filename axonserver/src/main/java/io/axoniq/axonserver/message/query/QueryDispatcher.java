@@ -119,19 +119,23 @@ public class QueryDispatcher {
         return activeQuery;
     }
 
-    public void handleComplete(String requestId, String clientStreamId, String clientId, boolean proxied) {
+    public void handleComplete(String requestId, String clientStreamId, String clientId) {
         ActiveQuery activeQuery = activeQuery(clientStreamId, requestId);
         if (activeQuery != null) {
-            if (activeQuery.complete(clientStreamId)) {
-                queryCache.remove(activeQuery.getKey());
-            }
-            if (!proxied) {
-                queryMetricsRegistry.addHandlerResponseTime(activeQuery.getQuery(),
-                                                            activeQuery.getSourceClientId(),
-                                                            clientId,
-                                                            activeQuery.getContext(),
-                                                            System.currentTimeMillis() - activeQuery
-                                                                    .getTimestamp());
+            try {
+                if (activeQuery.complete(clientStreamId)) {
+                    queryCache.remove(activeQuery.getKey());
+                }
+                long responseTime = System.currentTimeMillis() - activeQuery.getTimestamp();
+                if (activeQuery.firstReceiver()) {
+                    queryMetricsRegistry.addHandlerResponseTime(activeQuery.getQuery(),
+                                                                activeQuery.getSourceClientId(),
+                                                                clientId,
+                                                                activeQuery.getContext(),
+                                                                responseTime);
+                }
+            } catch (IllegalStateException illegalStateException) {
+                logger.warn("{}: Handler not found", clientStreamId);
             }
         } else {
             logger.debug("No (more) information for {} on completed", requestId);
@@ -223,6 +227,7 @@ public class QueryDispatcher {
             } else {
                 ActiveQuery activeQuery = new ActiveQuery(query.getMessageIdentifier(),
                                                           serializedQuery2,
+                                                          ActiveQuery.FIRST_RECEIVER,
                                                           interceptedCallback,
                                                           onCompleted,
                                                           handlers, isStreamingQuery(query));
@@ -397,6 +402,7 @@ public class QueryDispatcher {
             String key = proxiedQueryKey(query.getMessageIdentifier(), serializedQuery.clientStreamId());
             ActiveQuery activeQuery = new ActiveQuery(key,
                                                       serializedQuery,
+                                                      ActiveQuery.PROXIED_RECEIVER,
                                                       callback,
                                                       onCompleted,
                                                       singleton(queryHandler),

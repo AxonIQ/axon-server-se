@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -17,6 +17,7 @@ import io.axoniq.axonserver.metric.GaugeMetric;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Tags;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
@@ -32,6 +33,7 @@ import static io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse.Response
  * @since 4.0
  */
 @Component
+@ConditionalOnProperty(name = "axoniq.axonserver.legacy-metrics-enabled", matchIfMissing = true)
 public class ApplicationSubscriptionMetricRegistry {
 
     private static final String TAG_COMPONENT = "component";
@@ -63,7 +65,6 @@ public class ApplicationSubscriptionMetricRegistry {
     }
 
 
-
     @EventListener
     public void on(SubscriptionQueryEvents.SubscriptionQueryStarted event) {
         String componentName = event.subscription().getQueryRequest().getComponentName();
@@ -85,8 +86,8 @@ public class ApplicationSubscriptionMetricRegistry {
     }
 
     @EventListener
-    public void on(SubscriptionQueryEvents.SubscriptionQueryResponseReceived event){
-        if (componentNames.containsKey(event.subscriptionId()) && event.response().getResponseCase().equals(UPDATE)){
+    public void on(SubscriptionQueryEvents.SubscriptionQueryResponseReceived event) {
+        if (componentNames.containsKey(event.subscriptionId()) && event.response().getResponseCase().equals(UPDATE)) {
             String component = componentNames.get(event.subscriptionId());
             String context = contexts.get(event.subscriptionId());
             if (component != null && context != null) {
@@ -95,7 +96,7 @@ public class ApplicationSubscriptionMetricRegistry {
         }
     }
 
-    private AtomicInteger activeSubscriptionsMetric(String component, String context){
+    private AtomicInteger activeSubscriptionsMetric(String component, String context) {
         return activeSubscriptionsMap.computeIfAbsent(activeSubscriptionsMetricName(component, context), name -> {
             AtomicInteger atomicInteger = new AtomicInteger(0);
             localMetricRegistry.gauge(BaseMetricName.AXON_APPLICATION_SUBSCRIPTION_ACTIVE, Tags.of(MeterFactory.CONTEXT,
@@ -115,16 +116,18 @@ public class ApplicationSubscriptionMetricRegistry {
         return String.format("axon.%s.%s.%s.%s", name, component, context, active);
     }
 
-    private Counter totalSubscriptionsMetric(String component, String context){
-        return totalSubscriptionsMap.computeIfAbsent(name(ApplicationSubscriptionMetricRegistry.class.getSimpleName(), component, context, "total"),
+    private Counter totalSubscriptionsMetric(String component, String context) {
+        return totalSubscriptionsMap.computeIfAbsent(name(ApplicationSubscriptionMetricRegistry.class.getSimpleName(),
+                                                          component,
+                                                          context,
+                                                          "total"),
                                                      name -> localMetricRegistry
                                                              .counter(BaseMetricName.AXON_APPLICATION_SUBSCRIPTION_TOTAL,
                                                                       Tags.of(MeterFactory.CONTEXT, context,
                                                                               TAG_COMPONENT, component)));
-
     }
 
-    private Counter updatesMetric(String component, String context){
+    private Counter updatesMetric(String component, String context) {
         return updatesMap.computeIfAbsent(name(ApplicationSubscriptionMetricRegistry.class.getSimpleName(),
                                                component,
                                                context,

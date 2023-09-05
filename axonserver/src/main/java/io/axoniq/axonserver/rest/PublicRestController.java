@@ -17,6 +17,7 @@ import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.event.EventDispatcher;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.subscription.SubscriptionMetrics;
+import io.axoniq.axonserver.message.query.subscription.metric.SubscriptionQueryMetricRegistry;
 import io.axoniq.axonserver.rest.json.NodeConfiguration;
 import io.axoniq.axonserver.rest.json.StatusInfo;
 import io.axoniq.axonserver.rest.json.UserInfo;
@@ -37,7 +38,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.servlet.http.HttpServletRequest;
@@ -59,7 +59,7 @@ public class PublicRestController {
     private final SslConfiguration sslConfiguration;
     private final AccessControlConfiguration accessControlConfiguration;
     private final VersionInfoProvider versionInfoSupplier;
-    private final Supplier<SubscriptionMetrics> subscriptionMetricsRegistry;
+    private final SubscriptionQueryMetricRegistry subscriptionMetricsRegistry;
     private final boolean pluginsEnabled;
 
     @Value("${axoniq.axonserver.devmode.enabled:false}")
@@ -73,7 +73,7 @@ public class PublicRestController {
                                 FeatureChecker features,
                                 MessagingPlatformConfiguration messagingPlatformConfiguration,
                                 VersionInfoProvider versionInfoSupplier,
-                                Supplier<SubscriptionMetrics> subscriptionMetricsRegistry) {
+                                SubscriptionQueryMetricRegistry subscriptionMetricsRegistry) {
         this.axonServerProvider = axonServerProvider;
         this.topology = topology;
         this.commandDispatcher = commandDispatcher;
@@ -137,17 +137,19 @@ public class PublicRestController {
     @GetMapping(path = "status")
     @Operation(summary = "Retrieves status information, used by UI")
     public StatusInfo status(@RequestParam(value = "context", defaultValue = Topology.DEFAULT_CONTEXT, required = false) String context) {
-        SubscriptionMetrics subscriptionMetrics = this.subscriptionMetricsRegistry.get();
+        SubscriptionMetrics subscriptionMetrics = this.subscriptionMetricsRegistry.get(context);
         StatusInfo statusInfo = new StatusInfo();
         statusInfo.setCommandRate(commandDispatcher.commandRate(context));
         statusInfo.setQueryRate(queryDispatcher.queryRate(context));
-        if( ! context.startsWith("_")) {
+        if (!context.startsWith("_")) {
             statusInfo.setEventRate(eventDispatcher.eventRate(context));
             statusInfo.setSnapshotRate(eventDispatcher.snapshotRate(context));
             statusInfo.setNrOfEvents(eventDispatcher.getNrOfEvents(context));
             statusInfo.setEventTrackers(eventDispatcher.eventTrackerStatus(context));
         }
         statusInfo.setNrOfActiveSubscriptionQueries(subscriptionMetrics.activesCount());
+        statusInfo.setNrOfSubscriptionQueries(subscriptionMetrics.totalCount());
+        statusInfo.setNrOfSubscriptionQueriesUpdates(subscriptionMetrics.updatesCount());
         return statusInfo;
     }
 

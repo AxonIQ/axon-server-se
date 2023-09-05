@@ -189,8 +189,7 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                                                                wrappedQueryProviderInboundObserver);
                         queryDispatcher.handleComplete(queryProviderOutbound.getQueryComplete().getRequestId(),
                                                        clientRef.get().getClientStreamId(),
-                                                       clientIdRef.get(),
-                                                       false);
+                                                       clientIdRef.get());
                         break;
                     case SUBSCRIPTION_QUERY_RESPONSE:
                         logger.debug("{}-[{}]: Subscription Query Response received of type {}.",
@@ -200,9 +199,12 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                         instructionAckSource.sendSuccessfulAck(queryProviderOutbound.getInstructionId(),
                                                                wrappedQueryProviderInboundObserver);
                         SubscriptionQueryResponse response = queryProviderOutbound.getSubscriptionQueryResponse();
-                        eventPublisher.publishEvent(new SubscriptionQueryResponseReceived(response, () ->
-                                wrappedQueryProviderInboundObserver
-                                        .onNext(unsubscribeMessage(response.getSubscriptionIdentifier()))));
+                        eventPublisher.publishEvent(new SubscriptionQueryResponseReceived(response,
+                                                                                          clientIdRef.get(),
+                                                                                          () ->
+                                                                                                  wrappedQueryProviderInboundObserver
+                                                                                                          .onNext(unsubscribeMessage(
+                                                                                                                  response.getSubscriptionIdentifier()))));
                         break;
                     case ACK:
                         InstructionAck ack = queryProviderOutbound.getAck();

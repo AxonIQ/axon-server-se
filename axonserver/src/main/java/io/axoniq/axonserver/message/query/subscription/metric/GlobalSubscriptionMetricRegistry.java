@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -18,6 +18,7 @@ import io.axoniq.axonserver.metric.GaugeMetric;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Tags;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
@@ -34,6 +35,7 @@ import static io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse.Response
  * @since 4.0
  */
 @Component
+@ConditionalOnProperty(name = "axoniq.axonserver.legacy-metrics-enabled", matchIfMissing = true)
 public class GlobalSubscriptionMetricRegistry implements Supplier<SubscriptionMetrics> {
 
     private final Set<String> subscriptions = new CopyOnWriteArraySet<>();
@@ -72,14 +74,14 @@ public class GlobalSubscriptionMetricRegistry implements Supplier<SubscriptionMe
     }
 
     @EventListener
-    public void on(SubscriptionQueryEvents.SubscriptionQueryCanceled event){
+    public void on(SubscriptionQueryEvents.SubscriptionQueryCanceled event) {
         active.decrementAndGet();
         subscriptions.remove(event.subscriptionId());
     }
 
     @EventListener
-    public void on(SubscriptionQueryEvents.SubscriptionQueryResponseReceived event){
-        if (subscriptions.contains(event.subscriptionId()) && event.response().getResponseCase().equals(UPDATE)){
+    public void on(SubscriptionQueryEvents.SubscriptionQueryResponseReceived event) {
+        if (subscriptions.contains(event.subscriptionId()) && event.response().getResponseCase().equals(UPDATE)) {
             updates.increment();
         }
     }
