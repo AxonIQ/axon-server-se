@@ -62,7 +62,6 @@ public class QueryDispatcher {
     private final QueryInterceptors queryInterceptors;
     private final QueryMetricsRegistry queryMetricsRegistry;
     private final FlowControlQueues<QueryInstruction> queryQueue;
-    private final Map<String, MeterFactory.RateMeter> queryRatePerContext = new ConcurrentHashMap<>();
     private final Map<String, AtomicInteger> activeRequestsPerContext = new ConcurrentHashMap<>();
 
     public QueryDispatcher(QueryRegistrationCache registrationCache,
@@ -340,8 +339,7 @@ public class QueryDispatcher {
     }
 
     public MeterFactory.RateMeter queryRate(String context) {
-        return queryRatePerContext.computeIfAbsent(context,
-                                                   queryMetricsRegistry::rateMeter);
+        return queryMetricsRegistry.rateMeter(context);
     }
 
     /**

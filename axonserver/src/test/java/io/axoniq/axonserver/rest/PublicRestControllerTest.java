@@ -15,6 +15,7 @@ import io.axoniq.axonserver.config.SystemInfoProvider;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.event.EventDispatcher;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
+import io.axoniq.axonserver.message.query.QueryMetricsRegistry;
 import io.axoniq.axonserver.message.query.subscription.metric.SubscriptionQueryMetricRegistry;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
@@ -42,6 +43,7 @@ import static org.junit.Assert.assertNull;
  */
 @RunWith(MockitoJUnitRunner.class)
 public class PublicRestControllerTest {
+
     private PublicRestController testSubject;
     private FeatureChecker limits = new FeatureChecker() {
     };
@@ -75,11 +77,11 @@ public class PublicRestControllerTest {
                                                limits,
                                                messagePlatformConfiguration,
                                                new DefaultVersionInfoProvider(),
-                                               new SubscriptionQueryMetricRegistry(new MeterFactory(new SimpleMeterRegistry(),
-                                                                                                    new DefaultMetricCollector()),
+                                               new SubscriptionQueryMetricRegistry(new QueryMetricsRegistry(new MeterFactory(
+                                                       new SimpleMeterRegistry(),
+                                                       new DefaultMetricCollector()), true),
                                                                                    (metric, tags) -> null,
                                                                                    new FakeClock()));
-
     }
 
     @Test
@@ -94,7 +96,7 @@ public class PublicRestControllerTest {
         NodeConfiguration node = testSubject.getNodeConfiguration();
         assertEquals("DEMO", node.getName());
         assertEquals("DEMO", node.getHostName());
-        assertNull( node.getInternalHostName());
+        assertNull(node.getInternalHostName());
         assertEquals(Integer.valueOf(8124), node.getGrpcPort());
         assertEquals(Integer.valueOf(8080), node.getHttpPort());
     }
@@ -105,5 +107,4 @@ public class PublicRestControllerTest {
         LicenseInfo licenseInfo = testSubject.licenseInfo();
         assertEquals("Standard Edition", licenseInfo.getEdition());
     }
-
 }

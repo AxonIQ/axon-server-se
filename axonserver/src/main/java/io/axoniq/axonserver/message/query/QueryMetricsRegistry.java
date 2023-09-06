@@ -16,6 +16,7 @@ import io.axoniq.axonserver.metric.CompositeMetric;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.metric.MetricName;
 import io.axoniq.axonserver.metric.Metrics;
+import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.Timer;
@@ -26,7 +27,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
+import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import java.util.function.ToDoubleFunction;
@@ -41,6 +44,7 @@ public class QueryMetricsRegistry {
     private final Logger logger = LoggerFactory.getLogger(QueryMetricsRegistry.class);
     private final MeterFactory meterFactory;
     private final boolean legacyMetricsEnabled;
+    private final Map<String, MeterFactory.RateMeter> queryRatePerContext = new ConcurrentHashMap<>();
 
     /**
      * Constructor of the registry.
@@ -153,7 +157,7 @@ public class QueryMetricsRegistry {
     }
 
     /**
-     * Creates a meter that will monitor the rate of certain events. The RateMeter will expose events/second for the
+     * Returns a meter that will monitor the rate of certain events. The RateMeter will expose events/second for the
      * last 1/5/15 minutes and a
      * total count. The meter will have the context as a tag.
      *
@@ -161,9 +165,10 @@ public class QueryMetricsRegistry {
      * @return a RateMeter object
      */
     public MeterFactory.RateMeter rateMeter(String context) {
-        return meterFactory.rateMeter(BaseMetricName.QUERY_THROUGHPUT,
+        return queryRatePerContext.computeIfAbsent(context, c ->
+                meterFactory.rateMeter(BaseMetricName.QUERY_THROUGHPUT,
                                       legacyMetricsEnabled ? BaseMetricName.AXON_QUERY_RATE : null,
-                                      Tags.of(MeterFactory.CONTEXT, context));
+                                       Tags.of(MeterFactory.CONTEXT, c)));
     }
 
     /**
@@ -211,6 +216,26 @@ public class QueryMetricsRegistry {
                                                                   command,
                                                                   MeterFactory.ERROR_CODE,
                                                                   errorCode)).increment();
+    }
+
+    public Double sum(MetricName metricName, Tags tags) {
+        return meterFactory.sum(metricName, tags);
+    }
+
+    public Long count(MetricName metricName, Tags tags) {
+        return meterFactory.count(metricName, tags);
+    }
+
+    public Timer timer(MetricName metricName, Tags tags) {
+        return meterFactory.timer(metricName, tags);
+    }
+
+    public <T> void gauge(MetricName metricName, Tags tags, T objectToWatch, ToDoubleFunction<T> gaugeFunction) {
+        meterFactory.gauge(metricName, tags, objectToWatch, gaugeFunction);
+    }
+
+    public Counter counter(MetricName metricName, Tags tags) {
+        return meterFactory.counter(metricName, tags);
     }
 
     public static class QueryMetric {
