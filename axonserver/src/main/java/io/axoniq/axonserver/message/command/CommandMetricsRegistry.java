@@ -16,7 +16,6 @@ import io.axoniq.axonserver.metric.CompositeMetric;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.metric.MetricName;
 import io.axoniq.axonserver.metric.Metrics;
-import io.axoniq.axonserver.metric.StandardMetricName;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.Timer;
@@ -51,15 +50,15 @@ public class CommandMetricsRegistry {
      * @param meterFactory the factory to create meter objects
      */
     public CommandMetricsRegistry(MeterFactory meterFactory,
-                                  @Value("${axoniq.axonserver.legacy-metrics.enabled:true}") boolean legacyMetricsEnabled) {
+                                  @Value("${axoniq.axonserver.legacy-metrics-enabled:true}") boolean legacyMetricsEnabled) {
         this.meterFactory = meterFactory;
         this.legacyMetricsEnabled = legacyMetricsEnabled;
     }
 
     @EventListener
     public void on(TopologyEvents.ApplicationDisconnected event) {
-        meterFactory.remove(StandardMetricName.COMMAND_DURATION, MeterFactory.SOURCE, event.getClientId());
-        meterFactory.remove(StandardMetricName.COMMAND_DURATION, MeterFactory.TARGET, event.getClientId());
+        meterFactory.remove(BaseMetricName.COMMAND_DURATION, MeterFactory.SOURCE, event.getClientId());
+        meterFactory.remove(BaseMetricName.COMMAND_DURATION, MeterFactory.TARGET, event.getClientId());
         if (legacyMetricsEnabled) {
             meterFactory.remove(BaseMetricName.AXON_COMMAND, MeterFactory.SOURCE, event.getClientId());
             meterFactory.remove(BaseMetricName.AXON_COMMAND, MeterFactory.TARGET, event.getClientId());
@@ -84,19 +83,19 @@ public class CommandMetricsRegistry {
                     long duration) {
         try {
             if (legacyMetricsEnabled) {
-                timer(command, sourceClientId, targetClientId, context).record(duration, TimeUnit.MILLISECONDS);
+                legacyTimer(command, sourceClientId, targetClientId, context).record(duration, TimeUnit.MILLISECONDS);
             }
-            newTimer(command, sourceClientId, targetClientId, context).record(duration, TimeUnit.MILLISECONDS);
+            timer(command, sourceClientId, targetClientId, context).record(duration, TimeUnit.MILLISECONDS);
         } catch (Exception ex) {
             logger.debug("Failed to create timer", ex);
         }
     }
 
-    private Timer newTimer(String command,
-                           String sourceClientId,
-                           String targetClientId,
-                           String context) {
-        return meterFactory.timer(StandardMetricName.COMMAND_DURATION,
+    private Timer timer(String command,
+                        String sourceClientId,
+                        String targetClientId,
+                        String context) {
+        return meterFactory.timer(BaseMetricName.COMMAND_DURATION,
                                   Tags.of(
                                           MeterFactory.REQUEST,
                                           command,
@@ -108,10 +107,10 @@ public class CommandMetricsRegistry {
                                           targetClientId));
     }
 
-    private Timer timer(String command,
-                        String sourceClientId,
-                        String targetClientId,
-                        String context) {
+    private Timer legacyTimer(String command,
+                              String sourceClientId,
+                              String targetClientId,
+                              String context) {
         return meterFactory.timer(BaseMetricName.AXON_COMMAND,
                                                                 Tags.of(
                                                                         MeterFactory.REQUEST,
@@ -135,11 +134,11 @@ public class CommandMetricsRegistry {
         Tags tags = Tags.of(MeterFactory.CONTEXT,
                             context,
                             MeterFactory.REQUEST,
-                            normalizeCommandName(command),
+                            command,
                             MeterFactory.TARGET,
                             targetClientId);
-        return new CompositeMetric(meterFactory.snapshot(BaseMetricName.AXON_COMMAND, tags),
-                                   new Metrics(BaseMetricName.AXON_COMMAND.metric(),
+        return new CompositeMetric(meterFactory.snapshot(BaseMetricName.COMMAND_DURATION, tags),
+                                   new Metrics(BaseMetricName.COMMAND_DURATION.metric(),
                                                tags,
                                                meterFactory.clusterMetrics()));
     }
@@ -196,7 +195,7 @@ public class CommandMetricsRegistry {
     }
 
     public void error(String command, String context, String errorCode) {
-        meterFactory.counter(StandardMetricName.COMMAND_ERRORS, Tags.of(MeterFactory.CONTEXT,
+        meterFactory.counter(BaseMetricName.COMMAND_ERRORS, Tags.of(MeterFactory.CONTEXT,
                                                                         context,
                                                                         MeterFactory.REQUEST,
                                                                         command,

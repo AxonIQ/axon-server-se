@@ -28,8 +28,8 @@ import io.axoniq.axonserver.grpc.control.PlatformServiceGrpc;
 import io.axoniq.axonserver.grpc.control.RequestReconnect;
 import io.axoniq.axonserver.grpc.heartbeat.ApplicationInactivityException;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
+import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.MeterFactory;
-import io.axoniq.axonserver.metric.StandardMetricName;
 import io.axoniq.axonserver.topology.AxonServerNode;
 import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.util.StreamObserverUtils;
@@ -190,11 +190,11 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                     eventPublisher.publishEvent(new ClientVersionUpdate(clientStreamId,
                                                                         context,
                                                                         client.getVersion()));
-                    meterFactory.counter(StandardMetricName.APPLICATION_CONNECT,
+                    meterFactory.counter(BaseMetricName.APPLICATION_CONNECT,
                                          Tags.of(CONTEXT, context, TAG_COMPONENT, client.getComponentName()))
                                 .increment();
                     activeConnectionsPerContext.computeIfAbsent(context,
-                                                                c -> meterFactory.gauge(StandardMetricName.APPLICATION_CONNECTED,
+                                                                c -> meterFactory.gauge(BaseMetricName.APPLICATION_CONNECTED,
                                                                                         Tags.of(CONTEXT, c),
                                                                                         () -> activeConnections(c)));
                 } else if (!handlers.containsKey(requestCase)) {
@@ -346,10 +346,10 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
         if (clientComponent != null) {
             Tags tags = Tags.of(CONTEXT, clientComponent.getContext(),
                                 TAG_COMPONENT, clientComponent.getComponent());
-            meterFactory.counter(StandardMetricName.APPLICATION_DISCONNECT, tags)
+            meterFactory.counter(BaseMetricName.APPLICATION_DISCONNECT, tags)
                         .increment();
             if (registeredTimestamp > 0) {
-                meterFactory.timer(StandardMetricName.APPLICATION_CONNECT_DURATION, tags)
+                meterFactory.timer(BaseMetricName.APPLICATION_CONNECT_DURATION, tags)
                             .record(System.currentTimeMillis() - registeredTimestamp, TimeUnit.MILLISECONDS);
             }
             SendingStreamObserver<PlatformOutboundInstruction> stream = connectionMap.remove(clientComponent);

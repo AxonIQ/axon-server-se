@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -14,6 +14,7 @@ import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.ClusterMetric;
 import io.axoniq.axonserver.metric.CompositeMetric;
 import io.axoniq.axonserver.metric.MeterFactory;
+import io.axoniq.axonserver.metric.MetricName;
 import io.axoniq.axonserver.metric.Metrics;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.Tags;
@@ -21,11 +22,13 @@ import io.micrometer.core.instrument.Timer;
 import io.micrometer.core.instrument.distribution.HistogramSnapshot;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import java.util.function.ToDoubleFunction;
 
 /**
@@ -37,22 +40,29 @@ import java.util.function.ToDoubleFunction;
 public class QueryMetricsRegistry {
     private final Logger logger = LoggerFactory.getLogger(QueryMetricsRegistry.class);
     private final MeterFactory meterFactory;
+    private final boolean legacyMetricsEnabled;
 
     /**
      * Constructor of the registry.
      *
      * @param meterFactory factory to create meters.
      */
-    public QueryMetricsRegistry(MeterFactory meterFactory) {
+    public QueryMetricsRegistry(MeterFactory meterFactory,
+                                @Value("${axoniq.axonserver.legacy-metrics-enabled:true}") boolean legacyMetricsEnabled) {
         this.meterFactory = meterFactory;
+        this.legacyMetricsEnabled = legacyMetricsEnabled;
     }
 
 
     @EventListener
     public void on(TopologyEvents.ApplicationDisconnected event) {
-        meterFactory.remove(BaseMetricName.AXON_QUERY, MeterFactory.SOURCE, event.getClientId());
-        meterFactory.remove(BaseMetricName.AXON_QUERY, MeterFactory.TARGET, event.getClientId());
-        meterFactory.remove(BaseMetricName.LOCAL_QUERY_RESPONSE_TIME, MeterFactory.TARGET, event.getClientId());
+        if (legacyMetricsEnabled) {
+            meterFactory.remove(BaseMetricName.AXON_QUERY, MeterFactory.SOURCE, event.getClientId());
+            meterFactory.remove(BaseMetricName.AXON_QUERY, MeterFactory.TARGET, event.getClientId());
+            meterFactory.remove(BaseMetricName.LOCAL_QUERY_RESPONSE_TIME, MeterFactory.TARGET, event.getClientId());
+        }
+        meterFactory.remove(BaseMetricName.QUERY_DURATION, MeterFactory.SOURCE, event.getClientId());
+        meterFactory.remove(BaseMetricName.QUERY_DURATION, MeterFactory.TARGET, event.getClientId());
     }
 
     /**
@@ -69,10 +79,12 @@ public class QueryMetricsRegistry {
                                        String targetClientId,
                                        String context,
                                        long duration) {
-        try {
-            timer(query, sourceClientId, targetClientId, context).record(duration, TimeUnit.MILLISECONDS);
-        } catch (Exception ex) {
-            logger.debug("Failed to create timer", ex);
+        if (legacyMetricsEnabled) {
+            try {
+                legacyTimer(query, sourceClientId, targetClientId, context).record(duration, TimeUnit.MILLISECONDS);
+            } catch (Exception ex) {
+                logger.debug("Failed to create timer", ex);
+            }
         }
     }
 
@@ -86,16 +98,16 @@ public class QueryMetricsRegistry {
      */
     public ClusterMetric clusterMetric(QueryDefinition query, String targetClientId, String context) {
         Tags tags = Tags.of(MeterFactory.CONTEXT, context,
-                            MeterFactory.REQUEST, normalizeQueryName(query.getQueryName()),
+                            MeterFactory.REQUEST, query.getQueryName(),
                             MeterFactory.TARGET, targetClientId);
-        return new CompositeMetric(meterFactory.snapshot(BaseMetricName.AXON_QUERY, tags),
-                                   new Metrics(BaseMetricName.AXON_QUERY.metric(),
+        return new CompositeMetric(meterFactory.snapshot(BaseMetricName.QUERY_DURATION, tags),
+                                   new Metrics(BaseMetricName.QUERY_DURATION.metric(),
                                                tags,
                                                meterFactory.clusterMetrics()));
     }
 
 
-    private Timer timer(QueryDefinition query, String sourceClientId, String targetClientId, String context) {
+    private Timer legacyTimer(QueryDefinition query, String sourceClientId, String targetClientId, String context) {
         return meterFactory.timer(BaseMetricName.AXON_QUERY,
                                    Tags.of(
                                            MeterFactory.REQUEST, normalizeQueryName(query.getQueryName()),
@@ -132,8 +144,12 @@ public class QueryMetricsRegistry {
      * @param <T>           type of object to watch
      * @return a gauge object
      */
-    public <T> Gauge gauge(BaseMetricName name, T objectToWatch, ToDoubleFunction<T> gaugeFunction) {
+    public <T> Gauge gauge(MetricName name, T objectToWatch, ToDoubleFunction<T> gaugeFunction) {
         return meterFactory.gauge(name, objectToWatch, gaugeFunction);
+    }
+
+    public Gauge gauge(MetricName name, Tags tags, Supplier<Number> gaugeFunction) {
+        return meterFactory.gauge(name, tags, gaugeFunction);
     }
 
     /**
@@ -142,11 +158,12 @@ public class QueryMetricsRegistry {
      * total count. The meter will have the context as a tag.
      *
      * @param context   the name of the context
-     * @param meterName the name of the meter
      * @return a RateMeter object
      */
-    public MeterFactory.RateMeter rateMeter(String context, BaseMetricName meterName) {
-        return meterFactory.rateMeter(meterName, Tags.of(MeterFactory.CONTEXT, context));
+    public MeterFactory.RateMeter rateMeter(String context) {
+        return meterFactory.rateMeter(BaseMetricName.QUERY_THROUGHPUT,
+                                      legacyMetricsEnabled ? BaseMetricName.AXON_QUERY_RATE : null,
+                                      Tags.of(MeterFactory.CONTEXT, context));
     }
 
     /**
@@ -158,8 +175,16 @@ public class QueryMetricsRegistry {
      * @param durationInMillis duration of the query in milliseconds
      */
     public void addEndToEndResponseTime(QueryDefinition query, String clientId, String context, long durationInMillis) {
-        meterFactory.timer(BaseMetricName.LOCAL_QUERY_RESPONSE_TIME, Tags.of(
-                MeterFactory.REQUEST, normalizeQueryName(query.getQueryName()),
+        if (legacyMetricsEnabled) {
+            Tags tags = Tags.of(
+                    MeterFactory.REQUEST, normalizeQueryName(query.getQueryName()),
+                    MeterFactory.CONTEXT, context,
+                    MeterFactory.TARGET, clientId);
+            meterFactory.timer(BaseMetricName.LOCAL_QUERY_RESPONSE_TIME, tags).record(durationInMillis,
+                                                                                      TimeUnit.MILLISECONDS);
+        }
+        meterFactory.timer(BaseMetricName.QUERY_DURATION, Tags.of(
+                MeterFactory.REQUEST, query.getQueryName(),
                 MeterFactory.CONTEXT, context,
                 MeterFactory.TARGET, clientId)).record(durationInMillis, TimeUnit.MILLISECONDS);
     }
@@ -173,12 +198,20 @@ public class QueryMetricsRegistry {
      * @return a snapshot for the response time metric
      */
     public HistogramSnapshot endToEndResponseTime(QueryDefinition query, String clientId, String context) {
-        return meterFactory.timer(BaseMetricName.LOCAL_QUERY_RESPONSE_TIME, Tags.of(
-                MeterFactory.REQUEST, normalizeQueryName(query.getQueryName()),
+        return meterFactory.timer(BaseMetricName.QUERY_DURATION, Tags.of(
+                MeterFactory.REQUEST, query.getQueryName(),
                 MeterFactory.CONTEXT, context,
                 MeterFactory.TARGET, clientId)).takeSnapshot();
     }
 
+    public void error(String command, String context, String errorCode) {
+        meterFactory.counter(BaseMetricName.QUERY_ERRORS, Tags.of(MeterFactory.CONTEXT,
+                                                                  context,
+                                                                  MeterFactory.REQUEST,
+                                                                  command,
+                                                                  MeterFactory.ERROR_CODE,
+                                                                  errorCode)).increment();
+    }
 
     public static class QueryMetric {
 

@@ -14,8 +14,8 @@ import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.InvalidTokenException;
 import io.axoniq.axonserver.logging.AuditLog;
+import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.MeterFactory;
-import io.axoniq.axonserver.metric.StandardMetricName;
 import io.grpc.Context;
 import io.grpc.Contexts;
 import io.grpc.Grpc;
@@ -38,7 +38,7 @@ public class AuthenticationInterceptor implements ServerInterceptor {
 
     public AuthenticationInterceptor(AxonServerAccessController axonServerAccessController, MeterFactory meterFactory) {
         this.axonServerAccessController = axonServerAccessController;
-        this.authenticationErrors = meterFactory.counter(StandardMetricName.AUTHENTICATION_ERRORS);
+        this.authenticationErrors = meterFactory.counter(BaseMetricName.AUTHENTICATION_ERRORS);
     }
 
     @Override
@@ -71,7 +71,7 @@ public class AuthenticationInterceptor implements ServerInterceptor {
 
         if (sre != null) {
             serverCall.close(sre.getStatus(), sre.getTrailers());
-            return new ServerCall.Listener<T>() {
+            return new ServerCall.Listener<>() {
             };
         }
         Context updatedGrpcContext = Context.current()

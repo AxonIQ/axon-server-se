@@ -140,21 +140,16 @@ public class SubscriptionQueryMetricRegistry {
             if (initialQueryStarted != null) {
                 String clientId = event.clientId();
                 long durationInMillis = clock.millis() - initialQueryStarted;
-                localMetricRegistry.timer(BaseMetricName.AXON_QUERY,
+                localMetricRegistry.timer(BaseMetricName.QUERY_DURATION,
                                           Tags.of(CONTEXT,
                                                   activeSubscriptionQuery.context,
                                                   REQUEST,
-                                                  normalizeRequest(activeSubscriptionQuery.request),
+                                                  activeSubscriptionQuery.request,
                                                   SOURCE,
                                                   clientId,
                                                   TARGET,
                                                   event.clientId()))
                                    .record(durationInMillis, TimeUnit.MILLISECONDS);
-                localMetricRegistry.timer(BaseMetricName.LOCAL_QUERY_RESPONSE_TIME, Tags.of(
-                        MeterFactory.REQUEST, normalizeRequest(activeSubscriptionQuery.request),
-                        MeterFactory.CONTEXT, activeSubscriptionQuery.context,
-                        MeterFactory.TARGET, clientId)).record(durationInMillis,
-                                                               TimeUnit.MILLISECONDS);
             }
         }
 
@@ -167,10 +162,6 @@ public class SubscriptionQueryMetricRegistry {
                 updatesMetric(component, context, request).increment();
             }
         }
-    }
-
-    private String normalizeRequest(String request) {
-        return request.replace(".", "/");
     }
 
     private AtomicInteger activeSubscriptionsMetric(String component, String context, String request) {

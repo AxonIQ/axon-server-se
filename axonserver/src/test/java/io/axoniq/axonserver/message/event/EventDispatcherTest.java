@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -120,7 +120,7 @@ public class EventDispatcherTest {
         testSubject = new EventDispatcher(eventStoreLocator,
                                           new MeterFactory(Metrics.globalRegistry,
                                                            new DefaultMetricCollector()),
-                                          3, 100, 50, 30_000);
+                                          3, 100, 50, 30_000, true);
     }
 
     @Test
@@ -304,7 +304,7 @@ public class EventDispatcherTest {
         EventDispatcher eventDispatcher = new EventDispatcher(eventStoreLocator,
                                                               new MeterFactory(Metrics.globalRegistry,
                                                                                new DefaultMetricCollector()),
-                                                              3, 100, 50, 3);
+                                                              3, 100, 50, 3, true);
 
         StepVerifier.create(eventDispatcher.aggregateEvents(DEFAULT_CONTEXT, DEFAULT_PRINCIPAL,GetAggregateEventsRequest.newBuilder().build()))
                 .expectError(MessagingPlatformException.class)

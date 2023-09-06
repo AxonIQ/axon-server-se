@@ -25,8 +25,8 @@ import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.command.CommandHandler;
 import io.axoniq.axonserver.message.command.DirectCommandHandler;
+import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.MeterFactory;
-import io.axoniq.axonserver.metric.StandardMetricName;
 import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.util.StreamObserverUtils;
 import io.grpc.MethodDescriptor;
@@ -194,7 +194,7 @@ public class CommandService implements AxonServerClientService {
                         CommandStart started = commandMap.remove(commandFromSubscriber.getCommandResponse()
                                                                                       .getRequestIdentifier());
                         if (started != null) {
-                            meterFactory.timer(StandardMetricName.COMMAND_HANDLING_DURATION, Tags.of(
+                            meterFactory.timer(BaseMetricName.COMMAND_HANDLING_DURATION, Tags.of(
                                                 CONTEXT, clientRef.get().getContext(),
                                                 TARGET, clientIdRef.get(),
                                                 REQUEST, started.command
@@ -204,8 +204,7 @@ public class CommandService implements AxonServerClientService {
                         instructionAckSource.sendSuccessfulAck(commandFromSubscriber.getInstructionId(),
                                                                wrappedResponseObserver);
                         commandDispatcher.handleResponse(new SerializedCommandResponse(commandFromSubscriber
-                                                                                               .getCommandResponse()),
-                                                         false);
+                                                                                               .getCommandResponse()));
                         break;
                     case ACK:
                         InstructionAck ack = commandFromSubscriber.getAck();

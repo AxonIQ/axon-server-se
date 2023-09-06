@@ -19,8 +19,8 @@ import io.axoniq.axonserver.localstorage.transformation.EventTransformer;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 import io.axoniq.axonserver.localstorage.transformation.ProcessedEvent;
 import io.axoniq.axonserver.localstorage.transformation.WrappedEvent;
+import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.MeterFactory;
-import io.axoniq.axonserver.metric.StandardMetricName;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.Tags;
 import org.slf4j.Logger;
@@ -90,7 +90,7 @@ public class WritableFileStorageTier extends AbstractFileStorageTier {
                                         storagePropertiesSupplier.get(),
                                         meterFactory,
                                         this::completeSegment);
-        forceLagGauge = meterFactory.gauge(StandardMetricName.EVENTSTORE_FORCE_LAG,
+        forceLagGauge = meterFactory.gauge(BaseMetricName.EVENTSTORE_FORCE_LAG,
                                            Tags.of(MeterFactory.CONTEXT, eventTypeContext.getContext(),
                                                    "type", eventTypeContext.getEventType().name()),
                                            synchronizer,
@@ -247,7 +247,7 @@ public class WritableFileStorageTier extends AbstractFileStorageTier {
             FilePreparedTransaction preparedTransaction = prepareTransaction(events, segmentVersion);
             WritePosition writePosition = preparedTransaction.getWritePosition();
 
-            synchronizer.register(writePosition, events.size(), new StorageCallback() {
+            synchronizer.register(writePosition, new StorageCallback() {
                 private final AtomicBoolean running = new AtomicBoolean();
 
                 @Override
@@ -349,7 +349,7 @@ public class WritableFileStorageTier extends AbstractFileStorageTier {
                 // only one thread can be here
                 logger.debug("{}: Creating new segment {}", eventTypeContext, writePosition.sequence);
 
-                writePosition.buffer.putInt(writePosition.position, -1); //writePosition.writeEndOfFile();
+                writePosition.buffer.putInt(writePosition.position, -1);
 
                 //create new file
                 WritableEventSource buffer = getOrOpenDatafile(new FileVersion(writePosition.sequence, 0),
@@ -365,18 +365,9 @@ public class WritableFileStorageTier extends AbstractFileStorageTier {
                                                         buffer,
                                                         writePosition.sequence,
                                                         writePosition.prevEntries),
-                                      0,
-                                      new StorageCallback() {
-                                          @Override
-                                          public boolean complete(long firstToken) {
-                                              logger.info("Opening new segment completed.");
-                                              return true;
-                                          }
-
-                                          @Override
-                                          public void error(Throwable cause) {
-
-                                          }
+                                      firstToken -> {
+                                          logger.info("Opening new segment completed.");
+                                          return true;
                                       });
                 synchronizer.notifyWritePositions();
             }

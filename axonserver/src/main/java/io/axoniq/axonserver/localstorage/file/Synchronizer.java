@@ -14,8 +14,8 @@ import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.StorageCallback;
+import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.MeterFactory;
-import io.axoniq.axonserver.metric.StandardMetricName;
 import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.Timer;
 import org.slf4j.Logger;
@@ -58,8 +58,8 @@ public class Synchronizer {
     private final AtomicReference<WritePosition> updated = new AtomicReference<>();
     private final AtomicLong lastForced = new AtomicLong(-1);
     private final Timer forceTimer;
-    private volatile ScheduledFuture<?> forceJob;
-    private volatile ScheduledFuture<?> syncJob;
+    private ScheduledFuture<?> forceJob;
+    private ScheduledFuture<?> syncJob;
 
     public Synchronizer(EventTypeContext context, StorageProperties storageProperties,
                         MeterFactory meterFactory, Consumer<WritePosition> completeSegmentCallback) {
@@ -68,7 +68,7 @@ public class Synchronizer {
         this.meterFactory = meterFactory;
         this.completeSegmentCallback = completeSegmentCallback;
         fsync = Executors.newSingleThreadScheduledExecutor(new CustomizableThreadFactory(context + "-synchronizer-"));
-        forceTimer = meterFactory.timer(StandardMetricName.EVENTSTORE_FORCE_DURATION,
+        forceTimer = meterFactory.timer(BaseMetricName.EVENTSTORE_FORCE_DURATION,
                                         Tags.of(MeterFactory.CONTEXT, context.getContext(),
                                                 "type", context.getEventType().name()));
     }
@@ -129,7 +129,7 @@ public class Synchronizer {
         return true;
     }
 
-    public void register(WritePosition writePosition, int eventCount, StorageCallback callback) {
+    public void register(WritePosition writePosition, StorageCallback callback) {
         writePositions.put(writePosition, callback);
     }
 

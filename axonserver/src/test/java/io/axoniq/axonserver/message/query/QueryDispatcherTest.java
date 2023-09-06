@@ -66,7 +66,7 @@ import static org.mockito.Mockito.when;
 public class QueryDispatcherTest {
 
     private final MeterFactory meterFactory = new MeterFactory(Metrics.globalRegistry, new DefaultMetricCollector());
-    private final QueryMetricsRegistry queryMetricsRegistry = new QueryMetricsRegistry(meterFactory);
+    private final QueryMetricsRegistry queryMetricsRegistry = new QueryMetricsRegistry(meterFactory, true);
     private final QueryCache queryCache = new QueryCache(1000, 100);
     private QueryDispatcher testSubject;
 

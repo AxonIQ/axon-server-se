@@ -96,7 +96,7 @@ public class MetricsRestControllerTest {
         principal = mock(Principal.class);
         when(principal.getName()).thenReturn("Testuser");
         queryMetricsRegistry = new QueryMetricsRegistry(new MeterFactory(new SimpleMeterRegistry(),
-                                                                         new DefaultMetricCollector()));
+                                                                         new DefaultMetricCollector()), false);
         testSubject = new MetricsRestController(commandRegistrationCache, commandMetricsRegistry,
                                                 queryRegistrationCache, queryMetricsRegistry,
                                                 new DefaultTopology(new MessagingPlatformConfiguration(new SystemInfoProvider() {

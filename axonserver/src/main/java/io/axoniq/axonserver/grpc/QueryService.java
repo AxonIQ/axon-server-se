@@ -31,12 +31,15 @@ import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.query.DirectQueryHandler;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.QueryHandler;
+import io.axoniq.axonserver.metric.BaseMetricName;
+import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.util.StreamObserverUtils;
 import io.axoniq.flowcontrol.producer.grpc.FlowControlledOutgoingStream;
 import io.grpc.stub.CallStreamObserver;
 import io.grpc.stub.ServerCallStreamObserver;
 import io.grpc.stub.StreamObserver;
+import io.micrometer.core.instrument.Tags;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,8 +54,13 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.annotation.PreDestroy;
+
+import static io.axoniq.axonserver.metric.MeterFactory.CONTEXT;
+import static io.axoniq.axonserver.metric.MeterFactory.REQUEST;
+import static io.axoniq.axonserver.metric.MeterFactory.TARGET;
 
 /**
  * GRPC service to handle query bus requests from Axon Application
@@ -72,6 +80,7 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
     private final AuthenticationProvider authenticationProvider;
     private final ClientIdRegistry clientIdRegistry;
     private final SubscriptionQueryInterceptors subscriptionQueryInterceptors;
+    private final MeterFactory meterFactory;
     private final ApplicationEventPublisher eventPublisher;
     private final Logger logger = LoggerFactory.getLogger(QueryService.class);
     private final Map<ClientStreamIdentification, GrpcQueryDispatcherListener> dispatcherListeners = new ConcurrentHashMap<>();
@@ -88,6 +97,7 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                         AuthenticationProvider authenticationProvider,
                         ClientIdRegistry clientIdRegistry,
                         SubscriptionQueryInterceptors subscriptionQueryInterceptors,
+                        MeterFactory meterFactory,
                         ApplicationEventPublisher eventPublisher,
                         @Qualifier("queryInstructionAckSource")
                                 InstructionAckSource<QueryProviderInbound> instructionAckSource,
@@ -98,6 +108,7 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
         this.authenticationProvider = authenticationProvider;
         this.clientIdRegistry = clientIdRegistry;
         this.subscriptionQueryInterceptors = subscriptionQueryInterceptors;
+        this.meterFactory = meterFactory;
         this.eventPublisher = eventPublisher;
         this.instructionAckSource = instructionAckSource;
         this.grpcFlowControlExecutorProvider = grpcFlowControlExecutorProvider;
@@ -114,8 +125,18 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
     public StreamObserver<QueryProviderOutbound> openStream(
             StreamObserver<QueryProviderInbound> inboundStreamObserver) {
         String context = contextProvider.getContext();
+        Map<String, QueryStart> queryMap = new ConcurrentHashMap<>();
         SendingStreamObserver<QueryProviderInbound> wrappedQueryProviderInboundObserver = new SendingStreamObserver<>(
-                inboundStreamObserver);
+                inboundStreamObserver) {
+            @Override
+            public void onNext(QueryProviderInbound queryProviderInbound) {
+                if (queryProviderInbound.hasQuery()) {
+                    queryMap.put(queryProviderInbound.getQuery().getMessageIdentifier(),
+                                 new QueryStart(queryProviderInbound.getQuery().getQuery()));
+                }
+                super.onNext(queryProviderInbound);
+            }
+        };
 
         return new ReceivingStreamObserver<>(logger) {
             private final AtomicReference<String> clientIdRef = new AtomicReference<>();
@@ -185,6 +206,16 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                         logger.debug("{}-[{}]: Query Complete received.",
                                      context,
                                      queryProviderOutbound.getQueryComplete().getMessageId());
+
+                        QueryStart started = queryMap.remove(queryProviderOutbound.getQueryComplete().getRequestId());
+                        if (started != null) {
+                            meterFactory.timer(BaseMetricName.QUERY_HANDLING_DURATION, Tags.of(
+                                                CONTEXT, clientRef.get().getContext(),
+                                                TARGET, clientIdRef.get(),
+                                                REQUEST, started.query
+                                        ))
+                                        .record(System.currentTimeMillis() - started.started, TimeUnit.MILLISECONDS);
+                        }
                         instructionAckSource.sendSuccessfulAck(queryProviderOutbound.getInstructionId(),
                                                                wrappedQueryProviderInboundObserver);
                         queryDispatcher.handleComplete(queryProviderOutbound.getQueryComplete().getRequestId(),
@@ -418,6 +449,17 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
             eventPublisher.publishEvent(new QueryHandlerDisconnected(clientStreamIdentification.getContext(),
                                                                      clientId,
                                                                      clientStreamIdentification.getClientStreamId()));
+        }
+    }
+
+    private class QueryStart {
+
+        private final String query;
+        private final long started = System.currentTimeMillis();
+
+        public QueryStart(String query) {
+
+            this.query = query;
         }
     }
 }

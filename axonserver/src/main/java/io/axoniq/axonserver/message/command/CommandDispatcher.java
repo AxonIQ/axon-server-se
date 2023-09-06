@@ -24,7 +24,6 @@ import io.axoniq.axonserver.message.DispatchQueueMetrics;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.MeterFactory;
-import io.axoniq.axonserver.metric.StandardMetricName;
 import io.axoniq.axonserver.util.ConstraintCache;
 import io.axoniq.axonserver.util.NonReplacingConstraintCache;
 import io.micrometer.core.instrument.Tags;
@@ -80,7 +79,7 @@ public class CommandDispatcher {
         commandQueues = new FlowControlQueues<>(Comparator.comparing(WrappedCommand::priority).reversed(),
                                                 queueCapacity,
                                                 new DispatchQueueMetrics(meterFactory,
-                                                                         StandardMetricName.COMMAND_QUEUED,
+                                                                         BaseMetricName.COMMAND_QUEUED,
                                                                          BaseMetricName.AXON_APPLICATION_COMMAND_QUEUE_SIZE,
                                                                          clientIdRegistry),
                                                 ErrorCode.TOO_MANY_REQUESTS);
@@ -102,21 +101,33 @@ public class CommandDispatcher {
 
     public void dispatch(String context, Authentication authentication, SerializedCommand request,
                          Consumer<SerializedCommandResponse> responseObserver) {
-        long start = System.currentTimeMillis();
         activeRequestsPerContext.computeIfAbsent(context, c -> {
             AtomicInteger activeRequests = new AtomicInteger();
-            metricRegistry.gauge(StandardMetricName.COMMAND_ACTIVE,
+            metricRegistry.gauge(BaseMetricName.COMMAND_ACTIVE,
                                  Tags.of(CONTEXT, context),
                                  activeRequests::get);
             return activeRequests;
         }).incrementAndGet();
+        Consumer<SerializedCommandResponse> responseObserverWithMetrics = r -> {
+            responseObserver.accept(r);
+            if (axonServerError(r)) {
+                metricRegistry.error(request.getCommand(), context, r.getErrorCode());
+            }
+            activeRequestsPerContext.get(context).decrementAndGet();
+        };
+        commandRate(context).mark();
+        doDispatch(context, authentication, request, responseObserverWithMetrics);
+    }
+
+    private void doDispatch(String context, Authentication authentication, SerializedCommand request,
+                            Consumer<SerializedCommandResponse> responseObserver) {
+        long start = System.currentTimeMillis();
         DefaultExecutionContext executionContext = new DefaultExecutionContext(context, authentication);
         Consumer<SerializedCommandResponse> interceptedResponseObserver = r -> intercept(executionContext,
                                                                                          r,
                                                                                          responseObserver);
         try {
             SerializedCommand interceptedRequest = commandInterceptors.commandRequest(request, executionContext);
-            commandRate(context).mark();
             CommandHandler commandHandler = registrations.getHandlerForCommand(context,
                                                                                interceptedRequest.wrapped(),
                                                                                interceptedRequest.getRoutingKey());
@@ -124,16 +135,13 @@ public class CommandDispatcher {
                                      commandHandler,
                                      r -> {
                                          interceptedResponseObserver.accept(r);
-                                         if (axonServerError(r)) {
-                                             metricRegistry.error(request.getCommand(), context, r.getErrorCode());
-                                         } else if (commandHandler != null) {
+                                         if (!axonServerError(r) && commandHandler != null) {
                                              metricRegistry.add(request.getCommand(),
                                                                 request.wrapped().getClientId(),
                                                                 commandHandler.getClientId(),
                                                                 context,
                                                                 System.currentTimeMillis() - start);
                                          }
-                                         activeRequestsPerContext.get(context).decrementAndGet();
 
                                      },
                                      ErrorCode.NO_HANDLER_FOR_COMMAND,
@@ -145,8 +153,6 @@ public class CommandDispatcher {
                                                                     ErrorCode.fromException(other),
                                                                     other.getMessage()));
             executionContext.compensate(other);
-            activeRequestsPerContext.get(context).decrementAndGet();
-            metricRegistry.error(request.getCommand(), context, ErrorCode.fromException(other).getCode());
         }
     }
 
@@ -178,7 +184,7 @@ public class CommandDispatcher {
         return commandRatePerContext.computeIfAbsent(context,
                                                      c -> metricRegistry
                                                              .rateMeter(c,
-                                                                        StandardMetricName.COMMAND_THROUGHPUT,
+                                                                        BaseMetricName.COMMAND_THROUGHPUT,
                                                                         BaseMetricName.AXON_COMMAND_RATE));
     }
 
@@ -224,11 +230,6 @@ public class CommandDispatcher {
             }
 
             commandHandler.dispatch(command);
-        } catch (InsufficientBufferCapacityException insufficientBufferCapacityException) {
-            responseObserver.accept(errorCommandResponse(command.getMessageIdentifier(),
-                                                         ErrorCode.TOO_MANY_REQUESTS,
-                                                         insufficientBufferCapacityException
-                                                                 .getMessage()));
         } catch (MessagingPlatformException mpe) {
             commandCache.remove(command.getMessageIdentifier());
             responseObserver.accept(errorCommandResponse(command.getMessageIdentifier(),
@@ -238,8 +239,7 @@ public class CommandDispatcher {
     }
 
 
-
-    public void handleResponse(SerializedCommandResponse commandResponse, boolean proxied) {
+    public void handleResponse(SerializedCommandResponse commandResponse) {
         CommandInformation toPublisher = commandCache.remove(commandResponse.getRequestIdentifier());
         if (toPublisher != null) {
             logger.debug("Sending response to: {}", toPublisher);

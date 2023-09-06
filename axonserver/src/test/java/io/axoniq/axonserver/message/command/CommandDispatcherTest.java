@@ -245,7 +245,7 @@ public class CommandDispatcherTest {
                                                                        client, "Component");
         when(commandCache.remove(any(String.class))).thenReturn(commandInformation);
 
-        commandDispatcher.handleResponse(new SerializedCommandResponse(CommandResponse.newBuilder().build()), false);
+        commandDispatcher.handleResponse(new SerializedCommandResponse(CommandResponse.newBuilder().build()));
         assertTrue(responseHandled.get());
     }
 
@@ -344,7 +344,7 @@ public class CommandDispatcherTest {
 
         commandDispatcher.handleResponse(new SerializedCommandResponse(CommandResponse.newBuilder()
                                                                                       .setRequestIdentifier("TheCommand")
-                                                                                      .build()), false);
+                                                                                      .build()));
         SerializedCommandResponse response = futureResponse.get();
         assertEquals(ErrorCode.EXCEPTION_IN_INTERCEPTOR.getCode(), response.getErrorCode());
     }
@@ -392,7 +392,7 @@ public class CommandDispatcherTest {
 
         commandDispatcher.handleResponse(new SerializedCommandResponse(CommandResponse.newBuilder()
                                                                                       .setRequestIdentifier(duplicatedId)
-                                                                                      .build()), false);
+                                                                                      .build()));
 
         SerializedCommandResponse originalResponse = originalFutureResponse.get(1, TimeUnit.SECONDS);
         assertEquals(duplicatedId, originalResponse.getRequestIdentifier());
