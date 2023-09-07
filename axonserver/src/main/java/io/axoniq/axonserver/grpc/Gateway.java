@@ -16,7 +16,7 @@ import io.axoniq.axonserver.exception.FailedToStartException;
 import io.grpc.Server;
 import io.grpc.ServerCredentials;
 import io.grpc.TlsServerCredentials;
-import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder;
+import io.grpc.netty.NettyServerBuilder;
 import io.grpc.util.AdvancedTlsX509KeyManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
