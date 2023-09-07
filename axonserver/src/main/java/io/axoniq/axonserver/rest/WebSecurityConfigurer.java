@@ -15,37 +15,30 @@ import io.axoniq.axonserver.config.AccessControlConfiguration;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.InvalidTokenException;
 import io.axoniq.axonserver.logging.AuditLog;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.ServletOutputStream;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.access.vote.AffirmativeBased;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
-import org.springframework.security.config.annotation.web.configurers.ExpressionUrlAuthorizationConfigurer;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
-import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.web.filter.GenericFilterBean;
 
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Set;
 import java.util.stream.Collectors;
-import javax.servlet.FilterChain;
-import javax.servlet.ServletException;
-import javax.servlet.ServletOutputStream;
-import javax.servlet.ServletRequest;
-import javax.servlet.ServletResponse;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 
 /**
  * The default {@link WebSecurityConfigurerAdapter} for Axon Server. This one configures the token filter, and sets
@@ -53,7 +46,7 @@ import javax.servlet.http.HttpServletResponse;
  *
  * @author Marc Gathier
  */
-public class WebSecurityConfigurer extends WebSecurityConfigurerAdapter {
+public class WebSecurityConfigurer {
 
     private static final Logger logger = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
@@ -79,41 +72,41 @@ public class WebSecurityConfigurer extends WebSecurityConfigurerAdapter {
      * @param http the {@link HttpSecurity} object to configure.
      * @throws Exception if configuration fails.
      */
-    @Override
+//    @Override
     protected void configure(HttpSecurity http) throws Exception {
         logger.debug("Configuring Web Security.");
 
         http.csrf().disable();
         http.headers().frameOptions().disable();
-        if (accessControlConfiguration.isEnabled()) {
-            logger.debug("Access control is ENABLED. Setting up filters and matchers.");
-
-            final TokenAuthenticationFilter tokenFilter = new TokenAuthenticationFilter(accessController);
-            http.addFilterBefore(tokenFilter, BasicAuthenticationFilter.class);
-            http.exceptionHandling()
-                    .accessDeniedHandler(this::handleAccessDenied)
-                    // only redirect to login page for html pages
-                    .defaultAuthenticationEntryPointFor(new LoginUrlAuthenticationEntryPoint("/login"),
-                            new AntPathRequestMatcher("/**/*.html"));
-            ExpressionUrlAuthorizationConfigurer<HttpSecurity>.ExpressionInterceptUrlRegistry auth = http
-                    .authorizeRequests();
-
-                auth.antMatchers("/", "/**/*.html", "/v1/**", "/v2/**", "/internal/**")
-                        .authenticated()
-                        .accessDecisionManager(new AffirmativeBased(
-                                Collections.singletonList(
-                                        new RestRequestAccessDecisionVoter(accessController))));
-            auth
-                    .anyRequest().permitAll()
-                    .and()
-                    .formLogin().loginPage("/login").permitAll()
-                    .and()
-                    .logout().permitAll()
-                    .and()
-                    .httpBasic(); // Allow accessing rest calls using basic authentication header
-        } else {
+//        if (accessControlConfiguration.isEnabled()) {
+//            logger.debug("Access control is ENABLED. Setting up filters and matchers.");
+//
+//            final TokenAuthenticationFilter tokenFilter = new TokenAuthenticationFilter(accessController);
+//            http.addFilterBefore(tokenFilter, BasicAuthenticationFilter.class);
+//            http.exceptionHandling()
+//                    .accessDeniedHandler(this::handleAccessDenied)
+//                    // only redirect to login page for html pages
+//                    .defaultAuthenticationEntryPointFor(new LoginUrlAuthenticationEntryPoint("/login"),
+//                            new AntPathRequestMatcher("/**/*.html"));
+//            ExpressionUrlAuthorizationConfigurer<HttpSecurity>.ExpressionInterceptUrlRegistry auth = http
+//                    .authorizeRequests();
+//
+//                auth.antMatchers("/", "/**/*.html", "/v1/**", "/v2/**", "/internal/**")
+//                        .authenticated()
+//                        .accessDecisionManager(new AffirmativeBased(
+//                                Collections.singletonList(
+//                                        new RestRequestAccessDecisionVoter(accessController))));
+//            auth
+//                    .anyRequest().permitAll()
+//                    .and()
+//                    .formLogin().loginPage("/login").permitAll()
+//                    .and()
+//                    .logout().permitAll()
+//                    .and()
+//                    .httpBasic(); // Allow accessing rest calls using basic authentication header
+//        } else {
             http.authorizeRequests().anyRequest().permitAll();
-        }
+//        }
     }
 
     /**

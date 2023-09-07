@@ -14,6 +14,7 @@ import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.logging.AuditLog;
 import io.axoniq.axonserver.util.StringUtils;
 import io.grpc.internal.GrpcUtil;
+import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -27,7 +28,6 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.BiConsumer;
-import javax.annotation.PostConstruct;
 
 import static io.axoniq.axonserver.logging.AuditLog.enablement;
 

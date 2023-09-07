@@ -5,7 +5,7 @@
     <groupId>io.axoniq.axonserver</groupId>
     <artifactId>axonserver-se</artifactId>
     <packaging>pom</packaging>
-    <version>2023.2.0-SNAPSHOT</version>
+    <version>2023.2.0.sb3-SNAPSHOT</version>
 
     <name>AxonIQ Axon Server SE</name>
     <inceptionYear>2019</inceptionYear>
@@ -36,7 +36,7 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <java.version>11</java.version>
+        <java.version>17</java.version>
         <maven.compiler.source>${java.version}</maven.compiler.source>
         <maven.compiler.target>${java.version}</maven.compiler.target>
         <pushChanges>false</pushChanges>
@@ -45,13 +45,13 @@
         <jacoco-maven-plugin.version>0.8.8</jacoco-maven-plugin.version>
         <grpc.version>1.50.3</grpc.version>
         <axon.version>4.5.9</axon.version>
-        <h2.version>1.4.197</h2.version>
+        <!--        <h2.version>1.4.197</h2.version>-->
         <eclipse-collections.version>11.1.0</eclipse-collections.version>
         <gson.version>2.9.0</gson.version>
         <axonserver-plugin-api.version>4.7.1</axonserver-plugin-api.version>
         <axonserver.api.version>2023.0.1</axonserver.api.version>
         <flow.control.version>1.2</flow.control.version>
-        <spring-boot.version>2.7.15</spring-boot.version>
+        <spring-boot.version>3.1.3</spring-boot.version>
 
         <kotlin.version>1.7.10</kotlin.version>
     </properties>
@@ -133,12 +133,6 @@
             </dependency>
 
             <dependency>
-                <groupId>com.h2database</groupId>
-                <artifactId>h2</artifactId>
-                <version>${h2.version}</version>
-            </dependency>
-
-            <dependency>
                 <groupId>org.apache.felix</groupId>
                 <artifactId>org.apache.felix.framework</artifactId>
                 <version>7.0.5</version>
@@ -171,42 +165,51 @@
                 </configuration>
             </plugin>
             <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>license-maven-plugin</artifactId>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
                 <configuration>
-                    <useMissingFile>true</useMissingFile>
-                    <thirdPartyFilename>third-party-licenses.txt</thirdPartyFilename>
-                    <fileTemplate>./third-party-template.ftl</fileTemplate>
-                    <excludedGroups>
-                        io.axoniq.axonserver|io.axoniq
-                    </excludedGroups>
-                    <acceptPomPackaging>true</acceptPomPackaging>
-                    <excludedScopes>test,provided</excludedScopes>
-                    <licenseMerges>
-                        <licenseMerge>Apache Software License, Version 2.0|The Apache Software License, Version 2.0|Apache
-                            License|Apache 2.0 License|Apache 2.0|Apache License 2.0|Apache 2|Apache License v2.0|Apache License, version 2.0|Apache-2.0|The Apache License, Version 2.0</licenseMerge>
-                        <licenseMerge>BSD License|3-Clause BSD License|BSD|BSD 3-Clause License|The BSD License|BSD 3-clause New License|BSD style|New BSD License|Apache License, Version 2.0</licenseMerge>
-                        <licenseMerge>CC0 License|CC0|CC0 1.0 Universal License</licenseMerge>
-                        <licenseMerge>CDDL+GPL License|CDDL + GPLv2 with classpath exception|CDDL 1.1|CDDL/GPLv2+CE|Dual license consisting of the CDDL v1.1 and GPL v2</licenseMerge>
-                        <licenseMerge>Eclipse Distribution License, Version 1.0|Eclipse Distribution License - v 1.0|Eclipse Distribution License v. 1.0</licenseMerge>
-                        <licenseMerge>Eclipse Public License, Version 1.0|Eclipse Public License - v 1.0|Eclipse Public License 1.0|Eclipse Public License v1.0</licenseMerge>
-                        <licenseMerge>Public Domain|Public Domain, per Creative Commons CC0</licenseMerge>
-                        <licenseMerge>MIT License|MIT license|MIT|The MIT License</licenseMerge>
-                        <licenseMerge>LGPL, Version 2.1|LGPL 2.1</licenseMerge>
-                        <licenseMerge>GNU Lesser General Public License|GNU General Public License, version 2 (GPL2), with the classpath exception|GNU Lesser General Public License v2.1 or later|GNU Lesser Public License|GNU Library General Public License v2.1 or later</licenseMerge>
-                        <licenseMerge>LGPL, Version 2.1|LGPL, version 2.1</licenseMerge>
-                        <licenseMerge>Unknown license|http://jaxen.codehaus.org/license.html</licenseMerge>
-                    </licenseMerges>
+                    <compilerArgs>
+                        <arg>-parameters</arg>
+                    </compilerArgs>
                 </configuration>
-                <executions>
-                    <execution>
-                        <id>add-third-party</id>
-                        <goals>
-                            <goal>add-third-party</goal>
-                        </goals>
-                    </execution>
-                </executions>
             </plugin>
+            <!--            <plugin>-->
+            <!--                <groupId>org.codehaus.mojo</groupId>-->
+            <!--                <artifactId>license-maven-plugin</artifactId>-->
+            <!--                <configuration>-->
+            <!--                    <useMissingFile>true</useMissingFile>-->
+            <!--                    <thirdPartyFilename>third-party-licenses.txt</thirdPartyFilename>-->
+            <!--                    <fileTemplate>./third-party-template.ftl</fileTemplate>-->
+            <!--                    <excludedGroups>-->
+            <!--                        io.axoniq.axonserver|io.axoniq-->
+            <!--                    </excludedGroups>-->
+            <!--                    <acceptPomPackaging>true</acceptPomPackaging>-->
+            <!--                    <excludedScopes>test,provided</excludedScopes>-->
+            <!--                    <licenseMerges>-->
+            <!--                        <licenseMerge>Apache Software License, Version 2.0|The Apache Software License, Version 2.0|Apache-->
+            <!--                            License|Apache 2.0 License|Apache 2.0|Apache License 2.0|Apache 2|Apache License v2.0|Apache License, version 2.0|Apache-2.0|The Apache License, Version 2.0</licenseMerge>-->
+            <!--                        <licenseMerge>BSD License|3-Clause BSD License|BSD|BSD 3-Clause License|The BSD License|BSD 3-clause New License|BSD style|New BSD License|Apache License, Version 2.0</licenseMerge>-->
+            <!--                        <licenseMerge>CC0 License|CC0|CC0 1.0 Universal License</licenseMerge>-->
+            <!--                        <licenseMerge>CDDL+GPL License|CDDL + GPLv2 with classpath exception|CDDL 1.1|CDDL/GPLv2+CE|Dual license consisting of the CDDL v1.1 and GPL v2</licenseMerge>-->
+            <!--                        <licenseMerge>Eclipse Distribution License, Version 1.0|Eclipse Distribution License - v 1.0|Eclipse Distribution License v. 1.0</licenseMerge>-->
+            <!--                        <licenseMerge>Eclipse Public License, Version 1.0|Eclipse Public License - v 1.0|Eclipse Public License 1.0|Eclipse Public License v1.0</licenseMerge>-->
+            <!--                        <licenseMerge>Public Domain|Public Domain, per Creative Commons CC0</licenseMerge>-->
+            <!--                        <licenseMerge>MIT License|MIT license|MIT|The MIT License</licenseMerge>-->
+            <!--                        <licenseMerge>LGPL, Version 2.1|LGPL 2.1</licenseMerge>-->
+            <!--                        <licenseMerge>GNU Lesser General Public License|GNU General Public License, version 2 (GPL2), with the classpath exception|GNU Lesser General Public License v2.1 or later|GNU Lesser Public License|GNU Library General Public License v2.1 or later</licenseMerge>-->
+            <!--                        <licenseMerge>LGPL, Version 2.1|LGPL, version 2.1</licenseMerge>-->
+            <!--                        <licenseMerge>Unknown license|http://jaxen.codehaus.org/license.html</licenseMerge>-->
+            <!--                    </licenseMerges>-->
+            <!--                </configuration>-->
+            <!--                <executions>-->
+            <!--                    <execution>-->
+            <!--                        <id>add-third-party</id>-->
+            <!--                        <goals>-->
+            <!--                            <goal>add-third-party</goal>-->
+            <!--                        </goals>-->
+            <!--                    </execution>-->
+            <!--                </executions>-->
+            <!--            </plugin>-->
         </plugins>
         <pluginManagement>
             <plugins>

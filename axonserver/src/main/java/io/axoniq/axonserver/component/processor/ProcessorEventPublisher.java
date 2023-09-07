@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -18,12 +18,12 @@ import io.axoniq.axonserver.applicationevents.EventProcessorEvents.StartEventPro
 import io.axoniq.axonserver.grpc.PlatformService;
 import io.axoniq.axonserver.grpc.PlatformService.InstructionConsumer;
 import io.axoniq.axonserver.grpc.control.PlatformInboundInstruction;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
 import java.util.function.Consumer;
-import javax.annotation.PostConstruct;
 
 import static io.axoniq.axonserver.grpc.control.PlatformInboundInstruction.RequestCase.EVENT_PROCESSOR_INFO;
 

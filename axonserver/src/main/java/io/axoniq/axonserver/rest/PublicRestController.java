@@ -26,6 +26,7 @@ import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.version.VersionInfo;
 import io.axoniq.axonserver.version.VersionInfoProvider;
 import io.swagger.v3.oas.annotations.Operation;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -40,7 +41,6 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import javax.servlet.http.HttpServletRequest;
 
 /**
  * Rest calls to retrieve information about the configuration of Axon Server. Used by UI and CLI.

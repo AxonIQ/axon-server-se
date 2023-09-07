@@ -14,7 +14,7 @@
     <parent>
 		<groupId>io.axoniq.axonserver</groupId>
 		<artifactId>axonserver-se</artifactId>
-        <version>2023.2.0-SNAPSHOT</version>
+        <version>2023.2.0.sb3-SNAPSHOT</version>
     </parent>
     <artifactId>axonserver</artifactId>
     <name>AxonServer - Standard edition</name>
@@ -274,7 +274,7 @@
             <artifactId>kotlin-reflect</artifactId>
         </dependency>
 
-        <!-- logback json deps to support json logging (#59) -->
+        <!-- logback json deps to support json logging (#59)
         <dependency>
             <groupId>ch.qos.logback.contrib</groupId>
             <artifactId>logback-json-classic</artifactId>
@@ -285,7 +285,7 @@
             <artifactId>logback-jackson</artifactId>
             <version>0.1.5</version>
         </dependency>
-
+-->
         <dependency>
             <groupId>commons-io</groupId>
             <artifactId>commons-io</artifactId>
@@ -329,6 +329,10 @@
             <groupId>io.springfox</groupId>
             <artifactId>springfox-core</artifactId>
             <version>3.0.0</version>
+        </dependency>
+        <dependency>
+            <groupId>net.minidev</groupId>
+            <artifactId>json-smart</artifactId>
         </dependency>
     </dependencies>
 

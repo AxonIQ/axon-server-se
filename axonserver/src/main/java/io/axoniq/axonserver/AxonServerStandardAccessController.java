@@ -16,11 +16,11 @@ import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.InvalidTokenException;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
+import jakarta.annotation.PostConstruct;
 import org.springframework.security.core.Authentication;
 
 import java.util.Collections;
 import java.util.Set;
-import javax.annotation.PostConstruct;
 
 /**
  * @author Marc Gathier

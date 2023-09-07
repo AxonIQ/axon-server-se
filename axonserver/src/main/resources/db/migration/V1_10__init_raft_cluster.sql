@@ -1,3 +1,12 @@
+/*
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 -- add _admin context to all nodes if there is already a node connected to a context (database created with AxonServer 4.0)
 insert into context(name)
   select distinct '_admin'
@@ -32,4 +41,4 @@ insert into jpa_context_application_roles (jpa_context_application_id, roles)
     and application.id = application_context.application_id
     and application_context.context = jpa_context_application.context;
 
-drop table application_role;
+drop table application_role cascade;
