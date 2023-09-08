@@ -63,6 +63,7 @@ public class QueryDispatcher {
     private final QueryMetricsRegistry queryMetricsRegistry;
     private final FlowControlQueues<QueryInstruction> queryQueue;
     private final Map<String, AtomicInteger> activeRequestsPerContext = new ConcurrentHashMap<>();
+    private final DispatchQueueMetrics queueMetrics;
 
     public QueryDispatcher(QueryRegistrationCache registrationCache,
                            NonReplacingConstraintCache<String, ActiveQuery> queryCache,
@@ -75,12 +76,13 @@ public class QueryDispatcher {
         this.queryMetricsRegistry = queryMetricsRegistry;
         this.queryCache = queryCache;
         this.queryInterceptors = queryInterceptors;
+        queueMetrics = new DispatchQueueMetrics(meterFactory,
+                                                BaseMetricName.QUERY_QUEUED,
+                                                BaseMetricName.AXON_APPLICATION_QUERY_QUEUE_SIZE,
+                                                clientIdRegistry);
         queryQueue = new FlowControlQueues<>(Comparator.comparing(QueryInstruction::priority).reversed(),
                                              queueCapacity,
-                                             new DispatchQueueMetrics(meterFactory,
-                                                                      BaseMetricName.QUERY_QUEUED,
-                                                                      BaseMetricName.AXON_APPLICATION_QUERY_QUEUE_SIZE,
-                                                                      clientIdRegistry),
+                                             queueMetrics,
                                              ErrorCode.TOO_MANY_REQUESTS);
         queryMetricsRegistry.gauge(BaseMetricName.AXON_ACTIVE_QUERIES, queryCache, ConstraintCache::size);
     }
@@ -464,5 +466,11 @@ public class QueryDispatcher {
             logger.debug("Error dispatching flow query instruction to target client {}", targetClientStreamId);
             completeWithError(requestId, targetClientStreamId, mpe.getErrorCode(), mpe.getMessage());
         }
+    }
+
+    public void deleteMetrics(String context) {
+        activeRequestsPerContext.remove(context);
+        queryMetricsRegistry.remove(BaseMetricName.QUERY_ACTIVE, context);
+        queryMetricsRegistry.removeForContext(context);
     }
 }

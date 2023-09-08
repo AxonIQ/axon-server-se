@@ -65,6 +65,9 @@ public class CommandMetricsRegistry {
         }
     }
 
+    public void remove(MetricName metricName, String context) {
+        meterFactory.remove(metricName, MeterFactory.CONTEXT, context);
+    }
 
     /**
      * Registers the duration of a command in the registry. Timer name is "axon.command", tags are the context, the
@@ -201,6 +204,12 @@ public class CommandMetricsRegistry {
                                                                         command,
                                                                         MeterFactory.ERROR_CODE,
                                                                         errorCode)).increment();
+    }
+
+    public void removeForContext(String context) {
+        meterFactory.remove(BaseMetricName.COMMAND_DURATION, MeterFactory.CONTEXT, context);
+        meterFactory.remove(BaseMetricName.COMMAND_HANDLING_DURATION, MeterFactory.CONTEXT, context);
+        meterFactory.remove(BaseMetricName.COMMAND_ERRORS, MeterFactory.CONTEXT, context);
     }
 
     public static class CommandMetric {

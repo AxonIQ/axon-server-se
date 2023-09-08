@@ -64,6 +64,8 @@ public class CommandDispatcher {
     private final Map<String, MeterFactory.RateMeter> commandRatePerContext = new ConcurrentHashMap<>();
     private final Map<String, AtomicInteger> activeRequestsPerContext = new ConcurrentHashMap<>();
     private final CommandInterceptors commandInterceptors;
+    private final DispatchQueueMetrics queueMetrics;
+
 
     public CommandDispatcher(CommandRegistrationCache registrations,
                              NonReplacingConstraintCache<String, CommandInformation> commandCache,
@@ -76,12 +78,13 @@ public class CommandDispatcher {
         this.commandCache = commandCache;
         this.metricRegistry = metricRegistry;
         this.commandInterceptors = commandInterceptors;
+        queueMetrics = new DispatchQueueMetrics(meterFactory,
+                                                BaseMetricName.COMMAND_QUEUED,
+                                                BaseMetricName.AXON_APPLICATION_COMMAND_QUEUE_SIZE,
+                                                clientIdRegistry);
         commandQueues = new FlowControlQueues<>(Comparator.comparing(WrappedCommand::priority).reversed(),
                                                 queueCapacity,
-                                                new DispatchQueueMetrics(meterFactory,
-                                                                         BaseMetricName.COMMAND_QUEUED,
-                                                                         BaseMetricName.AXON_APPLICATION_COMMAND_QUEUE_SIZE,
-                                                                         clientIdRegistry),
+                                                queueMetrics,
                                                 ErrorCode.TOO_MANY_REQUESTS);
         metricRegistry.gauge(BaseMetricName.AXON_ACTIVE_COMMANDS, commandCache, ConstraintCache::size);
     }
@@ -191,6 +194,16 @@ public class CommandDispatcher {
     @EventListener
     public void on(TopologyEvents.CommandHandlerDisconnected event) {
         handleDisconnection(event.clientIdentification(), event.isProxied());
+    }
+
+    public void deleteMetrics(String context) {
+        MeterFactory.RateMeter meter = commandRatePerContext.remove(context);
+        if (meter != null) {
+            meter.remove();
+        }
+        activeRequestsPerContext.remove(context);
+        metricRegistry.remove(BaseMetricName.COMMAND_ACTIVE, context);
+        metricRegistry.removeForContext(context);
     }
 
     private void handleDisconnection(ClientStreamIdentification client, boolean proxied) {

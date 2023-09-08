@@ -444,6 +444,42 @@ public class EventDispatcher {
                              BaseMetricName.AXON_SNAPSHOTS);
     }
 
+    public void deleteMetrics(String context) {
+        MeterFactory.RateMeter meter = eventsCounter.remove(context);
+        if (meter != null) {
+            meter.remove();
+        }
+        meter = snapshotCounter.remove(context);
+        if (meter != null) {
+            meter.remove();
+        }
+        meter = readEventsCounter.remove(context);
+        if (meter != null) {
+            meter.remove();
+        }
+        meter = readSnapshotsCounter.remove(context);
+        if (meter != null) {
+            meter.remove();
+        }
+        meterFactory.remove(BaseMetricName.APPEND_EVENT_DURATION, CONTEXT, context);
+        meterFactory.remove(BaseMetricName.APPEND_EVENT_ERRORS, CONTEXT, context);
+        meterFactory.remove(BaseMetricName.APPEND_SNAPSHOT_DURATION, CONTEXT, context);
+        meterFactory.remove(BaseMetricName.APPEND_SNAPSHOT_ERRORS, CONTEXT, context);
+        meterFactory.remove(BaseMetricName.READ_AGGREGATE_EVENTS_ERRORS, CONTEXT, context);
+        meterFactory.remove(BaseMetricName.READ_AGGREGATE_EVENTS_DURATION, CONTEXT, context);
+        meterFactory.remove(BaseMetricName.READ_SNAPSHOT_DURATION, CONTEXT, context);
+        meterFactory.remove(BaseMetricName.READ_SNAPSHOT_ERRORS, CONTEXT, context);
+        meterFactory.remove(BaseMetricName.APPEND_EVENT_ACTIVE, CONTEXT, context);
+        meterFactory.remove(BaseMetricName.APPEND_SNAPSHOT_ACTIVE, CONTEXT, context);
+        meterFactory.remove(BaseMetricName.READ_AGGREGATE_EVENTS_ACTIVE, CONTEXT, context);
+        meterFactory.remove(BaseMetricName.READ_SNAPSHOT_ACTIVE, CONTEXT, context);
+
+        activeReadSnapshotsPerContext.remove(context);
+        activeReadAggregateEventsPerContext.remove(context);
+        activeAppendSnapshotPerContext.remove(context);
+        activeAppendEventsPerContext.remove(context);
+    }
+
     private static class EventTrackerInfo {
 
         private final String client;

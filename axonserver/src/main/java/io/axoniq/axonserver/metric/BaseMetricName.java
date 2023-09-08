@@ -38,23 +38,23 @@ public enum BaseMetricName implements MetricName {
     APPEND_EVENT_THROUGHPUT("axon.events.append.throughput", "Number of events appended"),
     APPEND_EVENT_DURATION("axon.events.append.duration",
                           "Duration of append event request, from the first event in a transaction received by Axon Server until the transaction is completed"),
-    APPEND_EVENT_ERRORS("axon.events.append.errors", "Number of errors"),
+    APPEND_EVENT_ERRORS("axon.events.append.error.count", "Number of errors"),
     APPEND_EVENT_ACTIVE("axon.events.append.active", "Number of active append event transactions"),
 
     READ_AGGREGATE_EVENTS_THROUGHPUT("axon.events.read.aggregate.throughput", "Number of aggregates read"),
     READ_AGGREGATE_EVENTS_DURATION("axon.events.read.aggregate.duration", "Duration of read aggregate request"),
-    READ_AGGREGATE_EVENTS_ERRORS("axon.events.read.aggregate.errors", "Number of errors"),
+    READ_AGGREGATE_EVENTS_ERRORS("axon.events.read.aggregate.error.count", "Number of errors"),
     READ_AGGREGATE_EVENTS_ACTIVE("axon.events.read.aggregate.active", "Number of active aggregate read actions"),
 
     APPEND_SNAPSHOT_THROUGHPUT("axon.snapshots.append.throughput", "Number of events appended"),
     APPEND_SNAPSHOT_DURATION("axon.snapshots.append.duration",
                              "Duration of append event request, from the first event in a transaction received by Axon Server until the transaction is completed"),
-    APPEND_SNAPSHOT_ERRORS("axon.snapshots.append.errors", "Number of errors"),
+    APPEND_SNAPSHOT_ERRORS("axon.snapshots.append.error.count", "Number of errors"),
     APPEND_SNAPSHOT_ACTIVE("axon.snapshots.append.active", "Number of active append event transactions"),
 
     READ_SNAPSHOT_THROUGHPUT("axon.snapshots.read.throughput", "Number of aggregates read"),
     READ_SNAPSHOT_DURATION("axon.snapshots.read.duration", "Duration of read aggregate request"),
-    READ_SNAPSHOT_ERRORS("axon.snapshots.read.errors", "Number of errors"),
+    READ_SNAPSHOT_ERRORS("axon.snapshots.read.error.count", "Number of errors"),
     READ_SNAPSHOT_ACTIVE("axon.snapshots.read.active", "Number of active aggregate read actions"),
 
     EVENTSTORE_FORCE_LAG("axon.eventstore.saturation.force.lag", "Number of unforced entries"),

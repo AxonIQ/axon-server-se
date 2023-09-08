@@ -179,6 +179,9 @@ public class MeterFactory {
         private final Counter legacyCounter;
         private final String name;
         private final Tags tags;
+        private final Gauge fiveMinutes;
+        private final Gauge oneMinute;
+        private final Gauge fifteenMinutes;
 
         private RateMeter(MetricName metricName, MetricName legacyMetricName, Tags tags) {
             this.name = metricName.metric();
@@ -190,15 +193,15 @@ public class MeterFactory {
                              .register(meterRegistry);
 
 
-            Gauge.builder(name + ONE_MINUTE_RATE, meter, IntervalCounter::getOneMinuteRate)
+            oneMinute = Gauge.builder(name + ONE_MINUTE_RATE, meter, IntervalCounter::getOneMinuteRate)
                  .description(metricName.description() + " per second (last minute)")
                  .tags(tags)
                  .register(meterRegistry);
-            Gauge.builder(name + FIVE_MINUTE_RATE, meter, IntervalCounter::getFiveMinuteRate)
+            fiveMinutes = Gauge.builder(name + FIVE_MINUTE_RATE, meter, IntervalCounter::getFiveMinuteRate)
                  .description(metricName.description() + " per second (last 5 minutes)")
                  .tags(tags)
                  .register(meterRegistry);
-            Gauge.builder(name + FIFTEEN_MINUTE_RATE, meter, IntervalCounter::getFifteenMinuteRate)
+            fifteenMinutes = Gauge.builder(name + FIFTEEN_MINUTE_RATE, meter, IntervalCounter::getFifteenMinuteRate)
                  .description(metricName.description() + " per second (last 15 minutes)")
                  .tags(tags)
                  .register(meterRegistry);
@@ -272,6 +275,14 @@ public class MeterFactory {
             media.with("oneMinuteRate", getOneMinuteRate());
             media.with("fiveMinuteRate", getFiveMinuteRate());
             media.with("fifteenMinuteRate", getFifteenMinuteRate());
+        }
+
+        public void remove() {
+            meterRegistry.remove(counter);
+            meterRegistry.remove(legacyCounter);
+            meterRegistry.remove(fifteenMinutes);
+            meterRegistry.remove(fiveMinutes);
+            meterRegistry.remove(oneMinute);
         }
     }
 }

@@ -238,6 +238,24 @@ public class QueryMetricsRegistry {
         return meterFactory.counter(metricName, tags);
     }
 
+    public void remove(MetricName metricName, String context) {
+        meterFactory.remove(metricName, MeterFactory.CONTEXT, context);
+    }
+
+    public void removeForContext(String context) {
+        if (legacyMetricsEnabled) {
+            meterFactory.remove(BaseMetricName.AXON_QUERY, MeterFactory.CONTEXT, context);
+            meterFactory.remove(BaseMetricName.LOCAL_QUERY_RESPONSE_TIME, MeterFactory.CONTEXT, context);
+        }
+        meterFactory.remove(BaseMetricName.QUERY_DURATION, MeterFactory.CONTEXT, context);
+        meterFactory.remove(BaseMetricName.QUERY_ERRORS, MeterFactory.CONTEXT, context);
+        meterFactory.remove(BaseMetricName.QUERY_HANDLING_DURATION, MeterFactory.CONTEXT, context);
+        MeterFactory.RateMeter rateMeter = queryRatePerContext.remove(context);
+        if (rateMeter != null) {
+            rateMeter.remove();
+        }
+    }
+
     public static class QueryMetric {
 
         private final QueryDefinition queryDefinition;
