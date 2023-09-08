@@ -22,7 +22,9 @@ import java.util.Map;
  * @author Marc Gathier
  */
 public class StorageProperties implements Cloneable {
-
+    private static final int DEFAULT_SEGMENTS_FOR_BLOOM = 10;
+    private static final int DEFAULT_SEGMENTS_FOR_JUMPSKIP = Integer.MAX_VALUE;
+    public static final String BLOOM_FILTER_INDEX = "BLOOM_FILTER_INDEX";
     public static final String TRANSFORMED_SUFFIX = ".transformed";
     private static final String PATH_FORMAT = "%s/%020d%s";
     private static final String TEMP_PATH_FORMAT = PATH_FORMAT + ".temp";
@@ -80,7 +82,7 @@ public class StorageProperties implements Cloneable {
     /**
      * Number of segments to validate to on startup after unclean shutdown.
      */
-    private int validationSegments = 10;
+    private Integer validationSegments;
     /**
      * Number of recent segments that Axon Server keeps memory mapped
      */
@@ -376,7 +378,11 @@ public class StorageProperties implements Cloneable {
     }
 
     public int getValidationSegments() {
-        return validationSegments;
+        return validationSegments == null ? defaultValidationSegments() : validationSegments;
+    }
+
+    private int defaultValidationSegments() {
+        return BLOOM_FILTER_INDEX.equals(indexFormat) ? DEFAULT_SEGMENTS_FOR_BLOOM : DEFAULT_SEGMENTS_FOR_JUMPSKIP;
     }
 
     public void setValidationSegments(int validationSegments) {
@@ -559,6 +565,12 @@ public class StorageProperties implements Cloneable {
     public StorageProperties withForceClean(boolean forceClean) {
         StorageProperties clone = cloneProperties();
         clone.forceClean = forceClean;
+        return clone;
+    }
+
+    public StorageProperties withSegmentsForSequenceNumberCheck(int segmentsForSequenceNumberCheck) {
+        StorageProperties clone = cloneProperties();
+        clone.segmentsForSequenceNumberCheck = segmentsForSequenceNumberCheck;
         return clone;
     }
 }
