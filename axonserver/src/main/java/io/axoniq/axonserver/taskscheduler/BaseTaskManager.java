@@ -52,7 +52,7 @@ import static io.axoniq.axonserver.metric.MeterFactory.REQUEST;
 public abstract class BaseTaskManager implements SmartLifecycle {
 
     protected static final long MAX_RETRY_INTERVAL = TimeUnit.MINUTES.toMillis(1);
-    private static final String REPLICATION_GROUP = "replicationgroup";
+    private static final String REPLICATION_GROUP = "replicationGroup";
     private static final String TRANSIENT_ERROR = "transient";
     private static final String TRANSIENT = "true";
     private static final String NON_TRANSIENT = "false";
