@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.grpc;
 
+import io.axoniq.axonserver.ProcessingInstructionHelper;
 import io.axoniq.axonserver.applicationevents.SubscriptionEvents.SubscribeQuery;
 import io.axoniq.axonserver.applicationevents.SubscriptionEvents.UnsubscribeQuery;
 import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents.SubscriptionQueryResponseReceived;
@@ -60,14 +61,13 @@ import javax.annotation.PreDestroy;
 
 import static io.axoniq.axonserver.metric.MeterFactory.CONTEXT;
 import static io.axoniq.axonserver.metric.MeterFactory.REQUEST;
+import static io.axoniq.axonserver.metric.MeterFactory.STREAMING_QUERY;
 import static io.axoniq.axonserver.metric.MeterFactory.TARGET;
 
 /**
- * GRPC service to handle query bus requests from Axon Application
- * Client can sent two requests:
- * query: sends a singe query to AxonServer
- * openStream: used by application providing query handlers, maintains an open bi directional connection between the
- * application and AxonServer
+ * GRPC service to handle query bus requests from Axon Application Client can sent two requests: query: sends a singe
+ * query to AxonServer openStream: used by application providing query handlers, maintains an open bi directional
+ * connection between the application and AxonServer
  *
  * @author Marc Gathier
  */
@@ -100,7 +100,7 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                         MeterFactory meterFactory,
                         ApplicationEventPublisher eventPublisher,
                         @Qualifier("queryInstructionAckSource")
-                                InstructionAckSource<QueryProviderInbound> instructionAckSource,
+                        InstructionAckSource<QueryProviderInbound> instructionAckSource,
                         GrpcFlowControlExecutorProvider grpcFlowControlExecutorProvider) {
         this.topology = topology;
         this.queryDispatcher = queryDispatcher;
@@ -132,7 +132,10 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
             public void onNext(QueryProviderInbound queryProviderInbound) {
                 if (queryProviderInbound.hasQuery()) {
                     queryMap.put(queryProviderInbound.getQuery().getMessageIdentifier(),
-                                 new QueryStart(queryProviderInbound.getQuery().getQuery()));
+                                 new QueryStart(queryProviderInbound.getQuery().getQuery(),
+                                                ProcessingInstructionHelper.clientSupportsQueryStreaming(
+                                                        queryProviderInbound.getQuery()
+                                                                            .getProcessingInstructionsList())));
                 }
                 super.onNext(queryProviderInbound);
             }
@@ -212,7 +215,8 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                             meterFactory.timer(BaseMetricName.QUERY_HANDLING_DURATION, Tags.of(
                                                 CONTEXT, clientRef.get().getContext(),
                                                 TARGET, clientIdRef.get(),
-                                                REQUEST, started.query
+                                                REQUEST, started.query,
+                                                STREAMING_QUERY, String.valueOf(started.streaming)
                                         ))
                                         .record(System.currentTimeMillis() - started.started, TimeUnit.MILLISECONDS);
                         }
@@ -274,7 +278,9 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
             private void initClientReference(String clientId) {
                 String clientStreamId = clientId + "." + UUID.randomUUID();
                 if (clientRef.compareAndSet(null, new ClientStreamIdentification(context, clientStreamId))) {
-                    clientIdRegistry.register(clientStreamId, new ClientContext(clientId, context), ClientIdRegistry.ConnectionType.QUERY);
+                    clientIdRegistry.register(clientStreamId,
+                                              new ClientContext(clientId, context),
+                                              ClientIdRegistry.ConnectionType.QUERY);
                 }
                 clientIdRef.compareAndSet(null, clientId);
             }
@@ -455,11 +461,13 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
     private class QueryStart {
 
         private final String query;
+        private final boolean streaming;
         private final long started = System.currentTimeMillis();
 
-        public QueryStart(String query) {
+        public QueryStart(String query, boolean streaming) {
 
             this.query = query;
+            this.streaming = streaming;
         }
     }
 }

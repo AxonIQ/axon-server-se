@@ -107,6 +107,7 @@ public class QueryDispatcher {
             queryMetricsRegistry.addEndToEndResponseTime(activeQuery.getQuery(),
                                                          clientId,
                                                          clientStream.getContext(),
+                                                         activeQuery.isStreaming(),
                                                          responseTime);
             if (activeQuery.forward(queryResponse, clientStreamId) && activeQuery.isStreaming()) {
                 activeQuery.cancelOtherHandlersBut(clientStreamId);

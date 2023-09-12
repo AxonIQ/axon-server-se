@@ -39,23 +39,28 @@ public enum BaseMetricName implements MetricName {
     APPEND_EVENT_DURATION("axon.events.append.duration",
                           "Duration of append event request, from the first event in a transaction received by Axon Server until the transaction is completed"),
     APPEND_EVENT_ERRORS("axon.events.append.error.count", "Number of errors"),
-    APPEND_EVENT_ACTIVE("axon.events.append.active", "Number of active append event transactions"),
+    APPEND_EVENT_ACTIVE("axon.events.append.saturation.active.count", "Number of active append event transactions"),
 
     READ_AGGREGATE_EVENTS_THROUGHPUT("axon.events.read.aggregate.throughput", "Number of aggregates read"),
     READ_AGGREGATE_EVENTS_DURATION("axon.events.read.aggregate.duration", "Duration of read aggregate request"),
     READ_AGGREGATE_EVENTS_ERRORS("axon.events.read.aggregate.error.count", "Number of errors"),
-    READ_AGGREGATE_EVENTS_ACTIVE("axon.events.read.aggregate.active", "Number of active aggregate read actions"),
+    READ_AGGREGATE_EVENTS_ACTIVE("axon.events.read.aggregate.saturation.active.count",
+                                 "Number of active aggregate read actions"),
 
     APPEND_SNAPSHOT_THROUGHPUT("axon.snapshots.append.throughput", "Number of events appended"),
     APPEND_SNAPSHOT_DURATION("axon.snapshots.append.duration",
                              "Duration of append event request, from the first event in a transaction received by Axon Server until the transaction is completed"),
     APPEND_SNAPSHOT_ERRORS("axon.snapshots.append.error.count", "Number of errors"),
-    APPEND_SNAPSHOT_ACTIVE("axon.snapshots.append.active", "Number of active append event transactions"),
+    APPEND_SNAPSHOT_ACTIVE("axon.snapshots.append.saturation.active.count",
+                           "Number of active append event transactions"),
 
     READ_SNAPSHOT_THROUGHPUT("axon.snapshots.read.throughput", "Number of aggregates read"),
     READ_SNAPSHOT_DURATION("axon.snapshots.read.duration", "Duration of read aggregate request"),
     READ_SNAPSHOT_ERRORS("axon.snapshots.read.error.count", "Number of errors"),
-    READ_SNAPSHOT_ACTIVE("axon.snapshots.read.active", "Number of active aggregate read actions"),
+    READ_SNAPSHOT_ACTIVE("axon.snapshots.read.saturation.active.count", "Number of active aggregate read actions"),
+    TASK_ACTIVE("axon.tasks.saturation.scheduled.count", "Number of scheduled tasks"),
+    TASK_ERROR("axon.tasks.error.count", "Number of errors executing tasks"),
+    TASK_DURATION("axon.tasks.duration", "Duration of task execution"),
 
     EVENTSTORE_FORCE_LAG("axon.eventstore.saturation.force.lag", "Number of unforced entries"),
     EVENTSTORE_FORCE_DURATION("axon.eventstore.duration.force", "Duration of a force to disk"),
@@ -64,7 +69,9 @@ public enum BaseMetricName implements MetricName {
     APPLICATION_CONNECTED("axon.applications.saturation.connected.count", "Number of applications currently connected"),
     APPLICATION_DISCONNECT("axon.applications.throughput.disconnect.count",
                            "Number of application disconnect requests"),
-    AUTHENTICATION_ERRORS("axon.authentication.errors.count", "Number of authentication errors"),
+    AUTHENTICATION_ERRORS("axon.authentication.error.count", "Number of authentication errors"),
+
+
 
 
     /**

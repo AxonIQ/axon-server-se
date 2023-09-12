@@ -44,6 +44,7 @@ public class MeterFactory {
     public static final String SOURCE = "source";
     public static final String TARGET = "target";
     public static final String ERROR_CODE = "error";
+    public static final String STREAMING_QUERY = "streaming";
 
     private final MeterRegistry meterRegistry;
     private final MetricCollector clusterMetrics;

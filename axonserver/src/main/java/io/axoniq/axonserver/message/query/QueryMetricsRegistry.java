@@ -179,7 +179,8 @@ public class QueryMetricsRegistry {
      * @param context          the context of the query
      * @param durationInMillis duration of the query in milliseconds
      */
-    public void addEndToEndResponseTime(QueryDefinition query, String clientId, String context, long durationInMillis) {
+    public void addEndToEndResponseTime(QueryDefinition query, String clientId, String context, boolean streaming,
+                                        long durationInMillis) {
         if (legacyMetricsEnabled) {
             Tags tags = Tags.of(
                     MeterFactory.REQUEST, normalizeQueryName(query.getQueryName()),
@@ -191,7 +192,9 @@ public class QueryMetricsRegistry {
         meterFactory.timer(BaseMetricName.QUERY_DURATION, Tags.of(
                 MeterFactory.REQUEST, query.getQueryName(),
                 MeterFactory.CONTEXT, context,
-                MeterFactory.TARGET, clientId)).record(durationInMillis, TimeUnit.MILLISECONDS);
+                MeterFactory.TARGET, clientId,
+                MeterFactory.STREAMING_QUERY, String.valueOf(streaming))).record(durationInMillis,
+                                                                                 TimeUnit.MILLISECONDS);
     }
 
     /**
