@@ -53,6 +53,7 @@ public class AuthenticationInterceptor implements ServerInterceptor {
                                       serverCall.getAttributes().get(Grpc.TRANSPORT_ATTR_REMOTE_ADDR));
             sre = GrpcExceptionBuilder.build(ErrorCode.AUTHENTICATION_TOKEN_MISSING,
                                              "No token for " + serverCall.getMethodDescriptor().getFullMethodName());
+            authenticationErrors.increment();
         } else {
             authentication = authentication(token);
             if (!axonServerAccessController.allowed(serverCall.getMethodDescriptor().getFullMethodName(),
