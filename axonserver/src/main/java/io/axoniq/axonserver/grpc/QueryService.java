@@ -137,6 +137,9 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                                                         queryProviderInbound.getQuery()
                                                                             .getProcessingInstructionsList())));
                 }
+                if (queryProviderInbound.hasQueryCancel()) {
+                    queryMap.remove(queryProviderInbound.getQueryCancel().getRequestId());
+                }
                 super.onNext(queryProviderInbound);
             }
         };
@@ -458,7 +461,7 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
         }
     }
 
-    private class QueryStart {
+    private static class QueryStart {
 
         private final String query;
         private final boolean streaming;

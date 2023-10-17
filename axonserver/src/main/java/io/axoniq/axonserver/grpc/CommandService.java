@@ -58,8 +58,8 @@ import static io.grpc.stub.ServerCalls.asyncUnaryCall;
 
 /**
  * GRPC service to handle command bus requests from Axon Application Client can sent two requests: dispatch: sends a
- * singe command to AxonServer openStream: used by application providing command handlers, maintains an open bi
- * directional connection between the application and AxonServer
+ * singe command to AxonServer openStream: used by application providing command handlers, maintains an open
+ * bidirectional connection between the application and AxonServer
  *
  * @author Marc Gathier
  */
@@ -250,7 +250,12 @@ public class CommandService implements AxonServerClientService {
                                                 new DirectCommandHandler(clientRef.get(),
                                                                          commandDispatcher.getCommandQueues(),
                                                                          clientId,
-                                                                         component));
+                                                                         component,
+                                                                         this::cancel));
+            }
+
+            private void cancel(String requestId) {
+                commandMap.remove(requestId);
             }
 
             @Override

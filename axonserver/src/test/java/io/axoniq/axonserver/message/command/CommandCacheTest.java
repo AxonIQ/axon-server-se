@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.message.command;
 
+import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.grpc.SerializedCommandResponse;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.test.FakeClock;
@@ -23,26 +24,29 @@ import java.util.concurrent.atomic.AtomicReference;
 public class CommandCacheTest {
 
     private CommandCache testSubject;
-    private FakeClock clock;
 
     @Before
     public void setUp() {
-        clock = new FakeClock();
-        testSubject = new CommandCache(50000, clock,1);
+        testSubject = new CommandCache(50000, new FakeClock(), 1);
     }
 
 
     @Test(expected = InsufficientBufferCapacityException.class)
     public void onFullCapacityThrowError() {
         AtomicReference<SerializedCommandResponse> responseAtomicReference = new AtomicReference<>();
+        CommandHandler commandHandler = new CommandHandler(new ClientStreamIdentification("context", "client"),
+                                                           "Target",
+                                                           "component") {
+            @Override
+            public void dispatch(SerializedCommand wrappedCommand) {
+            }
+        };
 
-        testSubject.putIfAbsent("1234", new CommandInformation("1234", "Source", "Target", responseAtomicReference::set,
-                                                       new ClientStreamIdentification("context", "client"),
-                                                       "component"));
+        testSubject.putIfAbsent("1234",
+                                new CommandInformation("1234", "Source", commandHandler, responseAtomicReference::set));
 
 
-        testSubject.putIfAbsent("4567", new CommandInformation("4567", "Source", "Target", responseAtomicReference::set,
-                                                       new ClientStreamIdentification("context", "client"),
-                                                       "component"));
+        testSubject.putIfAbsent("4567",
+                                new CommandInformation("4567", "Source", commandHandler, responseAtomicReference::set));
     }
 }

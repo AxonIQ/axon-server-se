@@ -75,4 +75,13 @@ public abstract class CommandHandler implements Comparable<CommandHandler> {
      * @param wrappedCommand the command request to be dispatched.
      */
     public abstract void dispatch(SerializedCommand wrappedCommand);
+
+    /**
+     * Notification that the request has been cancelled by Axon Server.
+     *
+     * @param requestIdentifier the request to cancel
+     */
+    public void cancel(String requestIdentifier) {
+
+    }
 }

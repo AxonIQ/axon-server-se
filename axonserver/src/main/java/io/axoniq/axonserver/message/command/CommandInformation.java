@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -23,23 +23,18 @@ import java.util.function.Consumer;
  */
 public class CommandInformation {
     private final String requestIdentifier;
+    private final CommandHandler commandHandler;
     private final Consumer<SerializedCommandResponse> responseConsumer;
     private final long timestamp = System.currentTimeMillis();
-    private final ClientStreamIdentification clientStreamIdentification;
-    private final String componentName;
     private final String sourceClientId;
-    private final String targetClientId;
 
     public CommandInformation(String requestIdentifier, String sourceClientId,
-                              String targetClientId, Consumer<SerializedCommandResponse> responseConsumer,
-                              ClientStreamIdentification clientStreamIdentification,
-                              String componentName) {
+                              CommandHandler commandHandler,
+                              Consumer<SerializedCommandResponse> responseConsumer) {
         this.requestIdentifier = requestIdentifier;
         this.sourceClientId = sourceClientId;
-        this.targetClientId = targetClientId;
+        this.commandHandler = commandHandler;
         this.responseConsumer = responseConsumer;
-        this.clientStreamIdentification = clientStreamIdentification;
-        this.componentName = componentName;
     }
 
     public String getRequestIdentifier() {
@@ -55,15 +50,15 @@ public class CommandInformation {
     }
 
     public ClientStreamIdentification getClientStreamIdentification() {
-        return clientStreamIdentification;
+        return commandHandler.getClientStreamIdentification();
     }
 
     public String getComponentName() {
-        return componentName;
+        return commandHandler.getComponentName();
     }
 
     public boolean checkClient(ClientStreamIdentification client) {
-        return clientStreamIdentification.equals(client);
+        return commandHandler.getClientStreamIdentification().equals(client);
     }
 
     public void cancel() {
@@ -75,6 +70,7 @@ public class CommandInformation {
                                                                  "Cancelled by AxonServer due to timeout"))
                                                          .build();
         responseConsumer.accept(new SerializedCommandResponse(commandResponse));
+        commandHandler.cancel(requestIdentifier);
     }
 
     /**
@@ -93,6 +89,6 @@ public class CommandInformation {
      * @return the unique identifier of the target client for the command request.
      */
     public String getTargetClientId() {
-        return targetClientId;
+        return commandHandler.getClientId();
     }
 }

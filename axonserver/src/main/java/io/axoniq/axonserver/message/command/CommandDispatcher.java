@@ -64,7 +64,6 @@ public class CommandDispatcher {
     private final Map<String, MeterFactory.RateMeter> commandRatePerContext = new ConcurrentHashMap<>();
     private final Map<String, AtomicInteger> activeRequestsPerContext = new ConcurrentHashMap<>();
     private final CommandInterceptors commandInterceptors;
-    private final DispatchQueueMetrics queueMetrics;
 
 
     public CommandDispatcher(CommandRegistrationCache registrations,
@@ -78,7 +77,7 @@ public class CommandDispatcher {
         this.commandCache = commandCache;
         this.metricRegistry = metricRegistry;
         this.commandInterceptors = commandInterceptors;
-        queueMetrics = new DispatchQueueMetrics(meterFactory,
+        DispatchQueueMetrics queueMetrics = new DispatchQueueMetrics(meterFactory,
                                                 BaseMetricName.COMMAND_QUEUED,
                                                 BaseMetricName.AXON_APPLICATION_COMMAND_QUEUE_SIZE,
                                                 clientIdRegistry);
@@ -229,11 +228,8 @@ public class CommandDispatcher {
             logger.debug("Dispatch {} to: {}", command.getName(), commandHandler.getClientStreamIdentification());
             CommandInformation commandInformation = new CommandInformation(command.getName(),
                                                                            command.wrapped().getClientId(),
-                                                                           commandHandler.getClientId(),
-                                                                           responseObserver,
-                                                                           commandHandler
-                                                                                   .getClientStreamIdentification(),
-                                                                           commandHandler.getComponentName());
+                                                                           commandHandler,
+                                                                           responseObserver);
             if (commandCache.putIfAbsent(command.getMessageIdentifier(), commandInformation) != null) {
                 responseObserver.accept(errorCommandResponse(command.getMessageIdentifier(),
                                                              ErrorCode.COMMAND_DUPLICATED,
@@ -289,13 +285,11 @@ public class CommandDispatcher {
         }
 
         logger.debug("Dispatch {} to: {}", request.getName(), client.getClientStreamIdentification());
-        commandCache.put(request.getMessageIdentifier(), new CommandInformation(request.getName(),
+        commandCache.putIfAbsent(request.getMessageIdentifier(), new CommandInformation(request.getName(),
                                                                                 request.wrapped().getClientId(),
-                                                                                client.getClientId(),
+                                                                                        client,
                                                                                 commandInformation
-                                                                                        .getResponseConsumer(),
-                                                                                client.getClientStreamIdentification(),
-                                                                                client.getComponentName()));
+                                                                                                .getResponseConsumer()));
         return client.clientStreamIdentification.toString();
     }
 
