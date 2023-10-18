@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.message.event;
 
+import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
@@ -42,12 +43,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
 
 import static io.axoniq.axonserver.exception.ErrorCode.LIST_AGGREGATE_EVENTS_TIMEOUT;
+import static io.axoniq.axonserver.metric.MeterFactory.CONTEXT;
+import static io.axoniq.axonserver.metric.MeterFactory.ERROR_CODE;
 
 /**
  * @author Marc Gathier
@@ -60,27 +65,35 @@ public class EventDispatcher {
     private static final Logger auditLog = AuditLog.getLogger();
 
     static final String ERROR_ON_CONNECTION_FROM_EVENT_STORE = "{}:  Error on connection from event store: {}";
-    private static final String NO_EVENT_STORE_CONFIGURED = "No event store available for: ";
     private final Logger logger = LoggerFactory.getLogger(EventDispatcher.class);
     private final EventStoreLocator eventStoreLocator;
     private final MeterFactory meterFactory;
+    private final boolean legacyMetricsEnabled;
     private final Map<ClientStreamIdentification, List<EventTrackerInfo>> trackingEventProcessors = new ConcurrentHashMap<>();
     private final Map<String, MeterFactory.RateMeter> eventsCounter = new ConcurrentHashMap<>();
     private final Map<String, MeterFactory.RateMeter> snapshotCounter = new ConcurrentHashMap<>();
+    private final Map<String, MeterFactory.RateMeter> readEventsCounter = new ConcurrentHashMap<>();
+    private final Map<String, MeterFactory.RateMeter> readSnapshotsCounter = new ConcurrentHashMap<>();
     @Value("${axoniq.axonserver.read-sequence-validation-strategy:LOG}")
     private SequenceValidationStrategy sequenceValidationStrategy = SequenceValidationStrategy.LOG;
     private final RetryBackoffSpec retrySpec;
     private final int aggregateEventsPrefetch;
     private final long listEventsTimeoutMillis;
+    private final Map<String, AtomicInteger> activeAppendEventsPerContext = new ConcurrentHashMap<>();
+    private final Map<String, AtomicInteger> activeAppendSnapshotPerContext = new ConcurrentHashMap<>();
+    private final Map<String, AtomicInteger> activeReadAggregateEventsPerContext = new ConcurrentHashMap<>();
+    private final Map<String, AtomicInteger> activeReadSnapshotsPerContext = new ConcurrentHashMap<>();
 
     public EventDispatcher(EventStoreLocator eventStoreLocator,
                            MeterFactory meterFactory,
                            @Value("${axoniq.axonserver.event.aggregate.retry.attempts:3}") int maxRetryAttempts,
                            @Value("${axoniq.axonserver.event.aggregate.retry.delay:100}") long retryDelayMillis,
                            @Value("${axoniq.axonserver.event.aggregate.prefetch:5}") int aggregateEventsPrefetch,
-                           @Value("${axoniq.axonserver.event.aggregate.timeout:30000}") long listEventsTimeoutMillis) {
+                           @Value("${axoniq.axonserver.event.aggregate.timeout:30000}") long listEventsTimeoutMillis,
+                           @Value("${axoniq.axonserver.legacy-metrics-enabled:true}") boolean legacyMetricsEnabled) {
         this.eventStoreLocator = eventStoreLocator;
         this.meterFactory = meterFactory;
+        this.legacyMetricsEnabled = legacyMetricsEnabled;
         retrySpec = Retry.backoff(maxRetryAttempts, Duration.ofMillis(retryDelayMillis));
         this.aggregateEventsPrefetch = aggregateEventsPrefetch;
         this.listEventsTimeoutMillis = listEventsTimeoutMillis;
@@ -94,19 +107,42 @@ public class EventDispatcher {
             auditLog.debug("[{}@{}] Request to append events.", AuditLog.username(authentication), context);
         }
 
+        long start = System.currentTimeMillis();
         return eventStoreLocator.eventStore(context).flatMap(eventStore -> {
             Flux<SerializedEvent> countingFlux =
                     eventFlux.doOnNext(event -> eventsCounter(context,
                                                               eventsCounter,
+                                                              BaseMetricName.APPEND_EVENT_THROUGHPUT,
                                                               BaseMetricName.AXON_EVENTS).mark());
-            return eventStore.appendEvents(context, countingFlux, authentication);
+            return eventStore.appendEvents(context, countingFlux, authentication)
+                             .doFirst(() -> {
+                                 AtomicInteger counter = activeAppendEventsPerContext.computeIfAbsent(context,
+                                                                                                      c -> new AtomicInteger());
+                                 counter.incrementAndGet();
+                                 meterFactory.gauge(BaseMetricName.APPEND_EVENT_ACTIVE,
+                                                    Tags.of(CONTEXT, context),
+                                                    counter::get);
+                             })
+                             .doOnSuccess(ignored -> meterFactory.timer(BaseMetricName.APPEND_EVENT_DURATION,
+                                                                        Tags.of(CONTEXT,
+                                                                                context
+                                                                        )).record(System.currentTimeMillis() - start,
+                                                                                  TimeUnit.MILLISECONDS))
+                             .doOnError(t -> meterFactory.counter(BaseMetricName.APPEND_EVENT_ERRORS,
+                                                                  Tags.of(CONTEXT,
+                                                                          context,
+                                                                          ERROR_CODE,
+                                                                          ErrorCode.fromException(t).getCode()))
+                                                         .increment())
+                             .doOnTerminate(() -> activeAppendEventsPerContext.get(context).decrementAndGet());
         });
     }
 
     private MeterFactory.RateMeter eventsCounter(String context, Map<String, MeterFactory.RateMeter> eventsCounter,
-                                                 BaseMetricName eventsMetricName) {
+                                                 BaseMetricName eventsMetricName, BaseMetricName legacyMetricName) {
         return eventsCounter.computeIfAbsent(context, c -> meterFactory.rateMeter(eventsMetricName,
-                                                                                  Tags.of(MeterFactory.CONTEXT,
+                                                                                  legacyMetricsEnabled ? legacyMetricName : null,
+                                                                                  Tags.of(CONTEXT,
                                                                                           context)));
     }
 
@@ -117,15 +153,45 @@ public class EventDispatcher {
                            context,
                            snapshot.getAggregateIdentifier());
         }
+        long start = System.currentTimeMillis();
         return eventStoreLocator.eventStore(context)
                                 .flatMap(eventStore -> eventStore.appendSnapshot(context, snapshot, authentication)
-                                                                 .doOnSuccess(v -> eventsCounter(context,
-                                                                                                 snapshotCounter,
-                                                                                                 BaseMetricName.AXON_SNAPSHOTS).mark())
-                                                                 .doOnError(t -> logger.warn(
-                                                                         ERROR_ON_CONNECTION_FROM_EVENT_STORE,
-                                                                         "appendSnapshot",
-                                                                         t.getMessage())));
+                                                                 .doFirst(() -> {
+                                                                     AtomicInteger counter = activeAppendSnapshotPerContext.computeIfAbsent(
+                                                                             context,
+                                                                             c -> new AtomicInteger());
+                                                                     counter.incrementAndGet();
+                                                                     meterFactory.gauge(BaseMetricName.APPEND_SNAPSHOT_ACTIVE,
+                                                                                        Tags.of(CONTEXT, context),
+                                                                                        counter::get);
+                                                                 })
+                                                                 .doOnSuccess(v -> {
+                                                                     eventsCounter(context,
+                                                                                   snapshotCounter,
+                                                                                   BaseMetricName.APPEND_SNAPSHOT_THROUGHPUT,
+                                                                                   BaseMetricName.AXON_SNAPSHOTS).mark();
+                                                                     meterFactory.timer(BaseMetricName.APPEND_SNAPSHOT_DURATION,
+                                                                                        Tags.of(CONTEXT,
+                                                                                                context
+                                                                                        )).record(
+                                                                             System.currentTimeMillis() - start,
+                                                                             TimeUnit.MILLISECONDS);
+                                                                 })
+                                                                 .doOnError(t -> {
+                                                                     logger.warn(
+                                                                             ERROR_ON_CONNECTION_FROM_EVENT_STORE,
+                                                                             "appendSnapshot",
+                                                                             t.getMessage());
+                                                                     meterFactory.counter(BaseMetricName.APPEND_SNAPSHOT_ERRORS,
+                                                                                          Tags.of(CONTEXT,
+                                                                                                  context,
+                                                                                                  ERROR_CODE,
+                                                                                                  ErrorCode.fromException(
+                                                                                                          t).getCode()))
+                                                                                 .increment();
+                                                                 })
+                                                                 .doOnTerminate(() -> activeAppendSnapshotPerContext.get(
+                                                                         context).decrementAndGet()));
     }
 
     public Flux<SerializedEvent> aggregateEvents(String context,
@@ -138,9 +204,11 @@ public class EventDispatcher {
                            request.getAggregateId());
         }
 
+        long start = System.currentTimeMillis();
         return eventStoreLocator.eventStore(context)
                                 .flatMapMany(eventStore -> {
                                     final String LAST_SEQ_KEY = "__LAST_SEQ";
+                                    Tags tags = Tags.of(CONTEXT, context);
                                     return Flux.deferContextual(contextView -> {
                                                                     AtomicLong lastSeq = contextView.get(LAST_SEQ_KEY);
                                                                     boolean allowedSnapshot =
@@ -160,6 +228,19 @@ public class EventDispatcher {
                                                                             .aggregateEvents(context, authentication, newRequest);
                                                                 }
                                                )
+                                               .doFirst(() -> {
+                                                   AtomicInteger counter = activeReadAggregateEventsPerContext.computeIfAbsent(
+                                                           context,
+                                                           c -> new AtomicInteger());
+                                                   counter.incrementAndGet();
+                                                   meterFactory.gauge(BaseMetricName.READ_AGGREGATE_EVENTS_ACTIVE,
+                                                                      tags,
+                                                                      counter::get);
+                                                   readEventsCounter.computeIfAbsent(context,
+                                                                                     c -> meterFactory.rateMeter(
+                                                                                             BaseMetricName.READ_AGGREGATE_EVENTS_THROUGHPUT,
+                                                                                             tags)).mark();
+                                               })
                                                .limitRate(aggregateEventsPrefetch * 5, aggregateEventsPrefetch)
                                                .doOnEach(signal -> {
                                                    if (signal.hasValue()) {
@@ -186,11 +267,26 @@ public class EventDispatcher {
                                                    }
                                                    return ex;
                                                })
-                                               .doOnError(t -> logger.error("Error during reading aggregate events. ",
-                                                                            t))
+                                               .doOnError(t -> {
+                                                   logger.error("Error during reading aggregate events. ",
+                                                                t);
+                                                   meterFactory.counter(BaseMetricName.READ_AGGREGATE_EVENTS_ERRORS,
+                                                                        Tags.of(CONTEXT,
+                                                                                context,
+                                                                                ERROR_CODE,
+                                                                                ErrorCode.fromException(t).getCode()))
+                                                               .increment();
+                                               })
                                                .doOnNext(m -> logger.trace("event {} for aggregate {}",
                                                                            m,
                                                                            request.getAggregateId()))
+                                               .doOnComplete(() -> meterFactory.timer(BaseMetricName.READ_AGGREGATE_EVENTS_DURATION,
+                                                                                      tags)
+                                                                               .record(System.currentTimeMillis()
+                                                                                               - start,
+                                                                                       TimeUnit.MILLISECONDS))
+                                               .doOnTerminate(() -> activeReadAggregateEventsPerContext.get(context)
+                                                                                                       .decrementAndGet())
                                                .contextWrite(c -> c.put(LAST_SEQ_KEY,
                                                                         new AtomicLong(
                                                                                 request.getInitialSequence() - 1)))
@@ -239,8 +335,8 @@ public class EventDispatcher {
                                                                                 trackerInfo.client),
                                                  (c, streams) -> {
                                                      logger.debug("{}: {} streams",
-                                                                 trackerInfo.client,
-                                                                 streams.size());
+                                                                  trackerInfo.client,
+                                                                  streams.size());
                                                      streams.remove(trackerInfo);
                                                      return streams.isEmpty() ? null : streams;
                                                  });
@@ -304,18 +400,84 @@ public class EventDispatcher {
 
     public Flux<SerializedEvent> aggregateSnapshots(String context, Authentication authentication,
                                                     GetAggregateSnapshotsRequest request) {
+        long start = System.currentTimeMillis();
+        Tags tags = Tags.of(CONTEXT, context);
         return eventStoreLocator.eventStore(context)
                                 .flatMapMany(eventStore -> eventStore.aggregateSnapshots(context,
                                                                                          authentication,
-                                                                                         request));
+                                                                                         request))
+                                .doFirst(() -> {
+                                    AtomicInteger counter = activeReadSnapshotsPerContext.computeIfAbsent(context,
+                                                                                                          c -> new AtomicInteger());
+                                    counter.incrementAndGet();
+                                    meterFactory.gauge(BaseMetricName.READ_SNAPSHOT_ACTIVE,
+                                                       tags,
+                                                       counter::get);
+                                    readSnapshotsCounter.computeIfAbsent(context,
+                                                                         c -> meterFactory.rateMeter(BaseMetricName.READ_SNAPSHOT_THROUGHPUT,
+                                                                                                     tags)).mark();
+                                })
+                                .doOnError(t -> meterFactory.counter(BaseMetricName.READ_AGGREGATE_EVENTS_ERRORS,
+                                                                     Tags.of(CONTEXT,
+                                                                             context,
+                                                                             ERROR_CODE,
+                                                                             ErrorCode.fromException(t).getCode()))
+                                                            .increment())
+                                .doOnComplete(() -> meterFactory.timer(BaseMetricName.READ_SNAPSHOT_DURATION,
+                                                                       tags)
+                                                                .record(System.currentTimeMillis() - start,
+                                                                        TimeUnit.MILLISECONDS))
+                                .doOnTerminate(() -> activeReadSnapshotsPerContext.get(context).decrementAndGet());
     }
 
     public MeterFactory.RateMeter eventRate(String context) {
-        return eventsCounter(context, eventsCounter, BaseMetricName.AXON_EVENTS);
+        return eventsCounter(context,
+                             eventsCounter,
+                             BaseMetricName.APPEND_EVENT_THROUGHPUT,
+                             BaseMetricName.AXON_EVENTS);
     }
 
     public MeterFactory.RateMeter snapshotRate(String context) {
-        return eventsCounter(context, snapshotCounter, BaseMetricName.AXON_SNAPSHOTS);
+        return eventsCounter(context,
+                             snapshotCounter,
+                             BaseMetricName.APPEND_SNAPSHOT_THROUGHPUT,
+                             BaseMetricName.AXON_SNAPSHOTS);
+    }
+
+    public void deleteMetrics(String context) {
+        MeterFactory.RateMeter meter = eventsCounter.remove(context);
+        if (meter != null) {
+            meter.remove();
+        }
+        meter = snapshotCounter.remove(context);
+        if (meter != null) {
+            meter.remove();
+        }
+        meter = readEventsCounter.remove(context);
+        if (meter != null) {
+            meter.remove();
+        }
+        meter = readSnapshotsCounter.remove(context);
+        if (meter != null) {
+            meter.remove();
+        }
+        meterFactory.remove(BaseMetricName.APPEND_EVENT_DURATION, CONTEXT, context);
+        meterFactory.remove(BaseMetricName.APPEND_EVENT_ERRORS, CONTEXT, context);
+        meterFactory.remove(BaseMetricName.APPEND_SNAPSHOT_DURATION, CONTEXT, context);
+        meterFactory.remove(BaseMetricName.APPEND_SNAPSHOT_ERRORS, CONTEXT, context);
+        meterFactory.remove(BaseMetricName.READ_AGGREGATE_EVENTS_ERRORS, CONTEXT, context);
+        meterFactory.remove(BaseMetricName.READ_AGGREGATE_EVENTS_DURATION, CONTEXT, context);
+        meterFactory.remove(BaseMetricName.READ_SNAPSHOT_DURATION, CONTEXT, context);
+        meterFactory.remove(BaseMetricName.READ_SNAPSHOT_ERRORS, CONTEXT, context);
+        meterFactory.remove(BaseMetricName.APPEND_EVENT_ACTIVE, CONTEXT, context);
+        meterFactory.remove(BaseMetricName.APPEND_SNAPSHOT_ACTIVE, CONTEXT, context);
+        meterFactory.remove(BaseMetricName.READ_AGGREGATE_EVENTS_ACTIVE, CONTEXT, context);
+        meterFactory.remove(BaseMetricName.READ_SNAPSHOT_ACTIVE, CONTEXT, context);
+
+        activeReadSnapshotsPerContext.remove(context);
+        activeReadAggregateEventsPerContext.remove(context);
+        activeAppendSnapshotPerContext.remove(context);
+        activeAppendEventsPerContext.remove(context);
     }
 
     private static class EventTrackerInfo {

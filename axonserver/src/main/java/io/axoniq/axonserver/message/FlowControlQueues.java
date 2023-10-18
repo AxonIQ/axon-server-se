@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -11,16 +11,13 @@ package io.axoniq.axonserver.message;
 
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.metric.MeterFactory;
-import io.axoniq.axonserver.metric.MetricName;
-import io.micrometer.core.instrument.Gauge;
-import io.micrometer.core.instrument.Tags;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Comparator;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Queue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.PriorityBlockingQueue;
@@ -35,28 +32,35 @@ public class FlowControlQueues<T> {
 
     private static final Logger logger = LoggerFactory.getLogger(FlowControlQueues.class);
     private static final AtomicLong requestId = new AtomicLong(0);
+    public static final QueueMetrics DEFAULT_QUEUE_METRICS = new QueueMetrics() {
+        @Override
+        public void add(String queueName, Queue<?> queue) {
+            // no-op
+        }
+
+        @Override
+        public void remove(String queueName) {
+            // no-op
+        }
+    };
     private final Comparator<T> comparator;
     private final int softLimit;
     private final int hardLimit;
-    private final MeterFactory meterFactory;
-    private final MetricName metricName;
     private final ErrorCode errorCode;
 
     private final Map<String, BlockingQueue<DestinationNode>> segments = new ConcurrentHashMap<>();
-    private final Map<String, Gauge> gauges = new ConcurrentHashMap<>();
+    private final QueueMetrics queueMetrics;
 
-    public FlowControlQueues(Comparator<T> comparator, int softLimit, MetricName metricName,
-                             MeterFactory meterFactory, ErrorCode errorCode) {
+    public FlowControlQueues(Comparator<T> comparator, int softLimit, QueueMetrics queueMetrics, ErrorCode errorCode) {
         this.comparator = comparator;
         this.softLimit = softLimit;
         this.hardLimit = (int) Math.ceil(softLimit * 1.1);
-        this.metricName = metricName;
-        this.meterFactory = meterFactory;
+        this.queueMetrics = queueMetrics;
         this.errorCode = errorCode;
     }
 
     public FlowControlQueues(Comparator<T> comparator) {
-        this(comparator, 10_000, null, null, ErrorCode.OTHER);
+        this(comparator, 10_000, DEFAULT_QUEUE_METRICS, ErrorCode.OTHER);
     }
 
     public FlowControlQueues() {
@@ -125,10 +129,7 @@ public class FlowControlQueues<T> {
     public void move(String oldDestinationValue, Function<T, String> newDestinationAssignment) {
         logger.debug("Remove: {}", oldDestinationValue);
         BlockingQueue<DestinationNode> oldDestination = segments.remove(oldDestinationValue);
-        Gauge gauge = gauges.remove(oldDestinationValue);
-        if (gauge != null) {
-            meterFactory.remove(gauge);
-        }
+        queueMetrics.remove(oldDestinationValue);
         if (oldDestination == null) {
             return;
         }
@@ -148,15 +149,9 @@ public class FlowControlQueues<T> {
         });
     }
 
-    private PriorityBlockingQueue<DestinationNode> newQueueWithMetrics(String destination) {
+    private PriorityBlockingQueue<DestinationNode> newQueueWithMetrics(String clientStreamId) {
         PriorityBlockingQueue<DestinationNode> queue = new PriorityBlockingQueue<>();
-        if (meterFactory != null && metricName != null) {
-            Gauge gauge = meterFactory.gauge(metricName,
-                                             Tags.of("destination", destination),
-                                             queue,
-                                             BlockingQueue::size);
-            gauges.put(destination, gauge);
-        }
+        queueMetrics.add(clientStreamId, queue);
         return queue;
     }
 

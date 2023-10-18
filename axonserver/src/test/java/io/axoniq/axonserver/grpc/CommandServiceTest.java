@@ -25,10 +25,13 @@ import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.command.WrappedCommand;
+import io.axoniq.axonserver.metric.DefaultMetricCollector;
+import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.test.FakeStreamObserver;
 import io.axoniq.axonserver.topology.DefaultTopology;
 import io.axoniq.axonserver.topology.Topology;
 import io.grpc.stub.StreamObserver;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
@@ -73,6 +76,7 @@ public class CommandServiceTest {
                                          () -> Topology.DEFAULT_CONTEXT,
                                          () -> GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL,
                                          new DefaultClientIdRegistry(),
+                                         new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector()),
                                          eventPublisher,
                                          new DefaultInstructionAckSource<>(ack -> new SerializedCommandProviderInbound(
                                                  CommandProviderInbound.newBuilder().setAck(ack).build())));
@@ -89,11 +93,9 @@ public class CommandServiceTest {
         assertEquals(1, commandQueue.getSegments().size());
 
         String key = commandQueue.getSegments().entrySet().iterator().next().getKey();
-        String clientStreamId = key.substring(0, key.lastIndexOf("."));
-
         ClientStreamIdentification clientIdentification = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
-                                                                             clientStreamId);
-        commandQueue.put(clientIdentification.toString(), new WrappedCommand(clientIdentification,
+                                                                                         key);
+        commandQueue.put(clientIdentification.getClientStreamId(), new WrappedCommand(clientIdentification,
                                                                              clientIdentification.getClientStreamId(),new SerializedCommand(Command.newBuilder()
                                                                                                           .build())));
         Thread.sleep(50);

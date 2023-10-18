@@ -14,8 +14,9 @@ import io.axoniq.axonserver.applicationevents.TopologyEvents.CommandHandlerDisco
 import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
+import io.axoniq.axonserver.grpc.ClientContext;
+import io.axoniq.axonserver.grpc.ClientIdRegistry;
 import io.axoniq.axonserver.grpc.SerializedCommand;
-import io.axoniq.axonserver.grpc.SerializedCommandProviderInbound;
 import io.axoniq.axonserver.grpc.SerializedCommandResponse;
 import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.grpc.command.CommandResponse;
@@ -45,6 +46,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.times;
@@ -63,12 +65,16 @@ public class CommandDispatcherTest {
     private CommandCache commandCache;
     @Mock
     private CommandRegistrationCache registrations;
+    @Mock
+    private ClientIdRegistry clientIdRegistry;
 
     @Before
     public void setup() {
-        metricsRegistry = new CommandMetricsRegistry(meterFactory);
+        metricsRegistry = new CommandMetricsRegistry(meterFactory, true);
+        when(clientIdRegistry.clientId(anyString())).then(invocationOnMock -> new ClientContext(invocationOnMock.getArgument(
+                0), Topology.DEFAULT_CONTEXT));
         commandDispatcher = new CommandDispatcher(registrations, commandCache, metricsRegistry, meterFactory,
-                                                  new NoOpCommandInterceptors(), 10_000);
+                                                  new NoOpCommandInterceptors(), clientIdRegistry, 10_000);
     }
 
     @Test
@@ -84,7 +90,6 @@ public class CommandDispatcherTest {
                                  .setName("Command")
                                  .setMessageIdentifier("12")
                                  .build();
-        FakeStreamObserver<SerializedCommandProviderInbound> commandProviderInbound = new FakeStreamObserver<>();
         ClientStreamIdentification client = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "client");
         DirectCommandHandler result = new DirectCommandHandler(client,
                                                                commandDispatcher.getCommandQueues(),
@@ -99,7 +104,7 @@ public class CommandDispatcherTest {
                                        responseObserver.onNext(response);
                                        responseObserver.onCompleted();
                                    });
-        assertEquals(1, commandDispatcher.getCommandQueues().getSegments().get(client.toString()).size());
+        assertEquals(1, commandDispatcher.getCommandQueues().getSegments().get(client.getClientStreamId()).size());
         assertEquals(0, responseObserver.values().size());
         Mockito.verify(commandCache, times(1)).putIfAbsent(eq("12"), any());
     }
@@ -133,6 +138,7 @@ public class CommandDispatcherTest {
                                                   metricsRegistry,
                                                   meterFactory,
                                                   new NoOpCommandInterceptors(),
+                                                  clientIdRegistry,
                                                   0);
         FakeStreamObserver<SerializedCommandResponse> responseObserver = new FakeStreamObserver<>();
         Command request = Command.newBuilder()
@@ -140,7 +146,6 @@ public class CommandDispatcherTest {
                                  .setName("Command")
                                  .setMessageIdentifier("12")
                                  .build();
-        FakeStreamObserver<SerializedCommandProviderInbound> commandProviderInbound = new FakeStreamObserver<>();
         ClientStreamIdentification client = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "client");
         DirectCommandHandler result = new DirectCommandHandler(client,
                                                                commandDispatcher.getCommandQueues(),
@@ -189,7 +194,6 @@ public class CommandDispatcherTest {
                                  .build();
         ClientStreamIdentification clientIdentification = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
                                                                                          "client");
-        FakeStreamObserver<SerializedCommandProviderInbound> commandProviderInbound = new FakeStreamObserver<>();
         DirectCommandHandler result = new DirectCommandHandler(clientIdentification,
                                                                commandDispatcher.getCommandQueues(),
                                                                "client",
@@ -201,8 +205,10 @@ public class CommandDispatcherTest {
                                                                 "client",
                                                                 request.getMessageIdentifier()),
                                           responseObserver::onNext);
-        assertEquals(1, commandDispatcher.getCommandQueues().getSegments().get(clientIdentification.toString()).size());
-        assertEquals("12", commandDispatcher.getCommandQueues().take(clientIdentification.toString()).command()
+        assertEquals(1,
+                     commandDispatcher.getCommandQueues().getSegments().get(clientIdentification.getClientStreamId())
+                                      .size());
+        assertEquals("12", commandDispatcher.getCommandQueues().take(clientIdentification.getClientStreamId()).command()
                                             .getMessageIdentifier());
         assertEquals(0, responseObserver.values().size());
         Mockito.verify(commandCache, times(1)).putIfAbsent(eq("12"), any());
@@ -224,18 +230,27 @@ public class CommandDispatcherTest {
         Mockito.verify(commandCache, times(0)).putIfAbsent(eq("12"), any());
     }
 
+    private CommandHandler commandHandler() {
+        return new CommandHandler(new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "Client"),
+                                  "Target",
+                                  "Component") {
+            @Override
+            public void dispatch(SerializedCommand wrappedCommand) {
+
+            }
+        };
+    }
+
     @Test
     public void handleResponse() {
         AtomicBoolean responseHandled = new AtomicBoolean(false);
-        ClientStreamIdentification client = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "Client");
         CommandInformation commandInformation = new CommandInformation("TheCommand",
                                                                        "Source",
-                                                                       "Target",
-                                                                       (r) -> responseHandled.set(true),
-                                                                       client, "Component");
+                                                                       commandHandler(),
+                                                                       (r) -> responseHandled.set(true));
         when(commandCache.remove(any(String.class))).thenReturn(commandInformation);
 
-        commandDispatcher.handleResponse(new SerializedCommandResponse(CommandResponse.newBuilder().build()), false);
+        commandDispatcher.handleResponse(new SerializedCommandResponse(CommandResponse.newBuilder().build()));
         assertTrue(responseHandled.get());
     }
 
@@ -257,12 +272,12 @@ public class CommandDispatcherTest {
                                                               ExecutionContext executionContext) {
                                                           return serializedResponse;
                                                       }
-                                                  }, 10_000);
+                                                  }, null, 10_000);
         CompletableFuture<SerializedCommandResponse> futureResponse = new CompletableFuture<>();
         commandDispatcher.dispatch("demo",
                                    null,
                                    new SerializedCommand(Command.newBuilder().setMessageIdentifier("1234").build()),
-                                   r -> futureResponse.complete(r));
+                                   futureResponse::complete);
         SerializedCommandResponse response = futureResponse.get();
         assertEquals(ErrorCode.COMMAND_REJECTED_BY_INTERCEPTOR.getCode(), response.getErrorCode());
         assertEquals("1234", response.getRequestIdentifier());
@@ -286,12 +301,12 @@ public class CommandDispatcherTest {
                                                               ExecutionContext executionContext) {
                                                           return serializedResponse;
                                                       }
-                                                  }, 10_000);
+                                                  }, null, 10_000);
         CompletableFuture<SerializedCommandResponse> futureResponse = new CompletableFuture<>();
         commandDispatcher.dispatch("demo",
                                    null,
                                    new SerializedCommand(Command.newBuilder().setMessageIdentifier("1234").build()),
-                                   r -> futureResponse.complete(r));
+                                   futureResponse::complete);
         SerializedCommandResponse response = futureResponse.get();
         assertEquals(ErrorCode.EXCEPTION_IN_INTERCEPTOR.getCode(), response.getErrorCode());
         assertEquals("1234", response.getRequestIdentifier());
@@ -300,7 +315,6 @@ public class CommandDispatcherTest {
     @Test
     public void handleResponseInterceptorException() throws ExecutionException, InterruptedException {
         commandCache = new CommandCache(10000, Clock.systemUTC(), 100000);
-        FakeStreamObserver<SerializedCommandProviderInbound> commandProviderInbound = new FakeStreamObserver<>();
         ClientStreamIdentification client = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "client");
         DirectCommandHandler result = new DirectCommandHandler(client,
                                                                commandDispatcher.getCommandQueues(),
@@ -323,7 +337,7 @@ public class CommandDispatcherTest {
                                                           throw new MessagingPlatformException(ErrorCode.EXCEPTION_IN_INTERCEPTOR,
                                                                                                "failed");
                                                       }
-                                                  }, 10_000);
+                                                  }, null, 10_000);
 
         CompletableFuture<SerializedCommandResponse> futureResponse = new CompletableFuture<>();
         commandDispatcher.dispatch(Topology.DEFAULT_CONTEXT, null,
@@ -334,7 +348,7 @@ public class CommandDispatcherTest {
 
         commandDispatcher.handleResponse(new SerializedCommandResponse(CommandResponse.newBuilder()
                                                                                       .setRequestIdentifier("TheCommand")
-                                                                                      .build()), false);
+                                                                                      .build()));
         SerializedCommandResponse response = futureResponse.get();
         assertEquals(ErrorCode.EXCEPTION_IN_INTERCEPTOR.getCode(), response.getErrorCode());
     }
@@ -349,11 +363,8 @@ public class CommandDispatcherTest {
         CompletableFuture<SerializedCommandResponse> originalFutureResponse = new CompletableFuture<>();
         CommandInformation commandInformation = new CommandInformation(duplicatedId,
                                                                        "",
-                                                                       "",
-                                                                       originalFutureResponse::complete,
-                                                                       new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
-                                                                                                      "client"),
-                                                                       "component");
+                                                                       commandHandler(),
+                                                                       originalFutureResponse::complete);
 
         commandCache.putIfAbsent(duplicatedId, commandInformation);
 
@@ -362,9 +373,9 @@ public class CommandDispatcherTest {
                                                   metricsRegistry,
                                                   meterFactory,
                                                   new NoOpCommandInterceptors(),
+                                                  null,
                                                   10_000);
 
-        FakeStreamObserver<SerializedCommandProviderInbound> commandProviderInbound = new FakeStreamObserver<>();
         ClientStreamIdentification client = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "client");
         DirectCommandHandler result = new DirectCommandHandler(client,
                                                                commandDispatcher.getCommandQueues(),
@@ -381,7 +392,7 @@ public class CommandDispatcherTest {
 
         commandDispatcher.handleResponse(new SerializedCommandResponse(CommandResponse.newBuilder()
                                                                                       .setRequestIdentifier(duplicatedId)
-                                                                                      .build()), false);
+                                                                                      .build()));
 
         SerializedCommandResponse originalResponse = originalFutureResponse.get(1, TimeUnit.SECONDS);
         assertEquals(duplicatedId, originalResponse.getRequestIdentifier());

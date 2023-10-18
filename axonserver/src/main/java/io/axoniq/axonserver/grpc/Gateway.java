@@ -13,6 +13,7 @@ import io.axoniq.axonserver.AxonServerAccessController;
 import io.axoniq.axonserver.LicenseAccessController;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.exception.FailedToStartException;
+import io.axoniq.axonserver.metric.MeterFactory;
 import io.grpc.Server;
 import io.grpc.ServerCredentials;
 import io.grpc.TlsServerCredentials;
@@ -51,16 +52,17 @@ public class Gateway implements SmartLifecycle {
     private final ExecutorService executorService;
     private AdvancedTlsX509KeyManager.Closeable serverKeyClosable;
     private final Supplier<ScheduledExecutorService> maintenanceSchedulerSupplier;
+    private final MeterFactory meterFactory;
 
     public Gateway(MessagingPlatformConfiguration messagingPlatformConfiguration,
                    List<AxonServerClientService> axonServerClientServices,
                    AxonServerAccessController axonServerAccessController,
-                   LicenseAccessController licenseAccessController) {
+                   LicenseAccessController licenseAccessController, MeterFactory meterFactory) {
         this(messagingPlatformConfiguration,
              axonServerClientServices,
              axonServerAccessController,
              licenseAccessController,
-             Executors::newSingleThreadScheduledExecutor);
+             Executors::newSingleThreadScheduledExecutor, meterFactory);
     }
 
     @Autowired
@@ -68,12 +70,13 @@ public class Gateway implements SmartLifecycle {
                    List<AxonServerClientService> axonServerClientServices,
                    AxonServerAccessController axonServerAccessController,
                    LicenseAccessController licenseAccessController,
-                   Supplier<ScheduledExecutorService> maintenanceSchedulerSupplier) {
+                   Supplier<ScheduledExecutorService> maintenanceSchedulerSupplier, MeterFactory meterFactory) {
         this.routingConfiguration = messagingPlatformConfiguration;
         this.axonServerClientServices = axonServerClientServices;
         this.axonServerAccessController = axonServerAccessController;
         this.licenseAccessController = licenseAccessController;
         this.maintenanceSchedulerSupplier = maintenanceSchedulerSupplier;
+        this.meterFactory = meterFactory;
         this.executorService = Executors.newFixedThreadPool(routingConfiguration.getExecutorThreadCount(),
                                                             new CustomizableThreadFactory("grpc-executor-"));
     }
@@ -142,7 +145,7 @@ public class Gateway implements SmartLifecycle {
             // Note that the last interceptor is executed first
             serverBuilder.intercept(new GrpcBufferingInterceptor(routingConfiguration.getGrpcBufferedMessages()));
             if (routingConfiguration.getAccesscontrol().isEnabled()) {
-                serverBuilder.intercept(new AuthenticationInterceptor(axonServerAccessController));
+                serverBuilder.intercept(new AuthenticationInterceptor(axonServerAccessController, meterFactory));
             }
             serverBuilder.intercept(new LicenseInterceptor(licenseAccessController));
             serverBuilder.intercept(new ContextInterceptor());

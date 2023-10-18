@@ -120,6 +120,6 @@ public class DirectQueryHandler extends QueryHandler {
      * @return the name of the query that this handler can receive
      */
     public String queueName() {
-        return clientStreamIdentification.toString();
+        return clientStreamIdentification.getClientStreamId();
     }
 }

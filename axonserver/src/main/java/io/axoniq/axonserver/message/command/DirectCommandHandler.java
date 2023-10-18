@@ -13,20 +13,34 @@ import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
 
+import java.util.function.Consumer;
+
 /**
  * @author Marc Gathier
  */
 public class DirectCommandHandler extends CommandHandler {
 
     private final FlowControlQueues<WrappedCommand> flowControlQueues;
+    private final Consumer<String> cancelCallback;
 
     public DirectCommandHandler(
             ClientStreamIdentification clientStreamIdentification,
             FlowControlQueues<WrappedCommand> flowControlQueues,
             String clientId,
             String componentName) {
+        this(clientStreamIdentification, flowControlQueues, clientId, componentName, r -> {
+        });
+    }
+
+    public DirectCommandHandler(
+            ClientStreamIdentification clientStreamIdentification,
+            FlowControlQueues<WrappedCommand> flowControlQueues,
+            String clientId,
+            String componentName,
+            Consumer<String> cancelCallback) {
         super(clientStreamIdentification, clientId, componentName);
         this.flowControlQueues = flowControlQueues;
+        this.cancelCallback = cancelCallback;
     }
 
 
@@ -40,6 +54,11 @@ public class DirectCommandHandler extends CommandHandler {
     }
 
     public String queueName() {
-        return clientStreamIdentification.toString();
+        return clientStreamIdentification.getClientStreamId();
+    }
+
+    @Override
+    public void cancel(String requestIdentifier) {
+        cancelCallback.accept(requestIdentifier);
     }
 }

@@ -26,6 +26,7 @@ import java.time.Clock;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Supplier;
 import java.util.function.ToDoubleFunction;
 
 /**
@@ -42,6 +43,8 @@ public class MeterFactory {
     public static final String REQUEST = "request";
     public static final String SOURCE = "source";
     public static final String TARGET = "target";
+    public static final String ERROR_CODE = "error";
+    public static final String STREAMING_QUERY = "streaming";
 
     private final MeterRegistry meterRegistry;
     private final MetricCollector clusterMetrics;
@@ -53,8 +56,12 @@ public class MeterFactory {
         this.clusterMetrics = clusterMetrics;
     }
 
+    public RateMeter rateMeter(MetricName metric, MetricName legacyMetric, Tags tags) {
+        return new RateMeter(metric, legacyMetric, tags);
+    }
+
     public RateMeter rateMeter(MetricName metric, Tags tags) {
-        return new RateMeter(metric, tags);
+        return new RateMeter(metric, null, tags);
     }
 
     public Counter counter(MetricName metric, Tags tags) {
@@ -91,6 +98,13 @@ public class MeterFactory {
                     .register(meterRegistry);
     }
 
+    public Gauge gauge(MetricName metric, Tags tags, Supplier<Number> gaugeFunction) {
+        return Gauge.builder(metric.metric(), gaugeFunction)
+                    .tags(tags)
+                    .description(metric.description())
+                    .register(meterRegistry);
+    }
+
     public <T> Gauge gauge(MetricName metric, T objectToWatch, ToDoubleFunction<T> gaugeFunction) {
         return Gauge.builder(metric.metric(), objectToWatch, gaugeFunction)
                     .description(metric.description())
@@ -122,7 +136,7 @@ public class MeterFactory {
         meterRegistry.remove(meter);
     }
 
-    public void remove(BaseMetricName axonQuery, String tagName, String tagValue) {
+    public void remove(MetricName axonQuery, String tagName, String tagValue) {
         List<Meter> toDelete = new LinkedList<>();
         meterRegistry.find(axonQuery.metric()).meters().forEach(m -> {
             if (tagValue.equals(m.getId().getTag(tagName))) {
@@ -162,12 +176,15 @@ public class MeterFactory {
         public static final String COUNT = ".count";
         private final IntervalCounter meter;
 
-        private final Counter deprecatedCounter;
         private final Counter counter;
+        private final Counter legacyCounter;
         private final String name;
         private final Tags tags;
+        private final Gauge fiveMinutes;
+        private final Gauge oneMinute;
+        private final Gauge fifteenMinutes;
 
-        private RateMeter(MetricName metricName, Tags tags) {
+        private RateMeter(MetricName metricName, MetricName legacyMetricName, Tags tags) {
             this.name = metricName.metric();
             this.tags = tags;
             meter = new IntervalCounter(clock);
@@ -176,31 +193,52 @@ public class MeterFactory {
                              .tags(tags)
                              .register(meterRegistry);
 
-            deprecatedCounter =
-                    Counter.builder(name + ".rate.count")
-                           .description(metricName.description() + " since start [Deprecated]")
-                           .tags(tags)
-                           .register(meterRegistry);
 
-            Gauge.builder(name + ONE_MINUTE_RATE, meter, IntervalCounter::getOneMinuteRate)
+            oneMinute = Gauge.builder(name + ONE_MINUTE_RATE, meter, IntervalCounter::getOneMinuteRate)
                  .description(metricName.description() + " per second (last minute)")
                  .tags(tags)
                  .register(meterRegistry);
-            Gauge.builder(name + FIVE_MINUTE_RATE, meter, IntervalCounter::getFiveMinuteRate)
+            fiveMinutes = Gauge.builder(name + FIVE_MINUTE_RATE, meter, IntervalCounter::getFiveMinuteRate)
                  .description(metricName.description() + " per second (last 5 minutes)")
                  .tags(tags)
                  .register(meterRegistry);
-            Gauge.builder(name + FIFTEEN_MINUTE_RATE, meter, IntervalCounter::getFifteenMinuteRate)
+            fifteenMinutes = Gauge.builder(name + FIFTEEN_MINUTE_RATE, meter, IntervalCounter::getFifteenMinuteRate)
                  .description(metricName.description() + " per second (last 15 minutes)")
                  .tags(tags)
                  .register(meterRegistry);
+
+            if (legacyMetricName != null) {
+                String legacyName = legacyMetricName.metric();
+                legacyCounter = Counter.builder(legacyName + ".count")
+                                       .description(legacyMetricName.description() + " since start")
+                                       .tags(tags)
+                                       .register(meterRegistry);
+
+
+                Gauge.builder(legacyName + ONE_MINUTE_RATE, meter, IntervalCounter::getOneMinuteRate)
+                     .description(legacyMetricName.description() + " per second (last minute)")
+                     .tags(tags)
+                     .register(meterRegistry);
+                Gauge.builder(legacyName + FIVE_MINUTE_RATE, meter, IntervalCounter::getFiveMinuteRate)
+                     .description(legacyMetricName.description() + " per second (last 5 minutes)")
+                     .tags(tags)
+                     .register(meterRegistry);
+                Gauge.builder(legacyName + FIFTEEN_MINUTE_RATE, meter, IntervalCounter::getFifteenMinuteRate)
+                     .description(legacyMetricName.description() + " per second (last 15 minutes)")
+                     .tags(tags)
+                     .register(meterRegistry);
+            } else {
+                legacyCounter = null;
+            }
         }
 
 
         public void mark() {
             meter.mark();
             counter.increment();
-            deprecatedCounter.increment();
+            if (legacyCounter != null) {
+                legacyCounter.increment();
+            }
         }
 
         public long getCount() {
@@ -238,6 +276,14 @@ public class MeterFactory {
             media.with("oneMinuteRate", getOneMinuteRate());
             media.with("fiveMinuteRate", getFiveMinuteRate());
             media.with("fifteenMinuteRate", getFifteenMinuteRate());
+        }
+
+        public void remove() {
+            meterRegistry.remove(counter);
+            meterRegistry.remove(legacyCounter);
+            meterRegistry.remove(fifteenMinutes);
+            meterRegistry.remove(fiveMinutes);
+            meterRegistry.remove(oneMinute);
         }
     }
 }

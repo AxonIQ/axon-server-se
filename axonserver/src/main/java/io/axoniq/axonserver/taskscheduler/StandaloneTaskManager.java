@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2020 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -10,6 +10,7 @@
 package io.axoniq.axonserver.taskscheduler;
 
 import io.axoniq.axonserver.grpc.TaskStatus;
+import io.axoniq.axonserver.metric.MeterFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -50,10 +51,11 @@ public class StandaloneTaskManager extends BaseTaskManager {
                                  TaskPayloadSerializer taskPayloadSerializer,
                                  PlatformTransactionManager platformTransactionManager,
                                  @Qualifier("taskScheduler") ScheduledExecutorService scheduler,
+                                 MeterFactory meterFactory,
                                  Clock clock) {
         super(taskExecutor, taskRepository, () -> Collections.singleton(replicationGroup),
               replicationGroup::equals,
-              platformTransactionManager, scheduler, clock);
+              platformTransactionManager, scheduler, meterFactory, clock);
         this.replicationGroup = replicationGroup;
         this.taskPayloadSerializer = taskPayloadSerializer;
     }

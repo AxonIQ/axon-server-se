@@ -257,6 +257,7 @@ public class AxonServerStandardConfiguration {
                                                   TaskPayloadSerializer taskPayloadSerializer,
                                                   PlatformTransactionManager platformTransactionManager,
                                                   @Qualifier("taskScheduler") ScheduledExecutorService scheduler,
+                                                  MeterFactory meterFactory,
                                                   Clock clock) {
         return new StandaloneTaskManager(Topology.DEFAULT_CONTEXT,
                                          taskExecutor,
@@ -264,6 +265,7 @@ public class AxonServerStandardConfiguration {
                                          taskPayloadSerializer,
                                          platformTransactionManager,
                                          scheduler,
+                                         meterFactory,
                                          clock);
     }
 

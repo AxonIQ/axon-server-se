@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -19,20 +19,25 @@ import io.axoniq.axonserver.grpc.control.PlatformInboundInstruction;
 import io.axoniq.axonserver.grpc.control.PlatformInfo;
 import io.axoniq.axonserver.grpc.control.PlatformOutboundInstruction;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
+import io.axoniq.axonserver.metric.DefaultMetricCollector;
+import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.test.FakeStreamObserver;
 import io.axoniq.axonserver.topology.DefaultTopology;
 import io.axoniq.axonserver.topology.Topology;
 import io.grpc.stub.StreamObserver;
-import org.junit.*;
-import org.junit.runner.*;
-import org.mockito.junit.*;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.junit.MockitoJUnitRunner;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static org.junit.Assert.*;
-import static org.mockito.Mockito.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
 
 /**
  * @author Marc Gathier
@@ -52,6 +57,8 @@ public class PlatformServiceTest {
         platformService = new PlatformService(new DefaultTopology(configuration),
                                               () -> context,
                                               clientIdRegistry, eventPublisher,
+                                              new MeterFactory(new SimpleMeterRegistry(),
+                                                               new DefaultMetricCollector()),
                                               new DefaultInstructionAckSource<>(ack -> PlatformOutboundInstruction
                                                       .newBuilder().setAck(ack).build()));
     }

@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2020 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -29,6 +29,8 @@ public interface TaskRepository extends JpaRepository<Task, String> {
      * @return list of tasks for the specified context
      */
     List<Task> findAllByContext(String context);
+
+    long countByContext(String context);
 
     /**
      * Finds all tasks for a {@code context} with given {@code status} to be executed within given time period.

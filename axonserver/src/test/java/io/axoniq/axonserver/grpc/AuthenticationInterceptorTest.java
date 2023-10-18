@@ -11,12 +11,15 @@ package io.axoniq.axonserver.grpc;
 
 import io.axoniq.axonserver.AxonServerAccessController;
 import io.axoniq.axonserver.config.TokenAuthentication;
+import io.axoniq.axonserver.metric.DefaultMetricCollector;
+import io.axoniq.axonserver.metric.MeterFactory;
 import io.grpc.Attributes;
 import io.grpc.Metadata;
 import io.grpc.MethodDescriptor;
 import io.grpc.ServerCall;
 import io.grpc.ServerCallHandler;
 import io.grpc.Status;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -71,7 +74,8 @@ public class AuthenticationInterceptorTest {
         when(accessController.authenticate("1234")).thenReturn(validAuthentication);
 
         when(call.getAttributes()).thenReturn(Attributes.EMPTY);
-        testSubject = new AuthenticationInterceptor(accessController);
+        testSubject = new AuthenticationInterceptor(accessController, new MeterFactory(new SimpleMeterRegistry(),
+                                                                                       new DefaultMetricCollector()));
 
         status = ArgumentCaptor.forClass(Status.class);
         trailers = ArgumentCaptor.forClass(Metadata.class);

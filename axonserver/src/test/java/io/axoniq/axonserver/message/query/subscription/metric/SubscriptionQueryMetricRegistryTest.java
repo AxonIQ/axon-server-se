@@ -15,6 +15,7 @@ import io.axoniq.axonserver.grpc.query.QueryRequest;
 import io.axoniq.axonserver.grpc.query.QueryUpdate;
 import io.axoniq.axonserver.grpc.query.SubscriptionQuery;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse;
+import io.axoniq.axonserver.message.query.QueryMetricsRegistry;
 import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
@@ -45,8 +46,9 @@ public class SubscriptionQueryMetricRegistryTest {
     @Before
     public void setUp() {
         MetricCollector metricCollector = new DefaultMetricCollector();
-        testSubject = new SubscriptionQueryMetricRegistry(new MeterFactory(meterRegistry,
-                                                                           metricCollector),
+        testSubject = new SubscriptionQueryMetricRegistry(new QueryMetricsRegistry(new MeterFactory(meterRegistry,
+                                                                                                    metricCollector),
+                                                                                   true),
                                                           metricCollector::apply,
                                                           clock);
     }
@@ -120,7 +122,7 @@ public class SubscriptionQueryMetricRegistryTest {
         testSubject.on(new SubscriptionQueryCanceled("context", query("3")));
         assertEquals(0L, metrics.activesCount().longValue());
         assertEquals(0L, metrics.updatesCount().longValue());
-        HistogramSnapshot snapshot = meterRegistry.timer(BaseMetricName.AXON_SUBSCRIPTION_DURATION.metric(),
+        HistogramSnapshot snapshot = meterRegistry.timer(BaseMetricName.SUBSCRIPTION_QUERIES_DURATION.metric(),
                                                          Tags.of(
                                                                  MeterFactory.REQUEST,
                                                                  "query",

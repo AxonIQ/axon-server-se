@@ -70,7 +70,7 @@ public class MetricsRestControllerTest {
             }
         });
         commandMetricsRegistry = new CommandMetricsRegistry(new MeterFactory(new SimpleMeterRegistry(),
-                                                                             new DefaultMetricCollector()));
+                                                                             new DefaultMetricCollector()), true);
 
         QueryRegistrationCache queryRegistrationCache = new QueryRegistrationCache(new RoundRobinQueryHandlerSelector());
         queryClient = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "testclient");
@@ -96,7 +96,7 @@ public class MetricsRestControllerTest {
         principal = mock(Principal.class);
         when(principal.getName()).thenReturn("Testuser");
         queryMetricsRegistry = new QueryMetricsRegistry(new MeterFactory(new SimpleMeterRegistry(),
-                                                                         new DefaultMetricCollector()));
+                                                                         new DefaultMetricCollector()), false);
         testSubject = new MetricsRestController(commandRegistrationCache, commandMetricsRegistry,
                                                 queryRegistrationCache, queryMetricsRegistry,
                                                 new DefaultTopology(new MessagingPlatformConfiguration(new SystemInfoProvider() {
@@ -126,10 +126,10 @@ public class MetricsRestControllerTest {
         assertEquals(queryClient.getContext(), queries.get(0).getContext());
         assertEquals(0, queries.get(0).getCount());
 
-        queryMetricsRegistry.addHandlerResponseTime(new QueryDefinition(Topology.DEFAULT_CONTEXT, "query"),
-                                                    "Source",
+        queryMetricsRegistry.addEndToEndResponseTime(new QueryDefinition(Topology.DEFAULT_CONTEXT, "query"),
                                                     "Target",
                                                     queryClient.getContext(),
+                                                     false,
                                                     50);
 
         queries = testSubject.getQueryMetrics(principal);

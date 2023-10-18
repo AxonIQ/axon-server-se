@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2020 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -9,7 +9,12 @@
 
 package io.axoniq.axonserver.taskscheduler;
 
+import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.grpc.TaskStatus;
+import io.axoniq.axonserver.metric.BaseMetricName;
+import io.axoniq.axonserver.metric.MeterFactory;
+import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.Tags;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -19,7 +24,10 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Clock;
 import java.time.Duration;
-import java.util.*;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
@@ -29,6 +37,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+
+import static io.axoniq.axonserver.metric.MeterFactory.ERROR_CODE;
+import static io.axoniq.axonserver.metric.MeterFactory.REQUEST;
 
 /**
  * Task scheduling component that will execute tasks at a specified moment.
@@ -41,6 +52,10 @@ import java.util.function.Supplier;
 public abstract class BaseTaskManager implements SmartLifecycle {
 
     protected static final long MAX_RETRY_INTERVAL = TimeUnit.MINUTES.toMillis(1);
+    private static final String REPLICATION_GROUP = "replicationGroup";
+    private static final String TRANSIENT_ERROR = "transient";
+    private static final String TRANSIENT = "true";
+    private static final String NON_TRANSIENT = "false";
     protected static final Logger logger = LoggerFactory.getLogger(BaseTaskManager.class);
 
     protected final ScheduledTaskExecutor taskExecutor;
@@ -49,8 +64,11 @@ public abstract class BaseTaskManager implements SmartLifecycle {
     protected final Predicate<String> raftLeaderTest;
     protected final PlatformTransactionManager platformTransactionManager;
     protected final ScheduledExecutorService scheduler;
+    private final MeterFactory meterFactory;
     protected final Clock clock;
     protected final Map<String, Map<String, ScheduledFuture<?>>> scheduledProcessors = new ConcurrentHashMap<>();
+
+    private final Map<String, Gauge> taskCounterPerContext = new ConcurrentHashMap<>();
     protected final AtomicLong nextTimestamp = new AtomicLong();
     private final long window = Duration.ofMinutes(5).toMillis();
     private boolean running;
@@ -72,6 +90,7 @@ public abstract class BaseTaskManager implements SmartLifecycle {
             Predicate<String> raftLeaderTest,
             PlatformTransactionManager platformTransactionManager,
             @Qualifier("taskScheduler") ScheduledExecutorService scheduler,
+            MeterFactory meterFactory,
             Clock clock) {
         this.taskExecutor = taskExecutor;
         this.taskRepository = taskRepository;
@@ -79,13 +98,21 @@ public abstract class BaseTaskManager implements SmartLifecycle {
         this.raftLeaderTest = raftLeaderTest;
         this.platformTransactionManager = platformTransactionManager;
         this.scheduler = scheduler;
+        this.meterFactory = meterFactory;
         this.clock = clock;
     }
 
     protected void saveAndSchedule(Task task) {
+        taskCounterPerContext.computeIfAbsent(task.getContext(), c -> meterFactory.gauge(BaseMetricName.TASK_ACTIVE,
+                                                                                         Tags.of(REPLICATION_GROUP, c),
+                                                                                         () -> countTasks(c)));
         new TransactionTemplate(platformTransactionManager).execute(status -> taskRepository.save(task));
         logger.debug("{}: Task scheduled {}", task.getContext(), task.getTaskId());
         doScheduleTask(task);
+    }
+
+    private Number countTasks(String c) {
+        return taskRepository.countByContext(c);
     }
 
     protected void doScheduleTask(Task task) {
@@ -181,6 +208,7 @@ public abstract class BaseTaskManager implements SmartLifecycle {
     }
 
     private void executeTask(Task task) {
+        long started = clock.millis();
         scheduledProcessors.getOrDefault(task.getContext(), Collections.emptyMap()).remove(task.getTaskId());
         if (logger.isDebugEnabled()) {
             logger.debug("{}: Execute task {}: {} planned execution {}ms ago",
@@ -193,7 +221,7 @@ public abstract class BaseTaskManager implements SmartLifecycle {
 
         try {
             taskExecutor.executeTask(task)
-                        .thenAccept(r -> completed(task))
+                        .thenAccept(r -> completed(task, started))
                         .exceptionally(t -> {
                             error(task, t);
                             return null;
@@ -254,6 +282,15 @@ public abstract class BaseTaskManager implements SmartLifecycle {
                                                 TaskStatus.SCHEDULED,
                                                 newSchedule(task),
                     retryInterval, asString(cause));
+            meterFactory.counter(BaseMetricName.TASK_ERROR, Tags.of(REPLICATION_GROUP,
+                                                                    task.getContext(),
+                                                                    REQUEST,
+                                                                    task.getTaskExecutor(),
+                                                                    TRANSIENT_ERROR,
+                                                                    TRANSIENT,
+                                                                    ERROR_CODE,
+                                                                    ErrorCode.fromException(cause).getCode()))
+                        .increment();
         } else {
             logger.warn("{}: Failed to execute task {}: {}", task.getContext(),
                         task.getTaskId(),
@@ -264,7 +301,17 @@ public abstract class BaseTaskManager implements SmartLifecycle {
                                                 TaskStatus.FAILED,
                                                 clock.millis(),
                                                 0, asString(cause));
+            meterFactory.counter(BaseMetricName.TASK_ERROR, Tags.of(REPLICATION_GROUP,
+                                                                    task.getContext(),
+                                                                    REQUEST,
+                                                                    task.getTaskExecutor(),
+                                                                    TRANSIENT_ERROR,
+                                                                    NON_TRANSIENT,
+                                                                    ERROR_CODE,
+                                                                    ErrorCode.fromException(cause).getCode()))
+                        .increment();
         }
+
 
         publishResultFuture.exceptionally(e -> {
             logger.warn("{}: Failed to process result for task {}: {}", task.getContext(),
@@ -275,7 +322,7 @@ public abstract class BaseTaskManager implements SmartLifecycle {
         });
     }
 
-    protected void completed(Task task) {
+    protected void completed(Task task, long started) {
         processResult(task.getContext(),
                       task.getTaskId(),
                       TaskStatus.COMPLETED,
@@ -288,6 +335,9 @@ public abstract class BaseTaskManager implements SmartLifecycle {
                                 e);
                     return null;
                 });
+        meterFactory.timer(BaseMetricName.TASK_DURATION, Tags.of(REPLICATION_GROUP, task.getContext(),
+                                                                 REQUEST, task.getTaskExecutor()))
+                    .record(clock.millis() - started, TimeUnit.MILLISECONDS);
     }
 
     protected void unschedule(String context, String taskId) {

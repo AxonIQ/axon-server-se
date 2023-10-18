@@ -10,6 +10,7 @@
 package io.axoniq.axonserver.message.query.subscription.metric;
 
 import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents;
+import io.axoniq.axonserver.message.query.QueryMetricsRegistry;
 import io.axoniq.axonserver.message.query.subscription.SubscriptionMetrics;
 import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.ClusterMetric;
@@ -31,10 +32,10 @@ import java.util.function.BiFunction;
 
 import static io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse.ResponseCase.INITIAL_RESULT;
 import static io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse.ResponseCase.UPDATE;
-import static io.axoniq.axonserver.metric.BaseMetricName.AXON_SUBSCRIPTION_ACTIVE;
-import static io.axoniq.axonserver.metric.BaseMetricName.AXON_SUBSCRIPTION_DURATION;
-import static io.axoniq.axonserver.metric.BaseMetricName.AXON_SUBSCRIPTION_TOTAL;
-import static io.axoniq.axonserver.metric.BaseMetricName.AXON_SUBSCRIPTION_UPDATES;
+import static io.axoniq.axonserver.metric.BaseMetricName.SUBSCRIPTION_QUERIES_ACTIVE;
+import static io.axoniq.axonserver.metric.BaseMetricName.SUBSCRIPTION_QUERIES_DURATION;
+import static io.axoniq.axonserver.metric.BaseMetricName.SUBSCRIPTION_QUERIES_TOTAL;
+import static io.axoniq.axonserver.metric.BaseMetricName.SUBSCRIPTION_QUERIES_UPDATES;
 import static io.axoniq.axonserver.metric.MeterFactory.CONTEXT;
 import static io.axoniq.axonserver.metric.MeterFactory.REQUEST;
 import static io.axoniq.axonserver.metric.MeterFactory.SOURCE;
@@ -50,14 +51,14 @@ import static io.axoniq.axonserver.metric.MeterFactory.TARGET;
 public class SubscriptionQueryMetricRegistry {
 
     public static final String TAG_COMPONENT = "component";
-    private final MeterFactory localMetricRegistry;
+    private final QueryMetricsRegistry localMetricRegistry;
     private final BiFunction<String, Tags, ClusterMetric> clusterMetricProvider;
     private final Clock clock;
     private final Map<String, AtomicInteger> activeSubscriptionsMap = new ConcurrentHashMap<>();
     private final Map<String, ActiveSubscriptionQuery> activeSubscriptionQueryMap = new ConcurrentHashMap<>();
     private final Map<String, Long> initialQueryStartedMap = new ConcurrentHashMap<>();
 
-    public SubscriptionQueryMetricRegistry(MeterFactory localMetricRegistry,
+    public SubscriptionQueryMetricRegistry(QueryMetricsRegistry localMetricRegistry,
                                            BiFunction<String, Tags, ClusterMetric> clusterMetricProvider,
                                            Clock clock) {
         this.localMetricRegistry = localMetricRegistry;
@@ -80,13 +81,13 @@ public class SubscriptionQueryMetricRegistry {
     private HubSubscriptionMetrics getByTags(Tags tags) {
         return new HubSubscriptionMetrics(
                 tags,
-                new GaugeMetric(AXON_SUBSCRIPTION_ACTIVE.metric(),
-                                () -> localMetricRegistry.sum(AXON_SUBSCRIPTION_ACTIVE,
+                new GaugeMetric(SUBSCRIPTION_QUERIES_ACTIVE.metric(),
+                                () -> localMetricRegistry.sum(SUBSCRIPTION_QUERIES_ACTIVE,
                                                               tags)),
-                new CounterMetric(AXON_SUBSCRIPTION_TOTAL.metric(), () -> localMetricRegistry.count(
-                        AXON_SUBSCRIPTION_TOTAL, tags)),
-                new CounterMetric(AXON_SUBSCRIPTION_UPDATES.metric(), () -> localMetricRegistry.count(
-                        AXON_SUBSCRIPTION_UPDATES, tags)),
+                new CounterMetric(SUBSCRIPTION_QUERIES_TOTAL.metric(), () -> localMetricRegistry.count(
+                        SUBSCRIPTION_QUERIES_TOTAL, tags)),
+                new CounterMetric(SUBSCRIPTION_QUERIES_UPDATES.metric(), () -> localMetricRegistry.count(
+                        SUBSCRIPTION_QUERIES_UPDATES, tags)),
                 clusterMetricProvider);
     }
 
@@ -115,7 +116,9 @@ public class SubscriptionQueryMetricRegistry {
     @EventListener
     public void on(SubscriptionQueryEvents.SubscriptionQueryInitialResultRequested event) {
         initialQueryStartedMap.put(event.subscriptionId(), clock.millis());
+        localMetricRegistry.rateMeter(event.context()).mark();
     }
+
     @EventListener
     public void on(SubscriptionQueryEvents.SubscriptionQueryCanceled event) {
         ActiveSubscriptionQuery activeSubscriptionQuery = activeSubscriptionQueryMap.remove(event.subscriptionId());
@@ -140,21 +143,16 @@ public class SubscriptionQueryMetricRegistry {
             if (initialQueryStarted != null) {
                 String clientId = event.clientId();
                 long durationInMillis = clock.millis() - initialQueryStarted;
-                localMetricRegistry.timer(BaseMetricName.AXON_QUERY,
+                localMetricRegistry.timer(BaseMetricName.QUERY_DURATION,
                                           Tags.of(CONTEXT,
                                                   activeSubscriptionQuery.context,
                                                   REQUEST,
-                                                  normalizeRequest(activeSubscriptionQuery.request),
+                                                  activeSubscriptionQuery.request,
                                                   SOURCE,
                                                   clientId,
                                                   TARGET,
                                                   event.clientId()))
                                    .record(durationInMillis, TimeUnit.MILLISECONDS);
-                localMetricRegistry.timer(BaseMetricName.LOCAL_QUERY_RESPONSE_TIME, Tags.of(
-                        MeterFactory.REQUEST, normalizeRequest(activeSubscriptionQuery.request),
-                        MeterFactory.CONTEXT, activeSubscriptionQuery.context,
-                        MeterFactory.TARGET, clientId)).record(durationInMillis,
-                                                               TimeUnit.MILLISECONDS);
             }
         }
 
@@ -169,15 +167,11 @@ public class SubscriptionQueryMetricRegistry {
         }
     }
 
-    private String normalizeRequest(String request) {
-        return request.replace(".", "/");
-    }
-
     private AtomicInteger activeSubscriptionsMetric(String component, String context, String request) {
         return activeSubscriptionsMap.computeIfAbsent(activeSubscriptionsMetricName(component, context, request),
                                                       name -> {
                                                           AtomicInteger atomicInteger = new AtomicInteger(0);
-                                                          localMetricRegistry.gauge(AXON_SUBSCRIPTION_ACTIVE,
+                                                          localMetricRegistry.gauge(SUBSCRIPTION_QUERIES_ACTIVE,
                                                                                     Tags.of(MeterFactory.CONTEXT,
                                                                                             context,
                                                                                             TAG_COMPONENT,
@@ -200,7 +194,7 @@ public class SubscriptionQueryMetricRegistry {
 
     private Counter totalSubscriptionsMetric(String component, String context, String request) {
         return localMetricRegistry
-                .counter(AXON_SUBSCRIPTION_TOTAL,
+                .counter(SUBSCRIPTION_QUERIES_TOTAL,
                          Tags.of(MeterFactory.CONTEXT, context,
                                  TAG_COMPONENT, component,
                                  REQUEST, request));
@@ -208,7 +202,7 @@ public class SubscriptionQueryMetricRegistry {
 
     private Timer subscriptionDurationMetric(String component, String context, String request) {
         return localMetricRegistry
-                .timer(AXON_SUBSCRIPTION_DURATION,
+                .timer(SUBSCRIPTION_QUERIES_DURATION,
                        Tags.of(MeterFactory.CONTEXT, context,
                                TAG_COMPONENT, component,
                                REQUEST, request));
@@ -216,7 +210,7 @@ public class SubscriptionQueryMetricRegistry {
 
     private Counter updatesMetric(String component, String context, String request) {
         return localMetricRegistry
-                .counter(AXON_SUBSCRIPTION_UPDATES,
+                .counter(SUBSCRIPTION_QUERIES_UPDATES,
                          Tags.of(MeterFactory.CONTEXT,
                                  context,
                                  TAG_COMPONENT,

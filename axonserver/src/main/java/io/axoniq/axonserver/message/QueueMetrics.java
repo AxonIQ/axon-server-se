@@ -7,16 +7,13 @@
  *
  */
 
-package io.axoniq.axonserver.localstorage;
+package io.axoniq.axonserver.message;
 
-/**
- * @author Marc Gathier
- */
-public interface StorageCallback {
-    boolean complete(long firstToken);
+import java.util.Queue;
 
-    default void error(Throwable cause) {
-        // no action
-    }
+public interface QueueMetrics {
 
+    void add(String queueName, Queue<?> queue);
+
+    void remove(String queueName);
 }
