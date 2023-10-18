@@ -21,6 +21,7 @@ import io.axoniq.axonserver.grpc.control.ClientIdentification;
 import io.axoniq.axonserver.grpc.control.NodeInfo;
 import io.axoniq.axonserver.grpc.control.PlatformInfo;
 import io.axoniq.axonserver.grpc.control.PlatformServiceGrpc;
+import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.topology.Topology;
 import io.grpc.CallOptions;
@@ -34,6 +35,7 @@ import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import io.grpc.netty.NettyChannelBuilder;
 import io.grpc.stub.StreamObserver;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -64,7 +66,7 @@ public class GatewayTest {
     private MessagingPlatformConfiguration routingConfiguration;
     private final LicenseAccessController licenseAccessController = mock(LicenseAccessController.class);
     private final Supplier<ScheduledExecutorService> maintenanceSchedulerSupplier = Executors::newSingleThreadScheduledExecutor;
-    private final MeterFactory meterFactory = mock(MeterFactory.class);
+    private final MeterFactory meterFactory = new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector());
 
 
     @Before

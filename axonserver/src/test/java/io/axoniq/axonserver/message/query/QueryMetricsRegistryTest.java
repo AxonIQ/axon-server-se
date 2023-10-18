@@ -33,7 +33,7 @@ public class QueryMetricsRegistryTest {
     @Before
     public void setUp() {
         testSubject = new QueryMetricsRegistry(new MeterFactory(meterRegistry,
-                                                                new DefaultMetricCollector()), false);
+                                                                new DefaultMetricCollector()), true);
     }
 
     @Test
@@ -72,7 +72,7 @@ public class QueryMetricsRegistryTest {
     @Test
     public void get() {
         QueryDefinition queryDefinition = new QueryDefinition(DEFAULT_CONTEXT, "a");
-        testSubject.addHandlerResponseTime(queryDefinition, "source", "target", DEFAULT_CONTEXT, 1L);
+        testSubject.addEndToEndResponseTime(queryDefinition, "target", DEFAULT_CONTEXT, false, 1L);
         QueryMetricsRegistry.QueryMetric queryMetric = testSubject
                 .queryMetric(queryDefinition, "target", DEFAULT_CONTEXT, "");
         assertEquals(1, queryMetric.getCount());
@@ -81,5 +81,4 @@ public class QueryMetricsRegistryTest {
                                               "");
         assertEquals(0, queryMetric.getCount());
     }
-
 }

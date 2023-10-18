@@ -97,9 +97,8 @@ public class QueryServiceTest {
         Thread.sleep(250);
         assertEquals(1, queryQueue.getSegments().size());
         String key = queryQueue.getSegments().entrySet().iterator().next().getKey();
-        String clientStreamId = key.substring(0, key.lastIndexOf("."));
         ClientStreamIdentification clientStreamIdentification =
-                new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, clientStreamId);
+                new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, key);
         QueryInstruction.Query query1 = new QueryInstruction.Query(clientStreamIdentification,
                                                                   "name",
                                                                   new SerializedQuery(Topology.DEFAULT_CONTEXT, "name",
@@ -111,14 +110,14 @@ public class QueryServiceTest {
                                                                   System.currentTimeMillis() + 2000,
                                                                   0,
                                                                   false);
-        queryQueue.put(clientStreamIdentification.toString(), QueryInstruction.query(query1));
+        queryQueue.put(clientStreamIdentification.getClientStreamId(), QueryInstruction.query(query1));
         Thread.sleep(150);
         assertEquals(1, FakeStreamObserver.values().size());
         QueryInstruction.Query query2 = new QueryInstruction.Query(
                 clientStreamIdentification,
                 "name", new SerializedQuery(Topology.DEFAULT_CONTEXT, "name", QueryRequest.newBuilder().build()),
                 System.currentTimeMillis() - 2000, 0, false);
-        queryQueue.put(clientStreamIdentification.toString(), QueryInstruction.query(query2));
+        queryQueue.put(clientStreamIdentification.getClientStreamId(), QueryInstruction.query(query2));
         Thread.sleep(150);
         assertEquals(1, FakeStreamObserver.values().size());
     }

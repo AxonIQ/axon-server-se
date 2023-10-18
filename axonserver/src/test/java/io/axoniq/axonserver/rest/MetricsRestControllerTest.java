@@ -126,10 +126,10 @@ public class MetricsRestControllerTest {
         assertEquals(queryClient.getContext(), queries.get(0).getContext());
         assertEquals(0, queries.get(0).getCount());
 
-        queryMetricsRegistry.addHandlerResponseTime(new QueryDefinition(Topology.DEFAULT_CONTEXT, "query"),
-                                                    "Source",
+        queryMetricsRegistry.addEndToEndResponseTime(new QueryDefinition(Topology.DEFAULT_CONTEXT, "query"),
                                                     "Target",
                                                     queryClient.getContext(),
+                                                     false,
                                                     50);
 
         queries = testSubject.getQueryMetrics(principal);

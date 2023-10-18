@@ -13,6 +13,9 @@ package io.axoniq.axonserver.message.query;
 import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
+import io.axoniq.axonserver.grpc.ClientContext;
+import io.axoniq.axonserver.grpc.ClientIdRegistry;
+import io.axoniq.axonserver.grpc.DefaultClientIdRegistry;
 import io.axoniq.axonserver.grpc.SerializedQuery;
 import io.axoniq.axonserver.grpc.query.QueryProviderInbound;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
@@ -29,7 +32,7 @@ import io.axoniq.axonserver.plugin.ExecutionContext;
 import io.axoniq.axonserver.test.FakeStreamObserver;
 import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.util.FailingStreamObserver;
-import io.micrometer.core.instrument.Metrics;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -65,22 +68,26 @@ import static org.mockito.Mockito.when;
 @RunWith(MockitoJUnitRunner.class)
 public class QueryDispatcherTest {
 
-    private final MeterFactory meterFactory = new MeterFactory(Metrics.globalRegistry, new DefaultMetricCollector());
+    private final MeterFactory meterFactory = new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector());
     private final QueryMetricsRegistry queryMetricsRegistry = new QueryMetricsRegistry(meterFactory, true);
     private final QueryCache queryCache = new QueryCache(1000, 100);
     private QueryDispatcher testSubject;
 
     @Mock
     private QueryRegistrationCache registrationCache;
+    private DefaultClientIdRegistry clientIdRegistry = new DefaultClientIdRegistry();
 
     @Before
     public void setup() {
+        clientIdRegistry.register("client",
+                                  new ClientContext("client", "default"),
+                                  ClientIdRegistry.ConnectionType.QUERY);
         testSubject = new QueryDispatcher(registrationCache,
                                           queryCache,
                                           queryMetricsRegistry,
                                           new NoOpQueryInterceptors(),
                                           meterFactory,
-                                          null,
+                                          clientIdRegistry,
                                           10_000);
     }
 
@@ -158,7 +165,7 @@ public class QueryDispatcherTest {
                                           queryMetricsRegistry,
                                           new NoOpQueryInterceptors(),
                                           meterFactory,
-                                          null,
+                                          clientIdRegistry,
                                           0);
         String requestId = "1234";
         QueryRequest request = QueryRequest.newBuilder()
@@ -339,7 +346,7 @@ public class QueryDispatcherTest {
         testSubject.dispatchProxied(forwardedQuery, r -> {
         }, s -> {
         });
-        assertEquals(1, testSubject.getQueryQueue().getSegments().get("client.default").size());
+        assertEquals(1, testSubject.getQueryQueue().getSegments().get("client").size());
     }
 
     @Test
@@ -422,7 +429,7 @@ public class QueryDispatcherTest {
         testSubject.cancel(requestId);
 
         FlowControlQueues<QueryInstruction> queue = testSubject.getQueryQueue();
-        QueryInstruction instruction = queue.take("client.default");
+        QueryInstruction instruction = queue.take("client");
         assertNull(instruction);
     }
 
@@ -453,9 +460,9 @@ public class QueryDispatcherTest {
         testSubject.flowControl(requestId, 100);
 
         FlowControlQueues<QueryInstruction> queue = testSubject.getQueryQueue();
-        QueryInstruction instruction = queue.take("client.default");
+        QueryInstruction instruction = queue.take("client");
         assertTrue(instruction.query().isPresent());
-        instruction = queue.take("client.default");
+        instruction = queue.take("client");
         assertTrue(instruction.flowControl().isPresent());
         assertEquals(requestId, instruction.requestId());
         assertEquals(100, instruction.flowControl().get().flowControl());
@@ -581,7 +588,7 @@ public class QueryDispatcherTest {
                                                               queryMetricsRegistry,
                                                               new MyQueryInterceptors(),
                                                               meterFactory,
-                                                              null,
+                                                              clientIdRegistry,
                                                               10_000);
         String requestId = "1234";
         QueryRequest request = QueryRequest.newBuilder()
@@ -603,7 +610,7 @@ public class QueryDispatcherTest {
                               completion::set);
         queryDispatcher.cancel(requestId);
         assertTrue(queryCache.isEmpty());
-        assertNull(queryDispatcher.getQueryQueue().take("client.default"));
+        assertNull(queryDispatcher.getQueryQueue().take("client"));
         assertNotNull(completion.get());
     }
 }
