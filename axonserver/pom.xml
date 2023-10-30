@@ -14,7 +14,7 @@
     <parent>
 		<groupId>io.axoniq.axonserver</groupId>
 		<artifactId>axonserver-se</artifactId>
-        <version>2023.2.0</version>
+        <version>2023.2.1-SNAPSHOT</version>
     </parent>
     <artifactId>axonserver</artifactId>
     <name>AxonServer - Standard edition</name>
