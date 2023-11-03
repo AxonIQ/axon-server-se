@@ -183,6 +183,9 @@ public class MeterFactory {
         private final Gauge fiveMinutes;
         private final Gauge oneMinute;
         private final Gauge fifteenMinutes;
+        private final Gauge legacyFiveMinutes;
+        private final Gauge legacyOneMinute;
+        private final Gauge legacyFifteenMinutes;
 
         private RateMeter(MetricName metricName, MetricName legacyMetricName, Tags tags) {
             this.name = metricName.metric();
@@ -215,20 +218,27 @@ public class MeterFactory {
                                        .register(meterRegistry);
 
 
-                Gauge.builder(legacyName + ONE_MINUTE_RATE, meter, IntervalCounter::getOneMinuteRate)
+                legacyOneMinute = Gauge.builder(legacyName + ONE_MINUTE_RATE, meter, IntervalCounter::getOneMinuteRate)
                      .description(legacyMetricName.description() + " per second (last minute)")
                      .tags(tags)
                      .register(meterRegistry);
-                Gauge.builder(legacyName + FIVE_MINUTE_RATE, meter, IntervalCounter::getFiveMinuteRate)
+                legacyFiveMinutes = Gauge.builder(legacyName + FIVE_MINUTE_RATE,
+                                                  meter,
+                                                  IntervalCounter::getFiveMinuteRate)
                      .description(legacyMetricName.description() + " per second (last 5 minutes)")
                      .tags(tags)
                      .register(meterRegistry);
-                Gauge.builder(legacyName + FIFTEEN_MINUTE_RATE, meter, IntervalCounter::getFifteenMinuteRate)
+                legacyFifteenMinutes = Gauge.builder(legacyName + FIFTEEN_MINUTE_RATE,
+                                                     meter,
+                                                     IntervalCounter::getFifteenMinuteRate)
                      .description(legacyMetricName.description() + " per second (last 15 minutes)")
                      .tags(tags)
                      .register(meterRegistry);
             } else {
                 legacyCounter = null;
+                legacyOneMinute = null;
+                legacyFiveMinutes = null;
+                legacyFifteenMinutes = null;
             }
         }
 
@@ -280,10 +290,21 @@ public class MeterFactory {
 
         public void remove() {
             meterRegistry.remove(counter);
-            meterRegistry.remove(legacyCounter);
             meterRegistry.remove(fifteenMinutes);
             meterRegistry.remove(fiveMinutes);
             meterRegistry.remove(oneMinute);
+            if (legacyCounter != null) {
+                meterRegistry.remove(legacyCounter);
+            }
+            if (legacyOneMinute != null) {
+                meterRegistry.remove(legacyOneMinute);
+            }
+            if (legacyFiveMinutes != null) {
+                meterRegistry.remove(legacyFiveMinutes);
+            }
+            if (legacyFifteenMinutes != null) {
+                meterRegistry.remove(legacyFifteenMinutes);
+            }
         }
     }
 }
