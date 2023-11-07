@@ -67,7 +67,7 @@ public interface AppendOnlyFileStore {
      * @return iterator of entries
      */
     // TODO: 12/30/21 remove
-    CloseableIterator<FileStoreEntry> iterator(int fromIndex);
+    CloseableIterator<FileStoreEntry> iterator(long fromIndex);
 
     /**
      * Deletes the file store.

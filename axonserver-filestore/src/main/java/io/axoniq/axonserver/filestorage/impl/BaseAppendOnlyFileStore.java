@@ -129,7 +129,7 @@ public class BaseAppendOnlyFileStore implements AppendOnlyFileStore {
         });
     }
 
-    public CloseableIterator<FileStoreEntry> iterator(int fromIndex) {
+    public CloseableIterator<FileStoreEntry> iterator(long fromIndex) {
         return primary.getEntryIterator(fromIndex);
     }
 
