@@ -49,7 +49,7 @@
         <axonserver-plugin-api.version>4.6.1</axonserver-plugin-api.version>
         <axonserver.api.version>4.6.1</axonserver.api.version>
         <flow.control.version>1.2</flow.control.version>
-        <spring-boot.version>2.7.1</spring-boot.version>
+        <spring-boot.version>2.7.18</spring-boot.version>
     </properties>
 
     <dependencyManagement>
