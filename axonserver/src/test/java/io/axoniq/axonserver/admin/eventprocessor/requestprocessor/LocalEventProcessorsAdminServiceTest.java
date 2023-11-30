@@ -41,7 +41,7 @@ import reactor.test.StepVerifier;
 
 import javax.annotation.Nonnull;
 import java.util.Collections;
-
+import java.util.Arrays;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.mockito.Mockito.any;
@@ -430,9 +430,12 @@ public class LocalEventProcessorsAdminServiceTest {
                                           .flatMap(eventProcessor -> Flux.fromIterable(eventProcessor.instances()))
                                           .map(EventProcessorInstance::clientId);
 
-        StepVerifier.create(clients)
-                    .expectNext("Client-A", "Client-B", "Client-E")
-                    .verifyComplete();
+        StepVerifier.create(clients.collectList())
+                .consumeNextWith(sortedClients -> {
+                    Collections.sort(sortedClients);
+                    Assertions.assertEquals(Arrays.asList("Client-A", "Client-B", "Client-E"), sortedClients);
+                })
+                .verifyComplete();
     }
 
     @Test
