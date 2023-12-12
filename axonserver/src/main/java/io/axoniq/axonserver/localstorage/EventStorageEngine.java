@@ -18,6 +18,7 @@ import reactor.core.publisher.Mono;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
@@ -30,6 +31,7 @@ import java.util.stream.Stream;
  * @since 4.1
  */
 public interface EventStorageEngine {
+
 
     enum SearchHint {
         RECENT_ONLY
@@ -248,4 +250,9 @@ public interface EventStorageEngine {
     default Mono<Void> deleteOldVersions() {
         return Mono.error(new UnsupportedOperationException("deleteSegments: Operation not supported by this EventStorageEngine"));
     }
+
+    default Registration registerEventListener(BiConsumer<Long, List<Event>> listener) {
+        return () -> {};
+    }
+
 }

@@ -8,7 +8,7 @@ properties([
 def label = "worker-${UUID.randomUUID().toString()}"
 
 def deployingBranches = [   // The branches mentioned here will get their artifacts deployed to Nexus
-    "master", "axonserver-se-2023.2.x"
+    "master", "axonserver-se-2023.2.x", "fix/event-processor-delay"
 ]
 
 /*

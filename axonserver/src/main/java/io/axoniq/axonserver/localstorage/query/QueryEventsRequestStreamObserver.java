@@ -23,12 +23,11 @@ import io.axoniq.axonserver.grpc.event.QueryValue;
 import io.axoniq.axonserver.grpc.event.RowResponse;
 import io.axoniq.axonserver.localstorage.AggregateReader;
 import io.axoniq.axonserver.localstorage.EventDecorator;
+import io.axoniq.axonserver.localstorage.EventStorageEngine;
 import io.axoniq.axonserver.localstorage.EventStreamReader;
-import io.axoniq.axonserver.localstorage.EventWriteStorage;
 import io.axoniq.axonserver.localstorage.QueryOptions;
 import io.axoniq.axonserver.localstorage.Registration;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
-import io.axoniq.axonserver.localstorage.SnapshotWriteStorage;
 import io.axoniq.axonserver.localstorage.query.result.AbstractMapExpressionResult;
 import io.axoniq.axonserver.localstorage.query.result.BooleanExpressionResult;
 import io.axoniq.axonserver.localstorage.query.result.DefaultQueryResult;
@@ -50,7 +49,6 @@ import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -79,10 +77,10 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
                                                                                                            "ad-hoc-query-"));
     public static final String COLUMN_NAME_TOKEN = "token";
 
-    private final SnapshotWriteStorage snapshotWriteStorage;
+    private final EventStorageEngine snapshotWriteStorage;
     private final EventStreamReader snapshotStreamReader;
 
-    private final EventWriteStorage eventWriteStorage;
+    private final EventStorageEngine eventWriteStorage;
     private final EventStreamReader eventStreamReader;
 
     private final AggregateReader aggregateReader;
@@ -94,11 +92,11 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
     private volatile Registration registration;
     private volatile Pipeline pipeLine;
 
-    public QueryEventsRequestStreamObserver(EventWriteStorage eventWriteStorage, EventStreamReader eventStreamReader,
+    public QueryEventsRequestStreamObserver(EventStorageEngine eventWriteStorage, EventStreamReader eventStreamReader,
                                             AggregateReader aggregateReader,
                                             long defaultLimit, long timeout, EventDecorator eventDecorator,
                                             StreamObserver<QueryEventsResponse> responseObserver,
-                                            SnapshotWriteStorage snapshotWriteStorage,
+                                            EventStorageEngine snapshotWriteStorage,
                                             EventStreamReader snapshotStreamReader) {
         this.eventWriteStorage = eventWriteStorage;
         this.eventStreamReader = eventStreamReader;
@@ -174,9 +172,9 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
                 sendColumns(pipeLine, aggregateIdentifier != null);
                 if (queryEventsRequest.getLiveEvents() && maxToken > connectionToken) {
                     if(querySnapshots) {
-                        registration = snapshotWriteStorage.registerEventListener((token, event) -> pushEventFromStream(
+                        registration = snapshotWriteStorage.registerEventListener((token, events) -> pushEventFromStream(
                                 token,
-                                Collections.singletonList(Event.newBuilder(event).setSnapshot(true).build()),
+                                events,
                                 pipeLine));
                     } else {
                         registration = eventWriteStorage.registerEventListener((token, events) -> pushEventFromStream(token,

@@ -15,9 +15,15 @@ import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.grpc.event.QueryEventsRequest;
 import io.axoniq.axonserver.grpc.event.QueryEventsResponse;
-import io.axoniq.axonserver.localstorage.*;
+import io.axoniq.axonserver.localstorage.AggregateReader;
+import io.axoniq.axonserver.localstorage.DefaultEventDecorator;
+import io.axoniq.axonserver.localstorage.EventStorageEngine;
+import io.axoniq.axonserver.localstorage.EventStreamReader;
+import io.axoniq.axonserver.localstorage.QueryOptions;
+import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.grpc.stub.StreamObserver;
-import org.junit.*;
+import org.junit.Before;
+import org.junit.Test;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -28,8 +34,15 @@ import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
-import static org.junit.Assert.*;
-import static org.mockito.Mockito.*;
+import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.anyBoolean;
+import static org.mockito.Mockito.anyInt;
+import static org.mockito.Mockito.anyLong;
+import static org.mockito.Mockito.anyString;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * @author Marc Gathier
@@ -44,8 +57,8 @@ public class QueryEventsRequestStreamObserverTest {
 
     @Before
     public void setUp() throws Exception {
-        EventWriteStorage eventWriteStorage = mock(EventWriteStorage.class);
-        SnapshotWriteStorage snapshotWriteStorage = mock(SnapshotWriteStorage.class);
+        EventStorageEngine eventWriteStorage = mock(EventStorageEngine.class);
+        EventStorageEngine snapshotWriteStorage = mock(EventStorageEngine.class);
 
         StreamObserver<QueryEventsResponse> responseObserver = new StreamObserver<QueryEventsResponse>() {
             private List<QueryEventsResponse> responses = new LinkedList<>();

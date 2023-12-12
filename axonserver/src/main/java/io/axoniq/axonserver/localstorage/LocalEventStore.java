@@ -673,14 +673,14 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                 .noEventReadInterceptors(context) ? eventDecorator : new InterceptorAwareEventDecorator(context,
                                                                                                         authentication);
 
-        return new QueryEventsRequestStreamObserver(workers.eventWriteStorage,
+        return new QueryEventsRequestStreamObserver(workers.eventStorageEngine,
                                                     workers.eventStreamReader,
                                                     workers.aggregateReader,
                                                     defaultLimit,
                                                     timeout,
                                                     activeEventDecorator,
                                                     responseObserver,
-                                                    workers.snapshotWriteStorage,
+                                                    workers.snapshotStorageEngine,
                                                     workers.snapshotStreamReader
         );
     }
@@ -894,7 +894,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
 
             this.snapshotSyncStorage = new SyncStorage(snapshotStorageEngine);
             this.eventSyncStorage = new SyncStorage(eventStorageEngine);
-            this.eventWriteStorage.registerEventListener((token, events) -> this.trackingEventManager.reschedule());
+            this.eventStorageEngine.registerEventListener((token, events) -> this.trackingEventManager.reschedule());
             this.gauge = meterFactory.gauge(BaseMetricName.AXON_EVENT_LAST_TOKEN,
                                             Tags.of(MeterFactory.CONTEXT, context),
                                             context,

@@ -48,6 +48,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -69,6 +70,9 @@ public class FileEventStorageEngine implements EventStorageEngine {
     protected static final Logger logger = LoggerFactory.getLogger(FileEventStorageEngine.class);
     public static final int MAX_EVENTS_PER_BLOCK = Short.MAX_VALUE;
     private static final int PREFETCH_SEGMENT_FILES = 2;
+
+    private final Set<BiConsumer<Long, List<Event>>> listeners = new CopyOnWriteArraySet<>();
+
 
     private final WritableFileStorageTier head;
     protected final Set<Runnable> closeListeners = new CopyOnWriteArraySet<>();
@@ -166,7 +170,10 @@ public class FileEventStorageEngine implements EventStorageEngine {
 
     @Override
     public CompletableFuture<Long> store(List<Event> eventList, int segmentVersion) {
-        return head.store(eventList, segmentVersion);
+        return head.store(eventList, segmentVersion).thenApply(token -> {
+            listeners.forEach(listener -> listener.accept(token, eventList));
+            return token;
+        });
     }
 
     @Override
@@ -420,6 +427,12 @@ public class FileEventStorageEngine implements EventStorageEngine {
                 .doOnNext(fileVersion -> logger.debug("{} : version to delete {}", context, fileVersion))
                 .flatMapSequential(this::delete)
                 .then();
+    }
+
+    @Override
+    public Registration registerEventListener(BiConsumer<Long, List<Event>> listener) {
+        listeners.add(listener);
+        return () -> listeners.remove(listener);
     }
 
     private Mono<Void> delete(FileVersion fileVersion) {

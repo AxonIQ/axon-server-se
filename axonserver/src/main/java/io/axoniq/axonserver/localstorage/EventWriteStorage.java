@@ -16,9 +16,6 @@ import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 
 /**
@@ -29,7 +26,6 @@ import java.util.function.BiConsumer;
 public class EventWriteStorage {
     private static final Logger logger = LoggerFactory.getLogger(EventWriteStorage.class);
 
-    private final Map<String, BiConsumer<Long, List<Event>>> listeners = new ConcurrentHashMap<>();
     private final StorageTransactionManager storageTransactionManager;
 
 
@@ -44,9 +40,7 @@ public class EventWriteStorage {
                     Runnable releaseSequences = reserveSequences(eventList);
                     return storageTransactionManager.storeBatch(eventList)
                             .doOnError(t-> logger.error("Error occurred while writing batch: ",t))
-                            .doOnError(e -> releaseSequences.run())
-                            .doOnSuccess(firstToken -> listeners.values()
-                                    .forEach(consumer -> eventsStored(consumer, firstToken, eventList)));
+                            .doOnError(e -> releaseSequences.run());
                 }).then();
     }
 
@@ -62,12 +56,6 @@ public class EventWriteStorage {
 
     private Runnable reserveSequences(List<Event> eventList) {
         return storageTransactionManager.reserveSequenceNumbers(eventList);
-    }
-
-    public Registration registerEventListener(BiConsumer<Long, List<Event>> listener) {
-        String id = UUID.randomUUID().toString();
-        listeners.put(id, listener);
-        return () -> listeners.remove(id);
     }
 
     /**
