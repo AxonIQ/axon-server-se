@@ -24,7 +24,6 @@ import io.axoniq.axonserver.grpc.event.RowResponse;
 import io.axoniq.axonserver.localstorage.AggregateReader;
 import io.axoniq.axonserver.localstorage.EventDecorator;
 import io.axoniq.axonserver.localstorage.EventStorageEngine;
-import io.axoniq.axonserver.localstorage.EventStreamReader;
 import io.axoniq.axonserver.localstorage.QueryOptions;
 import io.axoniq.axonserver.localstorage.Registration;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
@@ -77,11 +76,9 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
                                                                                                            "ad-hoc-query-"));
     public static final String COLUMN_NAME_TOKEN = "token";
 
-    private final EventStorageEngine snapshotWriteStorage;
-    private final EventStreamReader snapshotStreamReader;
+    private final EventStorageEngine snapshotStorageEngine;
 
-    private final EventStorageEngine eventWriteStorage;
-    private final EventStreamReader eventStreamReader;
+    private final EventStorageEngine eventStorageEngine;
 
     private final AggregateReader aggregateReader;
     private final long defaultLimit;
@@ -92,22 +89,18 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
     private volatile Registration registration;
     private volatile Pipeline pipeLine;
 
-    public QueryEventsRequestStreamObserver(EventStorageEngine eventWriteStorage, EventStreamReader eventStreamReader,
+    public QueryEventsRequestStreamObserver(EventStorageEngine eventStorageEngine,
                                             AggregateReader aggregateReader,
                                             long defaultLimit, long timeout, EventDecorator eventDecorator,
                                             StreamObserver<QueryEventsResponse> responseObserver,
-                                            EventStorageEngine snapshotWriteStorage,
-                                            EventStreamReader snapshotStreamReader) {
-        this.eventWriteStorage = eventWriteStorage;
-        this.eventStreamReader = eventStreamReader;
+                                            EventStorageEngine snapshotStorageEngine) {
+        this.eventStorageEngine = eventStorageEngine;
         this.aggregateReader = aggregateReader;
         this.defaultLimit = defaultLimit;
         this.deadline = System.currentTimeMillis() + timeout;
         this.eventDecorator = eventDecorator;
         this.responseObserver = responseObserver;
-        this.snapshotWriteStorage = snapshotWriteStorage;
-        this.snapshotStreamReader = snapshotStreamReader;
-
+        this.snapshotStorageEngine = snapshotStorageEngine;
     }
 
     @Override
@@ -115,12 +108,12 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
         try {
             boolean querySnapshots = queryEventsRequest.getQuerySnapshots();
 
-            EventStreamReader streamReader;
+            EventStorageEngine streamReader;
 
             if(querySnapshots) {
-                streamReader = snapshotStreamReader;
+                streamReader = snapshotStorageEngine;
             } else {
-                streamReader = eventStreamReader;
+                streamReader = eventStorageEngine;
             }
 
             Sender sender = senderRef.updateAndGet(s -> {
@@ -134,9 +127,9 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
             if (sender.start()) {
                 long connectionToken = streamReader.getLastToken();
                 long maxToken = Long.MAX_VALUE;
-                long minConnectionToken = StringUtils.isEmpty(queryEventsRequest.getQuery()) ? Math.max(
+                long minConnectionToken = !StringUtils.hasText(queryEventsRequest.getQuery()) ? Math.max(
                         connectionToken - defaultLimit, 0) : 0;
-                String queryString = StringUtils.isEmpty(queryEventsRequest.getQuery()) ?
+                String queryString = !StringUtils.hasText(queryEventsRequest.getQuery()) ?
                         "token >= " + minConnectionToken + "| sortby(token)" : queryEventsRequest.getQuery();
                 String timeWindow = getTimeWindow(queryEventsRequest);
                 if (!TIME_WINDOW_CUSTOM.equals(timeWindow)) {
@@ -172,14 +165,14 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
                 sendColumns(pipeLine, aggregateIdentifier != null);
                 if (queryEventsRequest.getLiveEvents() && maxToken > connectionToken) {
                     if(querySnapshots) {
-                        registration = snapshotWriteStorage.registerEventListener((token, events) -> pushEventFromStream(
+                        registration = snapshotStorageEngine.registerEventListener((token, events) -> pushEventFromStream(
                                 token,
                                 events,
                                 pipeLine));
                     } else {
-                        registration = eventWriteStorage.registerEventListener((token, events) -> pushEventFromStream(token,
-                                events,
-                                pipeLine));
+                        registration = eventStorageEngine.registerEventListener((token, events) -> pushEventFromStream(token,
+                                                                                                                       events,
+                                                                                                                       pipeLine));
                     }
                 }
                 if (aggregateIdentifier == null) {
@@ -325,7 +318,7 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
                 .ifPresent(sender -> {
                     if (hideToken) {
                         List<String> names = new ArrayList<>(pipeLine.columnNames(EventExpressionResult.COLUMN_NAMES));
-                        names.remove("token");
+                        names.remove(COLUMN_NAME_TOKEN);
                         sender.sendColumnNames(names);
                     } else {
                         sender.sendColumnNames(pipeLine.columnNames(EventExpressionResult.COLUMN_NAMES));
@@ -368,14 +361,18 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
         private final AtomicLong generatedId = new AtomicLong(0);
         private final AtomicLong permits;
         private final AtomicBoolean started = new AtomicBoolean(false);
+        private final AtomicBoolean sendCompleted = new AtomicBoolean(false);
         private ScheduledFuture<?> sendTask;
         private List<String> columns;
-        private volatile QueryEventsResponse completeMessage;
+        private final QueryEventsResponse completeMessage;
 
         public Sender(long permits, boolean liveUpdates, long deadline) {
             this.liveUpdates = liveUpdates;
             this.deadline = deadline;
             this.permits = new AtomicLong(permits);
+            this.completeMessage = QueryEventsResponse.newBuilder().setFilesCompleted(Confirmation.newBuilder()
+                                                                                                  .setSuccess(true))
+                                                      .build();
         }
 
         public void addPermits(long permits) {
@@ -444,9 +441,9 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
                 }
 
                 if (permits.get() >= 0) {
-                    if (completeMessage != null) {
+                    if (sendCompleted.get()) {
                         responseObserver.onNext(completeMessage);
-                        completeMessage = null;
+                        sendCompleted.set(false);
                         if (!liveUpdates) {
                             responseObserver.onCompleted();
                             stop();
@@ -535,9 +532,7 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
         }
 
         public void completed() {
-            this.completeMessage = QueryEventsResponse.newBuilder().setFilesCompleted(Confirmation.newBuilder()
-                                                                                                  .setSuccess(true))
-                                                      .build();
+            sendCompleted.set(true);
         }
     }
 }

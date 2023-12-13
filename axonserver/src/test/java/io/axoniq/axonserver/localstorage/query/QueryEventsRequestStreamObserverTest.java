@@ -18,7 +18,6 @@ import io.axoniq.axonserver.grpc.event.QueryEventsResponse;
 import io.axoniq.axonserver.localstorage.AggregateReader;
 import io.axoniq.axonserver.localstorage.DefaultEventDecorator;
 import io.axoniq.axonserver.localstorage.EventStorageEngine;
-import io.axoniq.axonserver.localstorage.EventStreamReader;
 import io.axoniq.axonserver.localstorage.QueryOptions;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.grpc.stub.StreamObserver;
@@ -50,15 +49,13 @@ import static org.mockito.Mockito.when;
 public class QueryEventsRequestStreamObserverTest {
 
     private QueryEventsRequestStreamObserver testSubject;
-    private final EventStreamReader eventStreamReader = mock(EventStreamReader.class);
-    private final EventStreamReader snapshotStreamReader = mock(EventStreamReader.class);
+    private final EventStorageEngine eventStreamReader = mock(EventStorageEngine.class);
+    private final EventStorageEngine snapshotStreamReader = mock(EventStorageEngine.class);
     private final AggregateReader aggregateReader = mock(AggregateReader.class);
     private final CompletableFuture<List<QueryEventsResponse>> completableResult = new CompletableFuture<>();
 
     @Before
     public void setUp() throws Exception {
-        EventStorageEngine eventWriteStorage = mock(EventStorageEngine.class);
-        EventStorageEngine snapshotWriteStorage = mock(EventStorageEngine.class);
 
         StreamObserver<QueryEventsResponse> responseObserver = new StreamObserver<QueryEventsResponse>() {
             private List<QueryEventsResponse> responses = new LinkedList<>();
@@ -79,13 +76,13 @@ public class QueryEventsRequestStreamObserverTest {
             }
         };
 
-        testSubject = new QueryEventsRequestStreamObserver(eventWriteStorage,
-                                                           eventStreamReader,
+        testSubject = new QueryEventsRequestStreamObserver(eventStreamReader,
                                                            aggregateReader,
                                                            100,
                                                            1000,
                                                            new DefaultEventDecorator(),
-                                                           responseObserver,snapshotWriteStorage,snapshotStreamReader);
+                                                           responseObserver,
+                                                           snapshotStreamReader);
     }
 
     @Test

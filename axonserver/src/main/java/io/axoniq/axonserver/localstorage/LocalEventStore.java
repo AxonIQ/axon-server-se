@@ -674,14 +674,12 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                                                                                                         authentication);
 
         return new QueryEventsRequestStreamObserver(workers.eventStorageEngine,
-                                                    workers.eventStreamReader,
                                                     workers.aggregateReader,
                                                     defaultLimit,
                                                     timeout,
                                                     activeEventDecorator,
                                                     responseObserver,
-                                                    workers.snapshotStorageEngine,
-                                                    workers.snapshotStreamReader
+                                                    workers.snapshotStorageEngine
         );
     }
 
